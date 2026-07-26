@@ -107,3 +107,30 @@ This was scoped as frontend-first. Still ahead, per your original plan:
   `npm install && npm run dev`
 
 Ready to start on the backend whenever you are.
+
+## Deployment & Environment
+
+Required environment variables (set these in Vercel or your host):
+
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL (public)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (public)
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key (server-only)
+- `MONGODB_URI` — MongoDB Atlas connection string (server-only)
+- `STRIPE_SECRET_KEY` — Stripe secret key (test or live)
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe publishable key
+
+Vercel notes:
+
+- Set environment variables in Project → Settings → Environment Variables.
+- Use `npm ci` as the Install Command in Build & Output Settings for deterministic installs.
+- If you hit peer-dependency install errors in Vercel, set Install Command to:
+
+```
+npm ci --legacy-peer-deps
+```
+
+Security:
+
+- Do not commit `.env` or secrets. Use `.env.local` for local secrets and add it to `.gitignore`.
+- Rotate any credential exposed publicly and use least-privilege DB users.
+
