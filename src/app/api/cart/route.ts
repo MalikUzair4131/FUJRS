@@ -1,37 +1,19 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { cartService } from "@/lib/supabase/services";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const items = await prisma.cartItem.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "asc" },
-  });
+  const items = await cartService.list(auth.profile.id);
 
-  return NextResponse.json({
-    items: items.map((i: any) => ({
-      id: i.id,
-      slug: i.productSlug,
-      title: i.title,
-      image: i.image,
-      price: i.price,
-      qty: i.qty,
-      stitching:
-        i.stitchingLabel && i.stitchingAddOn != null
-          ? { label: i.stitchingLabel, addOn: i.stitchingAddOn }
-          : undefined,
-      stitcherSlug: i.stitcherSlug ?? undefined,
-    })),
-  });
+  return NextResponse.json({ items });
 }
 
 const cartItemSchema = z.object({
@@ -46,12 +28,9 @@ const cartItemSchema = z.object({
 
 const syncSchema = z.object({ items: z.array(cartItemSchema) });
 
-// Full-replace sync: simplest correct approach for a cart this size —
-// delete everything for this user, recreate from the given list. Avoids
-// having to reconcile individual row diffs on every quantity change.
 export async function PUT(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -61,25 +40,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid cart payload" }, { status: 400 });
   }
 
-  const userId = session.user.id;
-
-  await prisma.cartItem.deleteMany({ where: { userId } });
-
-  if (parsed.data.items.length > 0) {
-    await prisma.cartItem.createMany({
-      data: parsed.data.items.map((item) => ({
-        userId,
-        productSlug: item.slug,
-        title: item.title,
-        image: item.image,
-        price: item.price,
-        qty: item.qty,
-        stitchingLabel: item.stitching?.label,
-        stitchingAddOn: item.stitching?.addOn,
-        stitcherSlug: item.stitcherSlug,
-      })),
-    });
-  }
+  await cartService.sync(auth.profile.id, parsed.data.items);
 
   return NextResponse.json({ ok: true });
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
+import { getCurrentAppUser } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +10,8 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -31,7 +30,7 @@ export async function POST(request: Request) {
       amount: Math.round(parsed.data.total * 100),
       currency: "pkr",
       automatic_payment_methods: { enabled: true },
-      metadata: { userId: session.user.id },
+      metadata: { userId: auth.profile.id },
     });
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });

@@ -14,8 +14,9 @@ const spanClass: Record<string, string> = {
   square: "md:col-span-4 aspect-[1/1]",
 };
 
-export default function StitcherProfilePage({ params }: { params: { slug: string } }) {
-  const stitcher = getStitcherBySlug(params.slug);
+export default async function StitcherProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const stitcher = getStitcherBySlug(resolvedParams.slug);
   if (!stitcher) notFound();
 
   const hasFullProfile = !!stitcher.portfolio;

@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { useCart, cartTotals } from "@/components/cart/CartContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
 
 type Step = 1 | 2 | 3;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { status } = useSession();
+  const { status } = useAuth();
   const { items, clear, mounted } = useCart();
   const [step, setStep] = useState<Step>(1);
 

@@ -10,8 +10,9 @@ function searchProducts(query: string) {
   );
 }
 
-export default function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const query = searchParams.q ?? "";
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams.q ?? "";
   const results = searchProducts(query);
 
   return (

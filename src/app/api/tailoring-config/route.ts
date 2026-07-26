@@ -1,39 +1,18 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { tailoringService } from "@/lib/supabase/services";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const config = await prisma.tailoringConfig.findUnique({
-    where: { userId: session.user.id },
-  });
-
-  if (!config) {
-    return NextResponse.json({ config: null });
-  }
-
-  return NextResponse.json({
-    config: {
-      measurements: JSON.parse(config.measurements),
-      neckline: config.neckline,
-      necklinePrice: config.necklinePrice,
-      sleeve: config.sleeve,
-      sleevePrice: config.sleevePrice,
-      hemline: config.hemline,
-      hemlinePrice: config.hemlinePrice,
-      garmentType: config.garmentType,
-      basePrice: config.basePrice,
-      stitcherSlug: config.stitcherSlug,
-    },
-  });
+  const config = await tailoringService.getConfig(auth.profile.id);
+  return NextResponse.json({ config });
 }
 
 const configSchema = z.object({
@@ -50,8 +29,8 @@ const configSchema = z.object({
 });
 
 export async function PUT(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -62,36 +41,9 @@ export async function PUT(request: Request) {
   }
 
   const data = parsed.data;
-  const userId = session.user.id;
+  const userId = auth.profile.id;
 
-  await prisma.tailoringConfig.upsert({
-    where: { userId },
-    create: {
-      userId,
-      measurements: JSON.stringify(data.measurements),
-      neckline: data.neckline,
-      necklinePrice: data.necklinePrice,
-      sleeve: data.sleeve,
-      sleevePrice: data.sleevePrice,
-      hemline: data.hemline,
-      hemlinePrice: data.hemlinePrice,
-      garmentType: data.garmentType,
-      basePrice: data.basePrice,
-      stitcherSlug: data.stitcherSlug,
-    },
-    update: {
-      measurements: JSON.stringify(data.measurements),
-      neckline: data.neckline,
-      necklinePrice: data.necklinePrice,
-      sleeve: data.sleeve,
-      sleevePrice: data.sleevePrice,
-      hemline: data.hemline,
-      hemlinePrice: data.hemlinePrice,
-      garmentType: data.garmentType,
-      basePrice: data.basePrice,
-      stitcherSlug: data.stitcherSlug,
-    },
-  });
+  await tailoringService.saveConfig(userId, data);
 
   return NextResponse.json({ ok: true });
 }

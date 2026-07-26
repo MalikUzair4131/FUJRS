@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { useCart } from "@/components/cart/CartContext";
 import { useWishlist } from "@/components/wishlist/WishlistContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 const navLinks = [
   { label: "MEN", href: "/men" },
@@ -19,7 +19,7 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
-  const { data: session } = useSession();
+  const { session } = useAuth();
   const { items, mounted } = useCart();
   const { slugs, mounted: wishlistMounted } = useWishlist();
 

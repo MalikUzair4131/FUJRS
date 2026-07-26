@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { stitchers } from "@/data/stitchers";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { signIn, signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +50,20 @@ export default function RegisterPage() {
       return;
     }
 
-    const result = await signIn("credentials", { email, password, redirect: false });
+    const signUpResult = await signUp({
+      email,
+      password,
+      name,
+      role: isStaff ? staffRole : "CUSTOMER",
+      assignedStitcherSlug: isStaff && staffRole === "TAILOR" ? assignedStitcherSlug : null,
+    });
+    if (signUpResult.error) {
+      setError(signUpResult.error);
+      setLoading(false);
+      return;
+    }
+
+    const result = await signIn(email, password);
     setLoading(false);
 
     if (result?.error) {

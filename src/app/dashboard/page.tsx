@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { AdminView } from "@/components/dashboard/AdminView";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { VendorView } from "@/components/dashboard/VendorView";
 import { TailorView } from "@/components/dashboard/TailorView";
 
@@ -16,7 +16,7 @@ const roleLabels: Record<Role, string> = {
 };
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { session, status } = useAuth();
   const [activeTab, setActiveTab] = useState<Role | null>(null);
 
   if (status === "loading") {

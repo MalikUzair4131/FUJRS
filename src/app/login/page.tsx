@@ -1,13 +1,14 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { signIn } = useAuth();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/account";
 
   const [email, setEmail] = useState("");
@@ -20,7 +21,7 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const result = await signIn("credentials", { email, password, redirect: false });
+    const result = await signIn(email, password);
     setLoading(false);
 
     if (result?.error) {

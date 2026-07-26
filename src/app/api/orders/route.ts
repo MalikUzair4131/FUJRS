@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { orderService } from "@/lib/supabase/services";
 import { getStripe } from "@/lib/stripe";
 
 const orderItemSchema = z.object({
@@ -32,8 +31,8 @@ const createOrderSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json(
       { error: "You must be signed in to place an order." },
       { status: 401 }
@@ -82,52 +81,40 @@ export async function POST(request: Request) {
     }
   }
 
-  const order = await prisma.order.create({
-    data: {
-      userId: session.user.id,
-      status: "CONFIRMED",
-      fabricTotal: data.fabricTotal,
-      stitchingTotal: data.stitchingTotal,
-      shipping: data.shipping,
-      total: data.total,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      street: data.street,
-      city: data.city,
-      postalCode: data.postalCode,
-      paymentMethod: data.paymentMethod,
-      stripePaymentIntentId: data.stripePaymentIntentId,
-      items: {
-        create: data.items.map((item) => ({
-          productSlug: item.productSlug,
-          title: item.title,
-          image: item.image,
-          price: item.price,
-          qty: item.qty,
-          stitchingLabel: item.stitchingLabel,
-          stitchingAddOn: item.stitchingAddOn,
-          stitcherSlug: item.stitcherSlug,
-          stitchingStatus: item.stitchingLabel ? "Awaiting Measurements" : undefined,
-        })),
-      },
-    },
-    include: { items: true },
+  const order = await orderService.create(auth.profile.id, {
+    items: data.items.map((item) => ({
+      productSlug: item.productSlug,
+      title: item.title,
+      image: item.image,
+      price: item.price,
+      qty: item.qty,
+      stitchingLabel: item.stitchingLabel,
+      stitchingAddOn: item.stitchingAddOn,
+      stitcherSlug: item.stitcherSlug,
+    })),
+    fabricTotal: data.fabricTotal,
+    stitchingTotal: data.stitchingTotal,
+    shipping: data.shipping,
+    total: data.total,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    street: data.street,
+    city: data.city,
+    postalCode: data.postalCode,
+    paymentMethod: data.paymentMethod,
+    stripePaymentIntentId: data.stripePaymentIntentId,
   });
 
   return NextResponse.json({ order }, { status: 201 });
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const orders = await orderService.listByUser(auth.profile.id);
 
   return NextResponse.json({ orders });
 }

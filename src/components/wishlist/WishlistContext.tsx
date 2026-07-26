@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import type { Product } from "@/data/products";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 interface WishlistContextValue {
   slugs: string[];
@@ -15,7 +15,7 @@ const WishlistContext = createContext<WishlistContextValue | null>(null);
 const STORAGE_KEY = "fujrs-wishlist";
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+  const { session, status } = useAuth();
   const [slugs, setSlugs] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
 

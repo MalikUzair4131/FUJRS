@@ -1,25 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { productDraftService } from "@/lib/supabase/services";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["VENDOR", "ADMIN"].includes(session.user.role)) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile || !["VENDOR", "ADMIN"].includes(auth.profile.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  // Admins see everything submitted; vendors see only their own drafts.
-  const where = session.user.role === "ADMIN" ? {} : { vendorId: session.user.id };
-
-  const drafts = await prisma.productDraft.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-  });
-
+  const drafts = await productDraftService.list(auth.profile.role, auth.profile.id);
   return NextResponse.json({ drafts });
 }
 
@@ -33,8 +25,8 @@ const draftSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !["VENDOR", "ADMIN"].includes(session.user.role)) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile || !["VENDOR", "ADMIN"].includes(auth.profile.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
@@ -47,12 +39,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const draft = await prisma.productDraft.create({
-    data: {
-      vendorId: session.user.id,
-      ...parsed.data,
-    },
-  });
+  const draft = await productDraftService.create(auth.profile.id, parsed.data);
 
   return NextResponse.json({ draft }, { status: 201 });
 }

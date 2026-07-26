@@ -10,8 +10,9 @@ export function generateStaticParams() {
   return products.map((p) => ({ slug: p.slug }));
 }
 
-export default function ProductPage({ params }: { params: { slug: string } }) {
-  const product = getProductBySlug(params.slug);
+export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const product = getProductBySlug(resolvedParams.slug);
   if (!product) notFound();
 
   // "Complete the Look": same-category pieces first, falling back to

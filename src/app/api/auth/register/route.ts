@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { stitchers } from "@/data/stitchers";
+import { createAdminSupabaseClient } from "@/lib/supabase/server";
 
 const stitcherSlugs = stitchers.map((s) => s.slug) as [string, ...string[]];
 
@@ -34,19 +33,7 @@ export async function POST(request: Request) {
   const { name, email, password, staffInviteCode, staffRole, assignedStitcherSlug } = parsed.data;
   const normalizedEmail = email.toLowerCase();
 
-  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (existing) {
-    return NextResponse.json(
-      { error: "An account with that email already exists." },
-      { status: 409 }
-    );
-  }
-
-  // Never trust a client-supplied role on its own — only apply it if the
-  // shared staff invite code matches. Without a real admin-managed invite
-  // system yet, this is a pragmatic, clearly-labeled way to create
-  // internal Vendor/Tailor accounts for this project's current scope.
-  let role = "CUSTOMER";
+  let role: "CUSTOMER" | "VENDOR" | "TAILOR" = "CUSTOMER";
   let stitcherSlug: string | null = null;
   const inviteCode = process.env.STAFF_INVITE_CODE;
 
@@ -59,18 +46,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid staff invite code." }, { status: 403 });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  try {
+    const supabase = await createAdminSupabaseClient();
+    const { data: { user }, error } = await supabase.auth.admin.createUser({
+      email: normalizedEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name,
+        role,
+        assigned_stitcher_slug: stitcherSlug,
+      },
+    });
 
-  const user = await prisma.user.create({
-    data: {
+    if (error || !user) {
+      return NextResponse.json({ error: error?.message ?? "Unable to create account." }, { status: 400 });
+    }
+
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: user.id,
       name,
       email: normalizedEmail,
-      passwordHash,
       role,
-      assignedStitcherSlug: stitcherSlug,
-    },
-    select: { id: true, name: true, email: true, role: true },
-  });
+      assigned_stitcher_slug: stitcherSlug,
+    });
 
-  return NextResponse.json({ user }, { status: 201 });
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ user: { id: user.id, name, email: normalizedEmail, role } }, { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to create account.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

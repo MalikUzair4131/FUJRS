@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { orderService } from "@/lib/supabase/services";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const resolvedParams = await params;
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    include: { items: true },
-  });
+  const order = await orderService.getById(resolvedParams.id, auth.profile.id);
 
-  if (!order || order.userId !== session.user.id) {
+  if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 

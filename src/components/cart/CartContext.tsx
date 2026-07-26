@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 import type { Product } from "@/data/products";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export interface StitchingSelection {
   label: string;
@@ -66,7 +66,7 @@ async function syncCartToServer(items: CartItem[]) {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
+  const { status } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [mounted, setMounted] = useState(false);
   const hydrated = useRef(false);

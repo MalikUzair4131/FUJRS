@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export interface TailoringConfig {
   measurements: Record<string, string>;
@@ -95,7 +95,7 @@ async function syncConfigToServer(config: TailoringConfig) {
 }
 
 export function TailoringProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
+  const { status } = useAuth();
   const [config, setConfigState] = useState<TailoringConfig>(defaultConfig);
   const [mounted, setMounted] = useState(false);
 

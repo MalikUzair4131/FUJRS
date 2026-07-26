@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import Image from "next/image";
 import Link from "next/link";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { orderService } from "@/lib/supabase/services";
 
 const timelineSteps = [
   {
@@ -35,18 +34,16 @@ const timelineSteps = [
 export default async function OrderConfirmationPage({
   searchParams,
 }: {
-  searchParams: { orderId?: string };
+  searchParams: Promise<{ orderId?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  if (!searchParams.orderId) redirect("/account");
+  const resolvedSearchParams = await searchParams;
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) redirect("/login");
+  if (!resolvedSearchParams.orderId) redirect("/account");
 
-  const order = await prisma.order.findUnique({
-    where: { id: searchParams.orderId },
-    include: { items: true },
-  });
+  const order = await orderService.getById(resolvedSearchParams.orderId, auth.profile.id);
 
-  if (!order || order.userId !== session.user.id) redirect("/account");
+  if (!order) redirect("/account");
 
   const hasStitching = order.items.some((i: { stitchingLabel: string | null }) => i.stitchingLabel);
 

@@ -1,21 +1,16 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
 import Link from "next/link";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getCurrentAppUser } from "@/lib/auth";
+import { orderService } from "@/lib/supabase/services";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 
 export default async function AccountPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const auth = await getCurrentAppUser();
+  if (!auth?.profile) {
     redirect("/login?callbackUrl=/account");
   }
 
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const orders = await orderService.listByUser(auth.profile.id);
 
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
@@ -25,7 +20,7 @@ export default async function AccountPage() {
             My Account
           </p>
           <h1 className="mt-2 font-display text-headline-md">
-            Welcome back, {session.user.name}
+            Welcome back, {auth.profile.name}
           </h1>
         </div>
         <SignOutButton />
@@ -54,7 +49,7 @@ export default async function AccountPage() {
             </div>
           ) : (
             <ul className="divide-y divide-outline-variant/30">
-              {orders.map((order) => (
+              {orders.map((order: { id: string; createdAt: string; items: Array<unknown>; total: number; status: string }) => (
                 <li key={order.id} className="flex flex-wrap items-center justify-between gap-4 py-6">
                   <div>
                     <p className="font-body text-body-md">
@@ -87,11 +82,11 @@ export default async function AccountPage() {
           <div className="border border-outline-variant p-6 space-y-4">
             <div>
               <p className="font-label-sm uppercase text-on-surface-variant">Name</p>
-              <p className="font-body text-body-md">{session.user.name}</p>
+              <p className="font-body text-body-md">{auth.profile.name}</p>
             </div>
             <div>
               <p className="font-label-sm uppercase text-on-surface-variant">Email</p>
-              <p className="font-body text-body-md">{session.user.email}</p>
+              <p className="font-body text-body-md">{auth.profile.email}</p>
             </div>
           </div>
           <ul className="mt-6 space-y-3">
