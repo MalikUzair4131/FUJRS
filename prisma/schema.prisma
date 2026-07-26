@@ -1,0 +1,144 @@
+// FUJRS — Database phase. Adds Order/OrderItem and WishlistItem, tied to
+// the User model from the auth phase. Product data itself stays in code
+// (src/data/products.ts) since it's not user-editable — orders/wishlist
+// reference products by their static slug/id.
+//
+// Dev: SQLite (file). Deploy: point DATABASE_URL at Postgres and change
+// provider to "postgresql" before running `prisma db push`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// CUSTOMER (default) | ADMIN | VENDOR | TAILOR. Kept as a plain string
+// rather than a Prisma enum for easy portability between SQLite (dev) and
+// Postgres (prod) — an enum works on both but a string keeps schema
+// changes to roles a simple data migration rather than a schema one.
+model User {
+  id                   String   @id @default(cuid())
+  name                 String
+  email                String   @unique
+  passwordHash         String
+  role                 String   @default("CUSTOMER")
+  // Only set when role = "TAILOR" — links this account to one of the
+  // Master Stitcher profiles in src/data/stitchers.ts, so their queue
+  // shows only bespoke orders assigned to them.
+  assignedStitcherSlug String?
+  createdAt            DateTime @default(now())
+
+  orders          Order[]
+  wishlist        WishlistItem[]
+  cartItems       CartItem[]
+  tailoringConfig TailoringConfig?
+  productDrafts   ProductDraft[]
+}
+
+model Order {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id])
+  status                String   @default("CONFIRMED")
+  fabricTotal           Float
+  stitchingTotal        Float    @default(0)
+  shipping              Float
+  total                 Float
+  firstName             String
+  lastName              String
+  street                String
+  city                  String
+  postalCode            String
+  paymentMethod         String
+  cardLast4             String?
+  stripePaymentIntentId String?
+  createdAt             DateTime @default(now())
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  orderId         String
+  order           Order   @relation(fields: [orderId], references: [id])
+  productSlug     String
+  title           String
+  image           String
+  price           Float
+  qty             Int
+  stitchingLabel  String?
+  stitchingAddOn  Float?
+  stitcherSlug    String?
+  // Only meaningful when stitchingLabel is set — the Tailor dashboard's
+  // real work queue, not a UI-only status. Set explicitly in application
+  // code (only for stitched items), not defaulted here, since a schema
+  // default would apply to non-stitched items too.
+  stitchingStatus String?
+}
+
+model WishlistItem {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  productSlug String
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, productSlug])
+}
+
+model CartItem {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  productSlug    String
+  title          String
+  image          String
+  price          Float
+  qty            Int
+  stitchingLabel String?
+  stitchingAddOn Float?
+  stitcherSlug   String?
+  createdAt      DateTime @default(now())
+}
+
+// One saved bespoke configuration per user — measurements/style choices
+// from the most recent visit to /tailoring/configure. A history of past
+// configurations is a reasonable future step, not needed for this pass.
+model TailoringConfig {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  measurements   String // JSON-encoded key/value map
+  neckline       String
+  necklinePrice  Float
+  sleeve         String
+  sleevePrice    Float
+  hemline        String
+  hemlinePrice   Float
+  garmentType    String
+  basePrice      Float
+  stitcherSlug   String
+  updatedAt      DateTime @updatedAt
+}
+
+// Internal product-intake queue for the Vendor dashboard. FUJRS is a
+// single-brand storefront (the live catalog is src/data/products.ts,
+// code-managed) — this is NOT a marketplace product listing. It's how
+// in-house merchandising staff propose new pieces before they're reviewed
+// and (manually, by a developer) added to the real catalog.
+model ProductDraft {
+  id          String   @id @default(cuid())
+  vendorId    String
+  vendor      User     @relation(fields: [vendorId], references: [id])
+  title       String
+  price       Float
+  fabric      String
+  category    String
+  gender      String
+  description String
+  status      String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt   DateTime @default(now())
+}

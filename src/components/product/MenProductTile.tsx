@@ -1,0 +1,64 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { Reveal } from "@/components/ui/Reveal";
+import { AddToBagButton } from "@/components/product/AddToBagButton";
+import type { Product } from "@/data/products";
+
+export function MenProductTile({
+  product,
+  size = "small",
+  delay = 0,
+}: {
+  product: Product;
+  size?: "large" | "small";
+  delay?: number;
+}) {
+  const aspect = size === "large" ? "aspect-[16/10]" : "aspect-[4/5]";
+
+  return (
+    <Reveal delay={delay} className={size === "large" ? "md:col-span-8" : "md:col-span-4"}>
+      <div className="group relative product-card overflow-hidden">
+        <Link href={`/products/${product.slug}`} className={`block ${aspect} overflow-hidden relative`}>
+          <Image
+            src={product.images[0]}
+            alt={product.title}
+            fill
+            sizes={size === "large" ? "66vw" : "33vw"}
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+          {product.badge && (
+            <div className="absolute top-4 left-4 flex flex-col gap-2">
+              <span className="bg-black text-white px-3 py-1 font-label-sm text-label-sm uppercase tracking-wider">
+                {product.badge}
+              </span>
+            </div>
+          )}
+          <div className="quick-add-btn absolute bottom-0 left-0 right-0 bg-black text-white py-4 font-label-md text-label-md uppercase tracking-widest text-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <AddToBagButton product={product} label={size === "large" ? "Quick Add to Bag" : "Quick Add"} />
+          </div>
+        </Link>
+        <div className="mt-6 flex justify-between items-start">
+          <div>
+            <h3
+              className={
+                size === "large"
+                  ? "font-headline-sm text-headline-sm mb-1 uppercase tracking-tight"
+                  : "font-label-md text-label-md font-bold uppercase tracking-widest mb-1"
+              }
+            >
+              {product.title}
+            </h3>
+            <p className="text-secondary font-label-sm text-label-sm uppercase">
+              {product.color} {product.meters && `• ${product.meters}`}
+            </p>
+          </div>
+          <p className="font-headline-sm text-headline-sm shrink-0 ml-4">
+            PKR {product.price.toLocaleString()}
+          </p>
+        </div>
+      </div>
+    </Reveal>
+  );
+}
