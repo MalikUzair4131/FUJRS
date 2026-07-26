@@ -10,6 +10,10 @@ export function createBrowserSupabaseClient() {
         signUp: async () => ({ data: { user: null, session: null }, error: null }),
         signOut: async () => ({ error: null }),
         getUser: async () => ({ data: { user: null }, error: null }),
+        onAuthStateChange: (cb: any) => {
+          const subscription = { unsubscribe: () => {} };
+          return { data: { subscription } };
+        },
       },
     } as any;
   }
