@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useCart } from "@/components/cart/CartContext";
 import { useWishlist } from "@/components/wishlist/WishlistContext";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { canAccessDashboard } from "@/lib/auth/roles";
 
 const navLinks = [
   { label: "MEN", href: "/men" },
@@ -25,6 +26,7 @@ export function Navbar() {
 
   const cartCount = mounted ? items.reduce((sum, i) => sum + i.qty, 0) : 0;
   const wishlistCount = wishlistMounted ? slugs.length : 0;
+  const showDashboardLink = canAccessDashboard(session?.user.role);
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -58,6 +60,14 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {showDashboardLink && (
+              <Link
+                href="/dashboard"
+                className="text-marketplace-bronze hover:text-primary transition-colors duration-200 font-label-md text-label-md"
+              >
+                DASHBOARD
+              </Link>
+            )}
           </div>
 
           {/* Actions */}
@@ -84,10 +94,14 @@ export function Navbar() {
             <Link
               aria-label={session ? "My Account" : "Sign In"}
               href={session ? "/account" : "/login"}
-              className="material-symbols-outlined hidden sm:block hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90"
-              style={session ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              className="hidden sm:block hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90"
             >
-              person
+              <span
+                className="material-symbols-outlined"
+                style={session ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              >
+                person
+              </span>
             </Link>
             <Link
               aria-label="Shopping bag"
@@ -103,10 +117,10 @@ export function Navbar() {
             </Link>
             <button
               aria-label="Open menu"
-              className="material-symbols-outlined lg:hidden"
+              className="lg:hidden"
               onClick={() => setMobileOpen(true)}
             >
-              menu
+              <span className="material-symbols-outlined">menu</span>
             </button>
           </div>
         </div>
@@ -170,6 +184,15 @@ export function Navbar() {
               >
                 {session ? "MY ACCOUNT" : "ACCOUNT"}
               </Link>
+              {showDashboardLink && (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileOpen(false)}
+                  className="border-b border-outline-variant py-4 font-label-md text-label-md text-marketplace-bronze"
+                >
+                  DASHBOARD
+                </Link>
+              )}
             </nav>
           </div>
         </div>

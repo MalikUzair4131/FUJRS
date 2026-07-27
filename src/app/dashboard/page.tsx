@@ -6,14 +6,10 @@ import { AdminView } from "@/components/dashboard/AdminView";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { VendorView } from "@/components/dashboard/VendorView";
 import { TailorView } from "@/components/dashboard/TailorView";
+import { SuperAdminView } from "@/components/dashboard/SuperAdminView";
+import { ROLE_LABELS } from "@/lib/auth/roles";
 
-type Role = "ADMIN" | "VENDOR" | "TAILOR";
-
-const roleLabels: Record<Role, string> = {
-  ADMIN: "Admin",
-  VENDOR: "Vendor",
-  TAILOR: "Tailor",
-};
+type Role = "SUPER_ADMIN" | "ADMIN" | "VENDOR" | "TAILOR";
 
 export default function DashboardPage() {
   const { session, status } = useAuth();
@@ -43,11 +39,13 @@ export default function DashboardPage() {
 
   const userRole = session?.user.role as Role | "CUSTOMER" | undefined;
   const availableRoles: Role[] =
-    userRole === "ADMIN"
-      ? ["ADMIN", "VENDOR", "TAILOR"]
-      : userRole && userRole !== "CUSTOMER"
-        ? [userRole]
-        : [];
+    userRole === "SUPER_ADMIN"
+      ? ["SUPER_ADMIN", "ADMIN", "VENDOR", "TAILOR"]
+      : userRole === "ADMIN"
+        ? ["ADMIN", "VENDOR", "TAILOR"]
+        : userRole && userRole !== "CUSTOMER"
+          ? [userRole]
+          : [];
 
   if (availableRoles.length === 0) {
     return (
@@ -74,8 +72,10 @@ export default function DashboardPage() {
       <p className="label-caps text-gold">Internal Tools</p>
       <h1 className="mt-2 font-display text-headline-md">Dashboard</h1>
       <p className="mt-2 text-body-md text-text-muted">
-        Signed in as {session?.user.name} — {roleLabels[role]}. All data below is live from the
-        database.
+        Signed in as {session?.user.name} — {ROLE_LABELS[role]}.{" "}
+        {session?.user.isDemo
+          ? "This is a demo session; the data below is sample data."
+          : "All data below is live from the database."}
       </p>
 
       {availableRoles.length > 1 && (
@@ -88,13 +88,14 @@ export default function DashboardPage() {
                 role === r ? "bg-primary text-on-primary" : "text-on-surface"
               }`}
             >
-              {roleLabels[r]}
+              {ROLE_LABELS[r]}
             </button>
           ))}
         </div>
       )}
 
       <div className="mt-10">
+        {role === "SUPER_ADMIN" && <SuperAdminView />}
         {role === "ADMIN" && <AdminView />}
         {role === "VENDOR" && <VendorView />}
         {role === "TAILOR" && <TailorView />}

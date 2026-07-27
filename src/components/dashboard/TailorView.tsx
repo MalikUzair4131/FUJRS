@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { DEMO_TAILOR_QUEUE } from "@/lib/auth/demoData";
 
 interface QueueItem {
   id: string;
@@ -14,11 +16,18 @@ interface QueueItem {
 }
 
 export function TailorView() {
+  const { session } = useAuth();
+  const isDemo = !!session?.user.isDemo;
+
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isDemo) {
+      setQueue(DEMO_TAILOR_QUEUE);
+      return;
+    }
     fetch("/api/tailor/queue")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load");
@@ -26,7 +35,7 @@ export function TailorView() {
       })
       .then((data) => setQueue(data.items))
       .catch(() => setError("Couldn't load your queue right now."));
-  }, []);
+  }, [isDemo]);
 
   async function updateStatus(itemId: string, status: string) {
     setUpdating(itemId);
@@ -34,6 +43,11 @@ export function TailorView() {
     setQueue(
       (prev) => prev?.map((item) => (item.id === itemId ? { ...item, status } : item)) ?? null
     );
+
+    if (isDemo) {
+      setUpdating(null);
+      return;
+    }
 
     const res = await fetch("/api/tailor/queue", {
       method: "PATCH",

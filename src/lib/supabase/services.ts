@@ -1,6 +1,44 @@
 import { createAdminSupabaseClient, type AppRole, type AppUserProfile } from "./server";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
+const REVENUE_SERIES_DAYS = 14;
+
+interface OrderStatsRow {
+  total: number;
+  status: string;
+  created_at: string;
+}
+
+function buildRevenueSeries(rows: OrderStatsRow[], days: number) {
+  const buckets = new Map<string, number>();
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const day = new Date(today);
+    day.setUTCDate(day.getUTCDate() - i);
+    buckets.set(day.toISOString().slice(0, 10), 0);
+  }
+
+  for (const row of rows) {
+    const dayKey = row.created_at.slice(0, 10);
+    if (buckets.has(dayKey)) {
+      buckets.set(dayKey, (buckets.get(dayKey) ?? 0) + Number(row.total ?? 0));
+    }
+  }
+
+  return Array.from(buckets.entries()).map(([date, revenue]) => ({ date, revenue }));
+}
+
+function buildStatusBreakdown(rows: OrderStatsRow[]) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const status = row.status ?? "UNKNOWN";
+    counts.set(status, (counts.get(status) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([status, count]) => ({ status, count }));
+}
+
 export interface ProductRecord {
   id: string;
   slug: string;
@@ -196,6 +234,18 @@ export const customerService = {
     const { error } = await supabase.from("profiles").update({ address }).eq("id", userId);
     if (error) throw error;
   },
+
+  async countsByRole() {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase.from("profiles").select("role");
+    if (error) throw error;
+
+    const counts = new Map<AppRole, number>();
+    for (const row of (data ?? []) as { role: AppRole }[]) {
+      counts.set(row.role, (counts.get(row.role) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([role, count]) => ({ role, count }));
+  },
 };
 
 export const reviewService = {
@@ -323,7 +373,7 @@ export const orderService = {
     const supabase = await getSupabaseClient();
     const [{ count: totalOrders }, { data: totals }, { data: recent }] = await Promise.all([
       supabase.from("orders").select("id", { count: "exact", head: true }),
-      supabase.from("orders").select("total"),
+      supabase.from("orders").select("total, status, created_at"),
       supabase
         .from("orders")
         .select("*, order_items(*)")
@@ -331,13 +381,14 @@ export const orderService = {
         .limit(5),
     ]);
 
-    const totalRevenue = (totals ?? []).reduce(
-      (sum: number, item: any) => sum + Number(item.total ?? 0),
-      0
-    );
+    const orderRows = (totals ?? []) as OrderStatsRow[];
+    const totalRevenue = orderRows.reduce((sum, item) => sum + Number(item.total ?? 0), 0);
+
     return {
       totalOrders: totalOrders ?? 0,
       totalRevenue,
+      revenueByDay: buildRevenueSeries(orderRows, REVENUE_SERIES_DAYS),
+      ordersByStatus: buildStatusBreakdown(orderRows),
       recentOrders: (recent ?? []).map((row: any) => ({
         id: row.id,
         customer: `${row.first_name} ${row.last_name}`,
