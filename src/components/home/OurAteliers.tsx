@@ -16,8 +16,7 @@ const ateliers = [
   {
     initials: "P&S",
     name: "Prêt Studio",
-    description:
-      "Everyday lawn and formal unstitched sets for the modern Pakistani woman.",
+    description: "Everyday lawn and formal unstitched sets for the modern Pakistani woman.",
     href: "/women",
     swatches: [
       "https://lh3.googleusercontent.com/aida-public/AB6AXuAvzUwA_Oz8-4Fu8dBvhnDe66_2Q88PE7EmOSMTAwldfJKs9hRMpvfSDVZeSUOPMzcqT2FpGXVMclcJQyb3Q2OmVP7cBIBDenKl22R3r3-iEsalHRCJ_8HOotpLXkd7xb4bXrr9ohe1hxcBkdYynWbjuDxjyv-uG0SFWKJ1Wj5IViFYY6l_RmbfKWGpeRNz94U3z4rSsBiqfYO5aTu7fgw8JMVP-mSKQZ0GgaecP6I-Dp-vPJynGCf5iGxQb9FUBgTWdUZnWUKrsl8",
@@ -76,6 +75,8 @@ export function OurAteliers() {
                     key={i}
                     className="w-16 h-16 bg-surface-container bg-cover bg-center"
                     style={{ backgroundImage: `url('${swatch}')` }}
+                    role="img"
+                    aria-label={`${atelier.name} fabric swatch ${i + 1}`}
                   />
                 ))}
               </div>

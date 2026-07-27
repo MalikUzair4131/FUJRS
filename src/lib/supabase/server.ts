@@ -78,7 +78,9 @@ export interface AppUserProfile {
 function normalizeProfile(user: any, fallback: Partial<AppUserProfile> = {}): AppUserProfile {
   const metadata = user?.user_metadata ?? {};
   const role = (metadata.role ?? fallback.role ?? "CUSTOMER") as AppRole;
-  const assignedStitcherSlug = (metadata.assigned_stitcher_slug ?? fallback.assignedStitcherSlug ?? null) as string | null;
+  const assignedStitcherSlug = (metadata.assigned_stitcher_slug ??
+    fallback.assignedStitcherSlug ??
+    null) as string | null;
 
   return {
     id: user?.id ?? fallback.id ?? "",
@@ -128,7 +130,10 @@ export async function createAdminSupabaseClient() {
 
 export async function getAuthenticatedUser() {
   const supabase = await createServerSupabaseClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   if (error || !user) {
     return null;
@@ -139,7 +144,15 @@ export async function getAuthenticatedUser() {
   const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   if (data) {
     profile = normalizeProfile(
-      { ...user, user_metadata: { ...user.user_metadata, name: data.name, role: data.role, assigned_stitcher_slug: data.assigned_stitcher_slug } },
+      {
+        ...user,
+        user_metadata: {
+          ...user.user_metadata,
+          name: data.name,
+          role: data.role,
+          assigned_stitcher_slug: data.assigned_stitcher_slug,
+        },
+      },
       {
         id: data.id,
         name: data.name,

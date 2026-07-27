@@ -20,7 +20,10 @@ export function MenProductTile({
   return (
     <Reveal delay={delay} className={size === "large" ? "md:col-span-8" : "md:col-span-4"}>
       <div className="group relative product-card overflow-hidden">
-        <Link href={`/products/${product.slug}`} className={`block ${aspect} overflow-hidden relative`}>
+        <Link
+          href={`/products/${product.slug}`}
+          className={`block ${aspect} overflow-hidden relative`}
+        >
           <Image
             src={product.images[0]}
             alt={product.title}
@@ -35,8 +38,11 @@ export function MenProductTile({
               </span>
             </div>
           )}
-          <div className="quick-add-btn absolute bottom-0 left-0 right-0 bg-black text-white py-4 font-label-md text-label-md uppercase tracking-widest text-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <AddToBagButton product={product} label={size === "large" ? "Quick Add to Bag" : "Quick Add"} />
+          <div className="quick-add-btn absolute bottom-0 left-0 right-0 bg-black text-white py-4 font-label-md text-label-md uppercase tracking-widest text-center opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+            <AddToBagButton
+              product={product}
+              label={size === "large" ? "Quick Add to Bag" : "Quick Add"}
+            />
           </div>
         </Link>
         <div className="mt-6 flex justify-between items-start">

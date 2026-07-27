@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { stitchers } from "@/data/stitchers";
 import { Reveal } from "@/components/ui/Reveal";
+import { LinkButton } from "@/components/ui/Button";
 
 export default function StitchersDirectoryPage() {
   const [query, setQuery] = useState("");
@@ -34,9 +35,8 @@ export default function StitchersDirectoryPage() {
             Master Stitchers &amp; Artisans
           </h1>
           <p className="font-body-lg text-body-lg text-text-muted">
-            A curated directory of FUJRS&apos;s in-house tailoring masters
-            and zardozi artisans. Precision, heritage, and the perfect fit,
-            delivered to your doorstep.
+            A curated directory of FUJRS&apos;s in-house tailoring masters and zardozi artisans.
+            Precision, heritage, and the perfect fit, delivered to your doorstep.
           </p>
         </div>
       </section>
@@ -48,7 +48,9 @@ export default function StitchersDirectoryPage() {
             <button
               onClick={() => setExpertise(null)}
               className={`font-label-md text-label-md uppercase border px-6 py-2 transition-all ${
-                expertise === null ? "bg-black text-white border-black" : "border-black hover:bg-black hover:text-white"
+                expertise === null
+                  ? "bg-black text-white border-black"
+                  : "border-black hover:bg-black hover:text-white"
               }`}
             >
               All Expertise
@@ -58,7 +60,9 @@ export default function StitchersDirectoryPage() {
                 key={spec}
                 onClick={() => setExpertise(spec)}
                 className={`font-label-md text-label-md uppercase border px-6 py-2 transition-all whitespace-nowrap ${
-                  expertise === spec ? "bg-black text-white border-black" : "border-black hover:bg-black hover:text-white"
+                  expertise === spec
+                    ? "bg-black text-white border-black"
+                    : "border-black hover:bg-black hover:text-white"
                 }`}
               >
                 {spec}
@@ -157,15 +161,26 @@ export default function StitchersDirectoryPage() {
               Our Measurement Philosophy
             </h2>
             <p className="font-body-lg text-body-lg text-text-muted">
-              Achieving the perfect fit from afar is an art form. Use our
-              precision measurement tool or work directly with your chosen
-              master artisan.
+              Achieving the perfect fit from afar is an art form. Use our precision measurement tool
+              or work directly with your chosen master artisan.
             </p>
             <div className="space-y-4">
               {[
-                { n: "01", title: "Select an Artisan", body: "Choose based on their specialty and lead times." },
-                { n: "02", title: "Digital Mapping", body: "Enter your measurements using our guided interface." },
-                { n: "03", title: "Craft & Delivery", body: "Your garment is hand-stitched and shipped to your door." },
+                {
+                  n: "01",
+                  title: "Select an Artisan",
+                  body: "Choose based on their specialty and lead times.",
+                },
+                {
+                  n: "02",
+                  title: "Digital Mapping",
+                  body: "Enter your measurements using our guided interface.",
+                },
+                {
+                  n: "03",
+                  title: "Craft & Delivery",
+                  body: "Your garment is hand-stitched and shipped to your door.",
+                },
               ].map((step) => (
                 <div key={step.n} className="flex items-start gap-4">
                   <span className="font-headline-sm text-marketplace-bronze">{step.n}</span>
@@ -176,12 +191,9 @@ export default function StitchersDirectoryPage() {
                 </div>
               ))}
             </div>
-            <Link
-              href="/tailoring/configure"
-              className="inline-block bg-primary text-white font-label-md text-label-md uppercase px-10 py-5 tracking-widest hover:bg-marketplace-bronze transition-all duration-500"
-            >
+            <LinkButton href="/tailoring/configure" variant="primary" className="!px-10 !py-5">
               How It Works
-            </Link>
+            </LinkButton>
           </Reveal>
           <Reveal delay={150} className="relative h-[500px] lg:h-[600px]">
             <div

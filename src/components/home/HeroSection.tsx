@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LinkButton } from "@/components/ui/Button";
 
 export function HeroSection() {
   return (
@@ -16,24 +16,18 @@ export function HeroSection() {
       </div>
       <div className="relative z-10 text-center text-on-primary px-gutter">
         <span className="font-label-md text-label-md tracking-[0.3em] uppercase mb-4 block">
-          Winter Edition 2024
+          This Season
         </span>
         <h1 className="font-display-lg text-[80px] md:text-[120px] leading-none mb-8 tracking-tighter">
           FUJRS UNSTITCHED
         </h1>
         <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
-          <Link
-            href="/new-arrivals"
-            className="px-12 py-5 bg-primary text-on-primary font-label-md text-label-md uppercase tracking-widest hover:bg-tertiary-fixed-dim hover:text-primary transition-all duration-300"
-          >
+          <LinkButton href="/new-arrivals" variant="primary" className="!px-12 !py-5">
             Shop Collection
-          </Link>
-          <Link
-            href="/new-arrivals"
-            className="px-12 py-5 border border-on-primary text-on-primary font-label-md text-label-md uppercase tracking-widest backdrop-blur-sm hover:bg-on-primary hover:text-primary transition-all duration-300"
-          >
+          </LinkButton>
+          <LinkButton href="/new-arrivals" variant="inverse" className="!px-12 !py-5">
             View Lookbook
-          </Link>
+          </LinkButton>
         </div>
       </div>
     </section>

@@ -11,9 +11,11 @@ import {
   GARMENT_PRICES,
 } from "@/components/tailoring/TailoringContext";
 import { getStitcherBySlug, stitchers } from "@/data/stitchers";
+import { Button } from "@/components/ui/Button";
 
 const measurementGuides: Record<string, string> = {
-  Chest: "Measure around the fullest part of your bust, ensuring the tape is level across the back and comfortably snug but not tight.",
+  Chest:
+    "Measure around the fullest part of your bust, ensuring the tape is level across the back and comfortably snug but not tight.",
   Waist: "Measure around your natural waistline, just above the belly button.",
   Hips: "Measure around the fullest part of your hips, roughly 8 inches below your waist.",
   Shoulder: "Measure from the edge of one shoulder to the other, across the back.",
@@ -71,9 +73,8 @@ export default function ConfigurePage() {
           Bespoke Stitching Concierge
         </h1>
         <p className="text-text-muted font-body-lg">
-          Each garment is an architectural marvel. Define your silhouette
-          through our precision-guided measurement portal, ensuring a fit
-          that honors both tradition and form.
+          Each garment is an architectural marvel. Define your silhouette through our
+          precision-guided measurement portal, ensuring a fit that honors both tradition and form.
         </p>
       </header>
 
@@ -84,7 +85,9 @@ export default function ConfigurePage() {
             <div className="flex justify-between items-start mb-8">
               <div>
                 <h2 className="font-headline-sm text-headline-sm uppercase">Anatomical Guide</h2>
-                <p className="font-label-sm text-marketplace-bronze">PHASE 01: DIMENSIONAL PRECISION</p>
+                <p className="font-label-sm text-marketplace-bronze">
+                  PHASE 01: DIMENSIONAL PRECISION
+                </p>
               </div>
               <div className="flex gap-2 items-center">
                 <span className="w-8 h-[1px] bg-primary mt-1" />
@@ -108,7 +111,9 @@ export default function ConfigurePage() {
                 <h3 className="font-label-md text-primary uppercase mb-2">
                   Selected: {activeField}
                 </h3>
-                <p className="text-body-md text-text-muted mb-4">{measurementGuides[activeField]}</p>
+                <p className="text-body-md text-text-muted mb-4">
+                  {measurementGuides[activeField]}
+                </p>
                 <ul className="space-y-2 text-label-sm text-secondary">
                   <li className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[14px]">check_circle</span>
@@ -126,10 +131,14 @@ export default function ConfigurePage() {
           {/* Measurement Input Grid */}
           <div>
             <div className="mb-6">
-              <label className="font-label-sm uppercase tracking-widest text-text-muted">
+              <label
+                htmlFor="garment-type"
+                className="font-label-sm uppercase tracking-widest text-text-muted"
+              >
                 Garment Type
               </label>
               <select
+                id="garment-type"
                 value={garmentType}
                 onChange={(e) => setGarmentType(e.target.value)}
                 className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
@@ -142,22 +151,29 @@ export default function ConfigurePage() {
               </select>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              {MEASUREMENT_FIELDS.map((field) => (
-                <div key={field}>
-                  <label className="font-label-sm text-text-muted uppercase text-[11px]">
-                    {field} (in)
-                  </label>
-                  <input
-                    inputMode="decimal"
-                    value={measurements[field] ?? ""}
-                    onFocus={() => setActiveField(field)}
-                    onChange={(e) =>
-                      setMeasurements((prev) => ({ ...prev, [field]: e.target.value }))
-                    }
-                    className="mt-1 w-full border-b border-outline-variant bg-transparent py-2 font-label-md focus:outline-none focus:border-marketplace-bronze"
-                  />
-                </div>
-              ))}
+              {MEASUREMENT_FIELDS.map((field) => {
+                const fieldId = `measurement-${field.toLowerCase().replace(/\s+/g, "-")}`;
+                return (
+                  <div key={field}>
+                    <label
+                      htmlFor={fieldId}
+                      className="font-label-sm text-text-muted uppercase text-[11px]"
+                    >
+                      {field} (in)
+                    </label>
+                    <input
+                      id={fieldId}
+                      inputMode="decimal"
+                      value={measurements[field] ?? ""}
+                      onFocus={() => setActiveField(field)}
+                      onChange={(e) =>
+                        setMeasurements((prev) => ({ ...prev, [field]: e.target.value }))
+                      }
+                      className="mt-1 w-full border-b border-outline-variant bg-transparent py-2 font-label-md focus:outline-none focus:border-marketplace-bronze"
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -166,13 +182,19 @@ export default function ConfigurePage() {
         <div className="lg:col-span-5 space-y-8">
           <div className="lg:sticky lg:top-28 space-y-8">
             <div className="bg-primary text-white p-8">
-              <h2 className="font-headline-sm text-headline-sm uppercase mb-6">Styling Parameters</h2>
+              <h2 className="font-headline-sm text-headline-sm uppercase mb-6">
+                Styling Parameters
+              </h2>
 
               <div className="mb-10">
                 <div className="flex justify-between items-center mb-4">
-                  <label className="font-label-md uppercase tracking-widest">Neckline Profile</label>
+                  <label className="font-label-md uppercase tracking-widest">
+                    Neckline Profile
+                  </label>
                   <span className="font-label-sm text-tertiary-fixed">
-                    {necklineOption.price > 0 ? `+ PKR ${necklineOption.price.toLocaleString()}` : "Included"}
+                    {necklineOption.price > 0
+                      ? `+ PKR ${necklineOption.price.toLocaleString()}`
+                      : "Included"}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -203,7 +225,9 @@ export default function ConfigurePage() {
                 <div className="flex justify-between items-center mb-4">
                   <label className="font-label-md uppercase tracking-widest">Sleeve Artistry</label>
                   <span className="font-label-sm text-tertiary-fixed">
-                    {sleeveOption.price > 0 ? `+ PKR ${sleeveOption.price.toLocaleString()}` : "Included"}
+                    {sleeveOption.price > 0
+                      ? `+ PKR ${sleeveOption.price.toLocaleString()}`
+                      : "Included"}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -227,7 +251,9 @@ export default function ConfigurePage() {
                 <div className="flex justify-between items-center mb-4">
                   <label className="font-label-md uppercase tracking-widest">Hemline Finish</label>
                   <span className="font-label-sm text-tertiary-fixed">
-                    {hemlineOption.price > 0 ? `+ PKR ${hemlineOption.price.toLocaleString()}` : "Included"}
+                    {hemlineOption.price > 0
+                      ? `+ PKR ${hemlineOption.price.toLocaleString()}`
+                      : "Included"}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -253,7 +279,9 @@ export default function ConfigurePage() {
             <div className="border border-black p-8 bg-surface shadow-sm">
               <div className="flex justify-between items-end mb-6">
                 <div>
-                  <p className="font-label-sm text-text-muted uppercase mb-1">Configuration Total</p>
+                  <p className="font-label-sm text-text-muted uppercase mb-1">
+                    Configuration Total
+                  </p>
                   <p className="font-headline-sm text-3xl">PKR {total.toLocaleString()}</p>
                 </div>
                 <div className="text-right">
@@ -261,14 +289,15 @@ export default function ConfigurePage() {
                   <p className="font-label-md">14-21 Business Days</p>
                 </div>
               </div>
-              <button
+              <Button
                 onClick={handleConfirm}
                 disabled={!measurementsComplete}
-                className="w-full bg-primary text-white py-5 font-label-md uppercase tracking-[0.2em] hover:bg-marketplace-bronze transition-colors flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                variant="primary"
+                className="w-full !py-5 disabled:cursor-not-allowed"
               >
                 Confirm Specifications
                 <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
+              </Button>
               {!measurementsComplete && (
                 <p className="text-[10px] text-center mt-3 text-error uppercase tracking-widest">
                   Please fill in all 12 measurements to continue

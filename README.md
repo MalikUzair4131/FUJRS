@@ -1,136 +1,142 @@
 # FUJRS — Premium Fashion & Bespoke Tailoring
 
-A complete Next.js 14 (App Router) + TypeScript + Tailwind CSS storefront,
-rebuilt page-by-page from your Stitch source HTML across 7 phases. This is
-the final, QA-passed frontend.
+A full-stack Next.js storefront for a single-brand fashion &
+bespoke-tailoring business, rebuilt page-by-page from source HTML designs
+and then extended with a real backend: auth, database persistence, Stripe
+payments, and role-gated staff accounts.
 
-## Phase 7 — Site-Wide QA (this pass)
+The product requirements this is being built against are in
+[REQUIREMENTS.md](./REQUIREMENTS.md); current status against that spec —
+including where the build has diverged from it — is in
+[TASKS.md](./TASKS.md).
 
-Went through every route together, as one system, rather than
-page-by-page. Found and fixed two real issues:
+## Stack
 
-1. **Orphaned pages.** The Footer (rebuilt in Phase 1 to exactly match the
-   homepage source) only linked About/Tailoring/Shipping — it never
-   carried links to Contact, FAQs, Size Guide, Returns & Exchanges, Terms,
-   or Privacy Policy. Those pages were fully built and working, just
-   unreachable from normal navigation. Fixed: Client Care column now
-   includes Contact Us, FAQs, Size Guide, and Returns & Exchanges; added a
-   Terms & Privacy row next to the copyright line. Verified everything is
-   still one click from the footer on every page.
-2. **A stray empty directory** (`src/components/{layout,ui,cart,...}`)
-   left over from the very first scaffolding command — a shell brace-
-   expansion artifact, not a working file. Removed. (Caught a second bug
-   while fixing this: I deleted `Badge.tsx` thinking it was dead code
-   after a `grep` for its aliased import path came up empty — the build
-   immediately failed because `ProductCard` actually imports it via a
-   relative path, `"./Badge"`. Restored it. Flagging this because it's
-   exactly the kind of thing that's easy to miss with a partial grep and
-   worth double-checking with a real build, which is what caught it.)
+- **Framework**: Next.js 15 (App Router), React 18, TypeScript, Tailwind CSS
+- **Auth & database**: Supabase — Supabase Auth for accounts/sessions,
+  Postgres tables via `src/lib/supabase/services.ts` for orders, cart,
+  wishlist, tailoring configs, and product drafts. (Prisma/NextAuth were
+  used in earlier build passes and are still referenced in some file names,
+  but `src/lib/prisma.ts` is now a stub and the NextAuth route is empty —
+  Supabase is what's actually live.)
+- **Payments**: Stripe (PaymentElement for cards, Cash on Delivery as a
+  non-Stripe option)
+- API input validated with `zod`
+- **Product catalog**: currently a static file (`src/data/products.ts`),
+  not database-backed — see TASKS.md for what that blocks (admin product
+  management)
 
-### Full verification performed this phase
+## Marketplace → single-brand adaptations
 
-- Listed every route on disk and cross-checked against every `href` used
-  anywhere in the codebase (both static strings and dynamic template
-  literals) — confirmed no more dead links
-- Audited every image domain used — only `lh3.googleusercontent.com`,
-  correctly whitelisted in `next.config.mjs`
-- Full production build (`next build`) — 50 static routes, zero errors
-- `tsc --noEmit` — clean
-- Smoke-tested **every single route** on a production server: all 24
-  static pages, all 18 product PDPs, all 5 stitcher profiles, plus two
-  intentional 404 checks (unknown product slug, unknown stitcher slug) —
-  all correct, zero console/server errors
+The source designs were marketplace/multi-vendor patterns (seller badges,
+"Sold by X Official," external designer credits, a "Marketplace" nav link).
+Every instance was adapted to single-brand FUJRS, consistently across the
+whole app:
 
-## What's built (all 7 phases)
+- "Shop by Seller" → **"Our Ateliers"** (in-house specialty studios: Bridal
+  Atelier, Prêt Studio, Menswear Guild)
+- Individual artisan/seller credits → **Master Stitchers**, an internal
+  FUJRS tailoring team with their own directory and profiles
+- "Sold by [Brand] Official" / "Verified Seller" badges → "Sold by FUJRS" /
+  dropped where purely marketplace-signaling
+- Terms & Conditions' "Marketplace Seller Policies" → "Product Quality &
+  Descriptions"
+- Cart's seller-grouped sections → single "Sold by FUJRS" section
 
-| Phase | Scope |
+## Site structure (source → route mapping)
+
+| Source design | FUJRS route |
 |---|---|
-| 1 | Design tokens, Navbar, Footer, Homepage |
-| 2 | Men's Atelier, Women's Jardin Edit, smoothness/animation pass |
-| 3 | Product Detail Page (gallery, Bespoke Stitching toggle, specs, related products) |
-| 4 | Full tailoring flow (Atelier intro → measurements/style → review) + Master Stitchers directory & profiles |
-| 5 | Cart, 3-step Checkout, Order Confirmation with Artisanal Timeline |
-| 6 | About, Contact, Returns & Exchanges, Terms & Conditions |
-| 7 | Site-wide QA — orphaned-page fix, dead-code cleanup, full route verification |
+| homepage | `/` |
+| men's unstitched collections | `/men` |
+| women's unstitched collections | `/women` |
+| PDP (product detail) | `/products/[slug]` |
+| the Atelier (custom stitching service) | `/tailoring` |
+| bespoke measurements & style selection | `/tailoring/configure` |
+| bespoke confirmation | `/tailoring/review` |
+| discover master stitchers | `/tailoring/stitchers` |
+| master stitcher profile | `/tailoring/stitchers/[slug]` |
+| shopping bag | `/cart` |
+| secure checkout | `/checkout` |
+| order confirmation | `/checkout/confirmation` |
+| about us | `/about` |
+| contact us | `/contact` |
+| returns & exchanges | `/returns-exchanges` |
+| terms & conditions | `/terms` |
+| account / dashboard (customer, admin, vendor, tailor) | `/account`, `/dashboard` |
 
-Every one of your 17 source HTML screens now has a corresponding,
-functioning page — see `PHASE6_REBUILD_README.md` for the full mapping
-table.
+## Architecture notes
 
-## Marketplace → single-brand adaptations (consistent across all phases)
+- **Cart & tailoring config**: signed-out users get `localStorage`;
+  signing in syncs to the database and merges any local guest data into the
+  account (matching cart items combine quantities; a local tailoring config
+  only wins if the account doesn't already have a saved one). Cart sync uses
+  a full replace (`PUT /api/cart` deletes + recreates all rows) rather than
+  per-row diffing — simpler and robust at this scale.
+- **Wishlist**: same signed-out/signed-in + merge-on-login pattern as cart.
+- **Orders**: require sign-in. Written to `Order` + `OrderItem[]`, referenced
+  by product `slug` (the catalog itself isn't database-backed, so `slug` is
+  the correct join key). `/checkout/confirmation` is a server component with
+  an ownership check.
+- **Payments**: card payments go through Stripe's `PaymentElement`; the
+  server re-verifies the PaymentIntent (status + amount) against Stripe
+  before writing an order — the client's claim that payment succeeded is
+  never trusted on its own. Cash on Delivery skips Stripe entirely.
+- **Roles**: a `role` field on the Supabase `profiles` table is
+  `CUSTOMER` (default) | `ADMIN` | `VENDOR` | `TAILOR` — a single
+  hardcoded field, not the granular per-user permission model
+  REQUIREMENTS.md Section 4.2 calls for (see TASKS.md). `/dashboard` is
+  access-controlled per role. Vendor/Tailor registration requires a shared
+  `STAFF_INVITE_CODE`; there is no self-serve Admin signup — promote a user
+  to Admin manually in the Supabase dashboard (`profiles` table).
+- Today's "Vendor" role submits product drafts for Admin approval — it is
+  not the affiliate/referral-link/commission system described in
+  REQUIREMENTS.md Section 5, which hasn't been built yet.
 
-Your source designs included marketplace/multi-vendor patterns (seller
-badges, "Sold by X Official," external designer credits, a "Marketplace"
-nav link, seller-grouped carts). Per your instruction to exclude
-marketplace/vendor concepts, every instance was adapted to single-brand
-FUJRS — documented in detail in each phase's README, with the two biggest
-adaptations being:
-- The homepage's "Shop by Seller" section → **"Our Ateliers"** (in-house
-  specialty studios, not external sellers)
-- Individual artisan/seller credits throughout → **Master Stitchers**, an
-  internal FUJRS tailoring team with their own directory and profiles
-
-## Run it locally
+## Setup
 
 ```bash
 npm install
-npm run dev   # http://localhost:3000
+npm run dev          # http://localhost:3000
 ```
 
-No environment variables or database needed yet — see "What's next" below.
-
-## Status
-
-✅ Full production build compiles, 50/50 routes prerender with zero errors
-✅ `tsc --noEmit` clean
-✅ Every route smoke-tested individually, zero errors
-✅ No orphaned pages — everything is reachable from navigation
-✅ No dead code / dangling imports
-
-**Sandbox-only caveat (present throughout all 7 phases):** my build
-environment can't reach Google Fonts, so every phase was verified with a
-temporary system-font stand-in, then the real `next/font/google` config
-(Playfair Display + Hanken Grotesk) was restored before packaging. This
-resolves normally with your own internet access — nothing to fix on your
-end.
-
-## What's next (not built yet, by design)
-
-This was scoped as frontend-first. Still ahead, per your original plan:
-- **Backend integration** — real auth (Login/Register currently say so
-  explicitly), persisted orders/cart/wishlist beyond `localStorage`, a
-  real payment gateway (checkout is currently simulated), and wiring the
-  Dashboard to real data instead of mock metrics
-- **Database** — everything today runs on `localStorage` (cart, wishlist,
-  tailoring config, last order) with zero backend dependency, which is
-  exactly why every phase was independently testable with nothing but
-  `npm install && npm run dev`
-
-Ready to start on the backend whenever you are.
-
-## Deployment & Environment
-
-Required environment variables (set these in Vercel or your host):
-
-- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL (public)
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (public)
-- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key (server-only)
-- `MONGODB_URI` — MongoDB Atlas connection string (server-only)
-- `STRIPE_SECRET_KEY` — Stripe secret key (test or live)
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — Stripe publishable key
-
-Vercel notes:
-
-- Set environment variables in Project → Settings → Environment Variables.
-- Use `npm ci` as the Install Command in Build & Output Settings for deterministic installs.
-- If you hit peer-dependency install errors in Vercel, set Install Command to:
+Environment variables (`.env.local` locally; set in Vercel/host for
+deployment):
 
 ```
-npm ci --legacy-peer-deps
+NEXT_PUBLIC_SUPABASE_URL="..."
+NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
+SUPABASE_SERVICE_ROLE_KEY="..."                      # server-only
+STRIPE_SECRET_KEY="sk_test_..."
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
+STAFF_INVITE_CODE="pick-a-real-shared-secret"        # required for Vendor/Tailor registration
 ```
 
-Security:
+(`.env.example` also lists `DATABASE_URL`, `NEXTAUTH_SECRET`, and
+`MONGODB_URI` — leftovers from earlier architecture passes that the running
+app no longer reads. Safe to ignore/remove.)
 
-- Do not commit `.env` or secrets. Use `.env.local` for local secrets and add it to `.gitignore`.
-- Rotate any credential exposed publicly and use least-privilege DB users.
+Stripe test keys: https://dashboard.stripe.com/test/apikeys — test card
+`4242 4242 4242 4242`, any future expiry, any 3-digit CVC. Full test-card
+library (declines, 3D Secure, etc.): https://docs.stripe.com/testing
 
+## Deployment (Vercel)
+
+Required environment variables — set in Project → Settings → Environment
+Variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `STAFF_INVITE_CODE`
+
+Notes:
+- Use `npm ci` as the Install Command for deterministic installs; if you hit
+  peer-dependency errors, use `npm ci --legacy-peer-deps`.
+- Do not commit `.env` or secrets — use `.env.local` locally and keep it in
+  `.gitignore`. Rotate any credential that's ever been exposed publicly, and
+  use least-privilege DB users.
+- Product images currently reference `lh3.googleusercontent.com` (a
+  design-tool preview CDN, whitelisted in `next.config.mjs`). Migrate to your
+  own asset storage (Vercel Blob, Cloudinary, S3) before relying on this in
+  production — it isn't meant for long-term hosting.

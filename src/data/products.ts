@@ -188,7 +188,8 @@ export const products: Product[] = [
     price: 8900,
     images: [src.indigoLatha],
     isNewArrival: false,
-    description: "Deep navy Latha fabric, folded and finished for a modern, masculine wardrobe staple.",
+    description:
+      "Deep navy Latha fabric, folded and finished for a modern, masculine wardrobe staple.",
     rating: 4.5,
     reviewCount: 22,
     sizes: ["Unstitched"],
@@ -223,7 +224,8 @@ export const products: Product[] = [
     price: 7500,
     images: [src.liquidMicrofiber],
     isNewArrival: false,
-    description: "Wrinkle-resistant microfiber with a liquid-like drape, off-white, for effortless formal wear.",
+    description:
+      "Wrinkle-resistant microfiber with a liquid-like drape, off-white, for effortless formal wear.",
     rating: 4.4,
     reviewCount: 17,
     sizes: ["Unstitched"],
@@ -240,7 +242,8 @@ export const products: Product[] = [
     price: 10800,
     images: [src.emeraldSelfPrint],
     isNewArrival: false,
-    description: "Deep emerald cotton with a subtle self-print pattern, for a refined everyday look.",
+    description:
+      "Deep emerald cotton with a subtle self-print pattern, for a refined everyday look.",
     rating: 4.3,
     reviewCount: 14,
     sizes: ["Unstitched"],
@@ -282,7 +285,12 @@ export const products: Product[] = [
     // with a "View Store" link — adapted into an internal FUJRS master
     // tailor credit per your marketplace exclusion, linking to the
     // internal team profile (built in Phase 4).
-    stitcher: { name: "Khyber Artisans — FUJRS Atelier", slug: "khyber-artisans", rating: 4.9, reviewCount: 124 },
+    stitcher: {
+      name: "Khyber Artisans — FUJRS Atelier",
+      slug: "khyber-artisans",
+      rating: 4.9,
+      reviewCount: 124,
+    },
     stitchingAddOn: 12500,
   },
   {
@@ -313,7 +321,8 @@ export const products: Product[] = [
     price: 18200,
     images: [src.celestialBlueChiffon],
     isNewArrival: false,
-    description: "Pastel blue chiffon with a shimmering beaded floral vine pattern in silver thread.",
+    description:
+      "Pastel blue chiffon with a shimmering beaded floral vine pattern in silver thread.",
     rating: 4.6,
     reviewCount: 29,
     sizes: ["Unstitched"],
@@ -330,7 +339,8 @@ export const products: Product[] = [
     price: 22500,
     images: [src.oliveTillaEmbroidery],
     isNewArrival: false,
-    description: "Olive green fabric with heavy golden border embroidery, for a warm-toned festive look.",
+    description:
+      "Olive green fabric with heavy golden border embroidery, for a warm-toned festive look.",
     rating: 4.7,
     reviewCount: 25,
     sizes: ["Unstitched"],
@@ -347,7 +357,8 @@ export const products: Product[] = [
     price: 31000,
     images: [src.ivoryPearlNet],
     isNewArrival: false,
-    description: "White-on-white embroidered net with a relief-like threadwork texture, sheer and delicate.",
+    description:
+      "White-on-white embroidered net with a relief-like threadwork texture, sheer and delicate.",
     rating: 4.8,
     reviewCount: 12,
     sizes: ["Unstitched"],
@@ -366,7 +377,8 @@ export const products: Product[] = [
     price: 8500,
     images: [src.khussa],
     isNewArrival: false,
-    description: "Handcrafted gold Khussa shoes with intricate Zardozi embroidery, complementing a luxury silk suit.",
+    description:
+      "Handcrafted gold Khussa shoes with intricate Zardozi embroidery, complementing a luxury silk suit.",
     rating: 4.6,
     reviewCount: 19,
     sizes: ["36", "37", "38", "39", "40"],
@@ -382,7 +394,8 @@ export const products: Product[] = [
     price: 14200,
     images: [src.chandbali],
     isNewArrival: false,
-    description: "Oversized gold Chandbali earrings with pearl drops, perfect for a bridal or formal look.",
+    description:
+      "Oversized gold Chandbali earrings with pearl drops, perfect for a bridal or formal look.",
     rating: 4.8,
     reviewCount: 33,
     sizes: ["One Size"],
@@ -414,7 +427,8 @@ export const products: Product[] = [
     price: 28000,
     images: [src.pashmina],
     isNewArrival: false,
-    description: "A fine Pashmina shawl in muted cream with intricate gold needlework at the borders.",
+    description:
+      "A fine Pashmina shawl in muted cream with intricate gold needlework at the borders.",
     rating: 4.7,
     reviewCount: 8,
     sizes: ["One Size"],

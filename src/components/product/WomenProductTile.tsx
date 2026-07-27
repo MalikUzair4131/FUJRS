@@ -24,7 +24,10 @@ export function WomenProductTile({
 
   return (
     <Reveal delay={delay} className={`${colSpan} ${offset ? "mt-8" : ""} group cursor-pointer`}>
-      <Link href={`/products/${product.slug}`} className={`relative ${aspect} overflow-hidden mb-6 block`}>
+      <Link
+        href={`/products/${product.slug}`}
+        className={`relative ${aspect} overflow-hidden mb-6 block`}
+      >
         <Image
           src={product.images[0]}
           alt={product.title}
@@ -40,7 +43,7 @@ export function WomenProductTile({
           </div>
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-        <div className="absolute bottom-0 left-0 w-full p-gutter translate-y-full group-hover:translate-y-0 transition-transform bg-primary text-on-primary flex justify-between items-center">
+        <div className="absolute bottom-0 left-0 w-full p-gutter translate-y-0 transition-transform bg-primary text-on-primary flex justify-between items-center md:translate-y-full md:group-hover:translate-y-0 md:group-focus-within:translate-y-0">
           <AddToBagButton product={product} label={quickAddLabel} />
           <span className="material-symbols-outlined">add</span>
         </div>

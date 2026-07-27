@@ -7,7 +7,10 @@ export function EditorialGallery({ images, title }: { images: string[]; title: s
       <div className="lg:col-span-7 flex flex-col gap-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {images.slice(0, 2).map((src, i) => (
-            <div key={i} className="relative group aspect-[4/5] overflow-hidden bg-surface-container">
+            <div
+              key={i}
+              className="relative group aspect-[4/5] overflow-hidden bg-surface-container"
+            >
               <Image
                 src={src}
                 alt={`${title} — view ${i + 1}`}

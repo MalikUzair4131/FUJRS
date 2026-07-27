@@ -25,7 +25,12 @@ export interface CartItem {
 
 interface CartContextValue {
   items: CartItem[];
-  addItem: (product: Product, qty?: number, stitching?: StitchingSelection, stitcherSlug?: string) => void;
+  addItem: (
+    product: Product,
+    qty?: number,
+    stitching?: StitchingSelection,
+    stitcherSlug?: string
+  ) => void;
   addCustomItem: (item: {
     id: string;
     slug: string;
@@ -94,9 +99,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           const merged = [...dbItems];
           for (const localItem of localItems) {
             const key = lineKeyBySlug(localItem.slug, !!localItem.stitching);
-            const existing = merged.find(
-              (i) => lineKeyBySlug(i.slug, !!i.stitching) === key
-            );
+            const existing = merged.find((i) => lineKeyBySlug(i.slug, !!i.stitching) === key);
             if (existing) {
               existing.qty += localItem.qty;
             } else {
@@ -162,7 +165,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           price: product.price,
           qty,
           stitching,
-          stitcherSlug: stitching ? stitcherSlug ?? product.stitcher?.slug ?? "khyber-artisans" : undefined,
+          stitcherSlug: stitching
+            ? (stitcherSlug ?? product.stitcher?.slug ?? "khyber-artisans")
+            : undefined,
         },
       ];
     });
@@ -188,7 +193,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   function updateQty(id: string, qty: number, stitched = false) {
     const key = lineKeyById(id, stitched);
     setItems((prev) =>
-      prev.map((i) => (lineKeyById(i.id, !!i.stitching) === key ? { ...i, qty: Math.max(1, qty) } : i))
+      prev.map((i) =>
+        lineKeyById(i.id, !!i.stitching) === key ? { ...i, qty: Math.max(1, qty) } : i
+      )
     );
   }
 

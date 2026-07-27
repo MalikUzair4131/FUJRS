@@ -22,20 +22,20 @@ export function AdminView() {
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
 
-  async function handleDraftAction(id: string, action: 'APPROVED' | 'REJECTED') {
+  async function handleDraftAction(id: string, action: "APPROVED" | "REJECTED") {
     setDraftError(null);
     const previous = drafts;
     setDrafts((prev) => prev?.map((d) => (d.id === id ? { ...d, status: action } : d)) ?? null);
 
-    const res = await fetch('/api/admin/drafts', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/admin/drafts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, action }),
     });
 
     if (!res.ok) {
       setDrafts(previous);
-      setDraftError('Could not update draft.');
+      setDraftError("Could not update draft.");
       return;
     }
 
@@ -57,9 +57,9 @@ export function AdminView() {
 
   useEffect(() => {
     // Load pending drafts (admin only)
-    fetch('/api/admin/drafts')
+    fetch("/api/admin/drafts")
       .then((res) => {
-        if (!res.ok) throw new Error('Failed to load drafts');
+        if (!res.ok) throw new Error("Failed to load drafts");
         return res.json();
       })
       .then((d) => setDrafts(d.drafts))
@@ -76,9 +76,8 @@ export function AdminView() {
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Orders &amp; Revenue are live from the database. Product count and
-        tailoring queue are still placeholders — no product-management or
-        tailoring-request tables exist yet.
+        Orders &amp; Revenue are live from the database. Product count and tailoring queue are still
+        placeholders — no product-management or tailoring-request tables exist yet.
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -137,7 +136,9 @@ export function AdminView() {
 
       <div className="mt-10">
         <h2 className="font-display text-headline-sm">Pending Product Drafts</h2>
-        <p className="text-label-sm text-marketplace-bronze mb-4">Admins can approve or reject vendor-submitted drafts.</p>
+        <p className="text-label-sm text-marketplace-bronze mb-4">
+          Admins can approve or reject vendor-submitted drafts.
+        </p>
         {draftError && <p className="mt-4 text-label-sm text-error">{draftError}</p>}
         <div className="mt-4 overflow-x-auto border border-border-subtle">
           <table className="w-full text-left text-body-md">
@@ -174,13 +175,13 @@ export function AdminView() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleDraftAction(d.id, 'APPROVED')}
+                        onClick={() => handleDraftAction(d.id, "APPROVED")}
                         className="px-3 py-1 bg-primary text-on-primary"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => handleDraftAction(d.id, 'REJECTED')}
+                        onClick={() => handleDraftAction(d.id, "REJECTED")}
                         className="px-3 py-1 border border-outline-variant"
                       >
                         Reject

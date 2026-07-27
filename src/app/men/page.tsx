@@ -5,6 +5,7 @@ import Link from "next/link";
 import { products } from "@/data/products";
 import { Reveal } from "@/components/ui/Reveal";
 import { MenProductTile } from "@/components/product/MenProductTile";
+import { LinkButton } from "@/components/ui/Button";
 
 const fabricTabs = ["All Fabrics", "Egyptian Cotton", "Latha", "Karandi", "Wash & Wear"];
 
@@ -52,7 +53,7 @@ export default function MenPage() {
         <div className="relative z-10 max-w-container-max mx-auto px-gutter w-full">
           <div className="max-w-2xl text-white">
             <span className="font-label-md text-label-md uppercase tracking-[0.3em] mb-4 block">
-              Spring Summer &apos;24
+              This Season
             </span>
             <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg mb-8 leading-none italic">
               The Men&apos;s
@@ -60,9 +61,8 @@ export default function MenPage() {
               Atelier
             </h1>
             <p className="font-body-lg text-body-lg mb-10 text-white/90 max-w-md">
-              Curated unstitched fabrics from the finest Egyptian Cotton to
-              hand-loomed Karandi. Precision craftsmanship meets heritage
-              textures.
+              Curated unstitched fabrics from the finest Egyptian Cotton to hand-loomed Karandi.
+              Precision craftsmanship meets heritage textures.
             </p>
             <Link
               href="#collection"
@@ -145,9 +145,8 @@ export default function MenPage() {
               Masterful Tailoring for the Modern Man
             </h2>
             <p className="text-secondary font-body-lg">
-              Elevate your unstitched fabric into a masterpiece. Our in-house
-              masters offer custom measurements and traditional
-              hand-finishing for the perfect fit.
+              Elevate your unstitched fabric into a masterpiece. Our in-house masters offer custom
+              measurements and traditional hand-finishing for the perfect fit.
             </p>
             <ul className="space-y-4">
               {[
@@ -164,12 +163,9 @@ export default function MenPage() {
                 </li>
               ))}
             </ul>
-            <Link
-              href="/tailoring"
-              className="inline-block border border-primary px-12 py-4 font-label-md text-label-md uppercase tracking-widest hover:bg-primary hover:text-white transition-all duration-300"
-            >
+            <LinkButton href="/tailoring" variant="secondary" className="!px-12 !py-4">
               Explore Stitching Options
-            </Link>
+            </LinkButton>
           </Reveal>
         </div>
       </section>

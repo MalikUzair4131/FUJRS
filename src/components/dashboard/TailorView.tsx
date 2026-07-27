@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
 interface QueueItem {
   id: string;
@@ -11,14 +12,6 @@ interface QueueItem {
   status: string;
   createdAt: string;
 }
-
-const STATUSES = [
-  "Awaiting Measurements",
-  "In Progress",
-  "Quality Check",
-  "Ready for Fitting",
-  "Delivered",
-];
 
 export function TailorView() {
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
@@ -38,7 +31,9 @@ export function TailorView() {
   async function updateStatus(itemId: string, status: string) {
     setUpdating(itemId);
     const previous = queue;
-    setQueue((prev) => prev?.map((item) => (item.id === itemId ? { ...item, status } : item)) ?? null);
+    setQueue(
+      (prev) => prev?.map((item) => (item.id === itemId ? { ...item, status } : item)) ?? null
+    );
 
     const res = await fetch("/api/tailor/queue", {
       method: "PATCH",
@@ -56,7 +51,7 @@ export function TailorView() {
   return (
     <div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {STATUSES.slice(0, 4).map((status) => (
+        {STITCHING_STATUSES.slice(0, 4).map((status) => (
           <div key={status} className="border border-border-subtle p-6">
             <p className="text-label-sm uppercase text-text-muted">{status}</p>
             <p className="mt-2 font-display text-headline-sm">
@@ -72,8 +67,8 @@ export function TailorView() {
       {!queue && !error && <p className="mt-4 text-text-muted">Loading…</p>}
       {queue?.length === 0 && (
         <p className="mt-4 text-text-muted">
-          No bespoke orders assigned to you yet — they&apos;ll appear here
-          as customers place custom stitching orders.
+          No bespoke orders assigned to you yet — they&apos;ll appear here as customers place custom
+          stitching orders.
         </p>
       )}
 
@@ -97,7 +92,7 @@ export function TailorView() {
               onChange={(e) => updateStatus(item.id, e.target.value)}
               className="border border-outline-variant bg-transparent px-4 py-2 text-body-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
             >
-              {STATUSES.map((s) => (
+              {STITCHING_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>

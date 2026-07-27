@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { useCart, cartTotals } from "@/components/cart/CartContext";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
+import { Button } from "@/components/ui/Button";
 
 type Step = 1 | 2 | 3;
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { status } = useAuth();
+  const { session } = useAuth();
   const { items, clear, mounted } = useCart();
   const [step, setStep] = useState<Step>(1);
 
@@ -28,6 +30,9 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [promoCode, setPromoCode] = useState("");
+  const [promoMessage, setPromoMessage] = useState<string | null>(null);
+
   const { fabricTotal, stitchingTotal, shipping, total } = cartTotals(items);
 
   useEffect(() => {
@@ -35,19 +40,33 @@ export default function CheckoutPage() {
   }, [mounted, items.length, router]);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.replace("/login?callbackUrl=/checkout");
-  }, [status, router]);
+    if (session?.user.email) setEmail((prev) => prev || session.user.email);
+  }, [session]);
 
-  if (!mounted || items.length === 0 || status === "loading" || status === "unauthenticated") {
-    return null;
+  if (!mounted || items.length === 0) {
+    return (
+      <main className="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-[60vh] flex items-center justify-center">
+        <p className="font-body-md text-on-surface-variant">Loading checkout…</p>
+      </main>
+    );
   }
 
-  const inputClass = "w-full bg-transparent border border-primary p-4 text-body-md focus:outline-none";
+  const inputClass =
+    "w-full bg-transparent border border-primary p-4 text-body-md focus:outline-none";
   const labelClass = "font-label-sm text-label-sm block mb-2";
 
   function goToPayment(e: React.FormEvent) {
     e.preventDefault();
     setStep(2);
+  }
+
+  function handleApplyPromo(e: React.FormEvent) {
+    e.preventDefault();
+    setPromoMessage(
+      promoCode.trim()
+        ? "Promo codes aren't available yet — check back soon."
+        : "Enter a code first."
+    );
   }
 
   function goToReviewCod(e: React.FormEvent) {
@@ -98,6 +117,12 @@ export default function CheckoutPage() {
     setPlacing(false);
 
     if (!res.ok) {
+      if (res.status === 401) {
+        setError(
+          "Guest checkout isn't available yet — please sign in to complete this order. Your bag will be right here."
+        );
+        return;
+      }
       setError(data.error ?? "Could not place order. Please try again.");
       return;
     }
@@ -125,8 +150,8 @@ export default function CheckoutPage() {
                   step === s.n
                     ? "text-primary border-b-2 border-primary"
                     : step > s.n
-                    ? "text-primary/60"
-                    : "text-on-surface-variant/40"
+                      ? "text-primary/60"
+                      : "text-on-surface-variant/40"
                 }`}
               >
                 {s.label.toUpperCase()}
@@ -137,11 +162,25 @@ export default function CheckoutPage() {
           {step === 1 && (
             <form onSubmit={goToPayment} className="space-y-10">
               <div>
-                <h2 className="font-headline-sm text-headline-sm mb-6">Contact Information</h2>
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-headline-sm text-headline-sm">Contact Information</h2>
+                  {!session && (
+                    <p className="font-label-sm text-label-sm text-on-surface-variant">
+                      Checking out as guest —{" "}
+                      <Link href="/login?callbackUrl=/checkout" className="text-primary underline">
+                        sign in
+                      </Link>{" "}
+                      for faster checkout next time.
+                    </p>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-full">
-                    <label className={labelClass}>EMAIL ADDRESS</label>
+                    <label htmlFor="checkout-email" className={labelClass}>
+                      EMAIL ADDRESS
+                    </label>
                     <input
+                      id="checkout-email"
                       required
                       type="email"
                       value={email}
@@ -156,16 +195,35 @@ export default function CheckoutPage() {
                 <h2 className="font-headline-sm text-headline-sm mb-6">Shipping Address</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className={labelClass}>FIRST NAME</label>
-                    <input required value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} />
+                    <label htmlFor="checkout-first-name" className={labelClass}>
+                      FIRST NAME
+                    </label>
+                    <input
+                      id="checkout-first-name"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className={inputClass}
+                    />
                   </div>
                   <div>
-                    <label className={labelClass}>LAST NAME</label>
-                    <input required value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} />
+                    <label htmlFor="checkout-last-name" className={labelClass}>
+                      LAST NAME
+                    </label>
+                    <input
+                      id="checkout-last-name"
+                      required
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className={inputClass}
+                    />
                   </div>
                   <div className="col-span-full">
-                    <label className={labelClass}>STREET ADDRESS</label>
+                    <label htmlFor="checkout-street" className={labelClass}>
+                      STREET ADDRESS
+                    </label>
                     <input
+                      id="checkout-street"
                       required
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
@@ -174,21 +232,34 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>CITY</label>
-                    <input required value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
+                    <label htmlFor="checkout-city" className={labelClass}>
+                      CITY
+                    </label>
+                    <input
+                      id="checkout-city"
+                      required
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className={inputClass}
+                    />
                   </div>
                   <div>
-                    <label className={labelClass}>POSTAL CODE</label>
-                    <input required value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className={inputClass} />
+                    <label htmlFor="checkout-postal-code" className={labelClass}>
+                      POSTAL CODE
+                    </label>
+                    <input
+                      id="checkout-postal-code"
+                      required
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      className={inputClass}
+                    />
                   </div>
                 </div>
               </div>
-              <button
-                type="submit"
-                className="w-full md:w-auto px-12 py-5 bg-primary text-on-primary font-label-md text-label-md uppercase tracking-widest hover:bg-on-surface-variant transition-colors"
-              >
+              <Button type="submit" variant="primary" className="w-full md:w-auto !px-12 !py-5">
                 Continue to Payment
-              </button>
+              </Button>
             </form>
           )}
 
@@ -205,11 +276,17 @@ export default function CheckoutPage() {
                       onChange={() => setPaymentMethod("card")}
                       className="w-5 h-5"
                     />
-                    <span className="font-label-md text-label-md uppercase">Credit / Debit Card</span>
+                    <span className="font-label-md text-label-md uppercase">
+                      Credit / Debit Card
+                    </span>
                   </div>
                   <div className="flex gap-2">
-                    <div className="w-8 h-5 bg-surface-variant flex items-center justify-center text-[10px] font-bold">VISA</div>
-                    <div className="w-8 h-5 bg-surface-variant flex items-center justify-center text-[10px] font-bold">MC</div>
+                    <div className="w-8 h-5 bg-surface-variant flex items-center justify-center text-[10px] font-bold">
+                      VISA
+                    </div>
+                    <div className="w-8 h-5 bg-surface-variant flex items-center justify-center text-[10px] font-bold">
+                      MC
+                    </div>
                   </div>
                 </label>
 
@@ -217,8 +294,7 @@ export default function CheckoutPage() {
                   <div className="border border-primary bg-surface-container-low p-8">
                     <StripePaymentForm total={total} onSuccess={onPaymentSuccess} />
                     <p className="mt-4 text-label-sm text-on-surface-variant">
-                      Test mode: use card number 4242 4242 4242 4242, any
-                      future expiry, any CVC.
+                      Test mode: use card number 4242 4242 4242 4242, any future expiry, any CVC.
                     </p>
                   </div>
                 )}
@@ -232,7 +308,9 @@ export default function CheckoutPage() {
                       onChange={() => setPaymentMethod("cod")}
                       className="w-5 h-5"
                     />
-                    <span className="font-label-md text-label-md uppercase">Cash on Delivery (Pakistan Only)</span>
+                    <span className="font-label-md text-label-md uppercase">
+                      Cash on Delivery (Pakistan Only)
+                    </span>
                   </div>
                 </label>
               </div>
@@ -240,21 +318,23 @@ export default function CheckoutPage() {
               {error && <p className="text-error font-label-sm">{error}</p>}
 
               <div className="flex flex-col md:flex-row gap-4 pt-6">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => setStep(1)}
-                  className="px-12 py-5 border border-primary font-label-md text-label-md uppercase tracking-widest hover:bg-surface-container-low transition-colors"
+                  className="!px-12 !py-5"
                 >
                   Back to Shipping
-                </button>
+                </Button>
                 {paymentMethod === "cod" && (
-                  <button
+                  <Button
                     type="button"
+                    variant="primary"
                     onClick={goToReviewCod}
-                    className="px-12 py-5 bg-primary text-on-primary font-label-md text-label-md uppercase tracking-widest hover:bg-on-surface-variant transition-colors"
+                    className="!px-12 !py-5"
                   >
                     Review Order
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -277,15 +357,24 @@ export default function CheckoutPage() {
                         <div className="flex-grow">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <h3 className="font-label-md text-label-md uppercase">{item.title}</h3>
+                              <h3 className="font-label-md text-label-md uppercase">
+                                {item.title}
+                              </h3>
                               {item.stitching && (
                                 <p className="font-body-md text-text-muted mt-1">
-                                  Stitching: <span className="text-marketplace-bronze font-semibold">{item.stitching.label}</span>
+                                  Stitching:{" "}
+                                  <span className="text-marketplace-bronze font-semibold">
+                                    {item.stitching.label}
+                                  </span>
                                 </p>
                               )}
                             </div>
                             <p className="font-label-md text-label-md">
-                              PKR {((item.price + (item.stitching?.addOn ?? 0)) * item.qty).toLocaleString()}
+                              PKR{" "}
+                              {(
+                                (item.price + (item.stitching?.addOn ?? 0)) *
+                                item.qty
+                              ).toLocaleString()}
                             </p>
                           </div>
                           <p className="font-label-sm text-text-muted uppercase">Qty {item.qty}</p>
@@ -335,22 +424,33 @@ export default function CheckoutPage() {
                   </a>{" "}
                   and confirm that all custom measurements provided are accurate.
                 </p>
-                {error && <p className="text-error font-label-sm mb-4">{error}</p>}
+                {error && (
+                  <p className="text-error font-label-sm mb-4">
+                    {error}
+                    {!session && (
+                      <>
+                        {" "}
+                        <Link href="/login?callbackUrl=/checkout" className="underline">
+                          Sign in now
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </p>
+                )}
                 <div className="flex flex-col md:flex-row gap-4">
-                  <button
-                    onClick={() => setStep(2)}
-                    className="px-12 py-5 border border-primary font-label-md text-label-md uppercase tracking-widest hover:bg-surface-container-low transition-colors"
-                  >
+                  <Button variant="secondary" onClick={() => setStep(2)} className="!px-12 !py-5">
                     Back to Payment
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="primary"
                     onClick={placeOrder}
                     disabled={placing}
-                    className="flex-grow py-5 bg-primary text-on-primary font-label-md text-label-md uppercase tracking-widest hover:bg-on-surface-variant transition-transform active:scale-95 flex items-center justify-center gap-3 disabled:opacity-60"
+                    className="flex-grow !py-5 active:scale-95"
                   >
                     <span>{placing ? "Placing Order…" : "Place Order"}</span>
                     <span className="material-symbols-outlined">lock</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -372,7 +472,9 @@ export default function CheckoutPage() {
                 {stitchingTotal > 0 && (
                   <div className="flex justify-between font-body-md">
                     <span className="text-text-muted">Stitching &amp; Customization</span>
-                    <span className="text-marketplace-bronze">+ PKR {stitchingTotal.toLocaleString()}</span>
+                    <span className="text-marketplace-bronze">
+                      + PKR {stitchingTotal.toLocaleString()}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between font-body-md">
@@ -382,25 +484,53 @@ export default function CheckoutPage() {
               </div>
               <div className="border-t border-primary pt-6 flex justify-between items-end mb-8">
                 <span className="font-label-md text-label-md uppercase">Total Payable</span>
-                <span className="font-headline-sm text-headline-sm">PKR {total.toLocaleString()}</span>
+                <span className="font-headline-sm text-headline-sm">
+                  PKR {total.toLocaleString()}
+                </span>
               </div>
-              <div className="relative">
+              <form className="relative" onSubmit={handleApplyPromo}>
+                <label htmlFor="checkout-promo-code" className="sr-only">
+                  Promo code
+                </label>
                 <input
+                  id="checkout-promo-code"
                   className="w-full bg-transparent border-b border-primary/20 py-3 pr-20 font-label-sm focus:border-primary transition-colors uppercase outline-none"
                   placeholder="PROMO CODE"
                   type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
                 />
-                <button className="absolute right-0 top-1/2 -translate-y-1/2 font-label-sm text-label-sm uppercase hover:opacity-70">
+                <button
+                  type="submit"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 font-label-sm text-label-sm uppercase hover:opacity-70"
+                >
                   Apply
                 </button>
-              </div>
+              </form>
+              {promoMessage && (
+                <p className="mt-2 text-label-sm font-label-sm text-on-surface-variant">
+                  {promoMessage}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-6 px-4">
               {[
-                { icon: "verified_user", title: "Secure Checkout", body: "256-bit SSL encrypted connection" },
-                { icon: "local_shipping", title: "Insured Delivery", body: "Tracked shipping nationwide" },
-                { icon: "support_agent", title: "Concierge Support", body: "Available 24/7 for stitching assistance" },
+                {
+                  icon: "verified_user",
+                  title: "Secure Checkout",
+                  body: "256-bit SSL encrypted connection",
+                },
+                {
+                  icon: "local_shipping",
+                  title: "Insured Delivery",
+                  body: "Tracked shipping nationwide",
+                },
+                {
+                  icon: "support_agent",
+                  title: "Concierge Support",
+                  body: "Available 24/7 for stitching assistance",
+                },
               ].map((badge) => (
                 <div key={badge.title} className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full border border-primary/10 flex items-center justify-center">

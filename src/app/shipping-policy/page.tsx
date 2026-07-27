@@ -38,19 +38,18 @@ export default function ShippingPolicyPage() {
         <div>
           <h2 className="font-display text-headline-sm">Custom &amp; Tailored Orders</h2>
           <p className="mt-3 text-body-md text-text-muted">
-            Made-to-measure pieces from The Atelier require an additional
-            7–10 business days for stitching before shipping begins. You&apos;ll
-            be able to track fabric, stitching, and delivery milestones
-            separately once your order is placed.
+            Made-to-measure pieces from The Atelier require an additional 7–10 business days for
+            stitching before shipping begins. You&apos;ll be able to track fabric, stitching, and
+            delivery milestones separately once your order is placed.
           </p>
         </div>
 
         <div>
           <h2 className="font-display text-headline-sm">Order Tracking</h2>
           <p className="mt-3 text-body-md text-text-muted">
-            Once your order ships, you&apos;ll receive a tracking link by email
-            and SMS. Order tracking inside your FUJRS account is coming with
-            the account/backend part of this build.
+            Once your order ships, you&apos;ll receive a tracking link by email and SMS. Order
+            tracking inside your FUJRS account is coming with the account/backend part of this
+            build.
           </p>
         </div>
       </div>

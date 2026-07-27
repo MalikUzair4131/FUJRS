@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getCurrentAppUser } from "@/lib/auth";
 import { orderService } from "@/lib/supabase/services";
+import { LinkButton } from "@/components/ui/Button";
 
 const timelineSteps = [
   {
@@ -59,23 +60,16 @@ export default async function OrderConfirmationPage({
         <div className="flex flex-col items-center gap-2">
           <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
             Thank you for choosing FUJRS. Your order{" "}
-            <span className="font-bold text-primary">#{order.id.slice(-8).toUpperCase()}</span>{" "}
-            has been successfully placed and is now being curated by our
-            master artisans.
+            <span className="font-bold text-primary">#{order.id.slice(-8).toUpperCase()}</span> has
+            been successfully placed and is now being curated by our master artisans.
           </p>
           <div className="mt-8 flex gap-4 flex-wrap justify-center">
-            <Link
-              href="/account"
-              className="bg-primary text-on-primary font-label-md text-label-md px-10 py-4 uppercase tracking-widest hover:bg-tertiary-fixed-dim hover:text-primary transition-all duration-300"
-            >
+            <LinkButton href="/account" variant="primary" className="!px-10 !py-4">
               View in My Account
-            </Link>
-            <Link
-              href="/dashboard"
-              className="border border-primary text-primary font-label-md text-label-md px-10 py-4 uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all duration-300"
-            >
+            </LinkButton>
+            <LinkButton href="/dashboard" variant="secondary" className="!px-10 !py-4">
               Go to Dashboard
-            </Link>
+            </LinkButton>
           </div>
         </div>
       </section>
@@ -87,53 +81,64 @@ export default async function OrderConfirmationPage({
             <h3 className="font-headline-sm text-headline-sm mb-8 border-b border-border-subtle pb-4">
               Order Summary
             </h3>
-            {order.items.map((item: { id: string; image: string; title: string; qty: number; price: number; stitchingLabel: string | null }) => (
-              <div
-                key={item.id}
-                className="flex flex-col md:flex-row gap-6 items-start py-6 border-b border-border-subtle last:border-0"
-              >
-                <div className="w-32 aspect-[4/5] bg-surface-variant shrink-0 relative overflow-hidden">
-                  <Image src={item.image} alt={item.title} fill className="object-cover" />
-                </div>
-                <div className="flex-grow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-label-sm text-label-sm text-marketplace-bronze uppercase mb-1 block">
-                        FUJRS
-                      </span>
-                      <h4 className="font-body-lg text-body-lg font-semibold">{item.title}</h4>
-                      <p className="font-label-md text-label-md text-on-surface-variant mt-1">
-                        Qty: {item.qty}
-                      </p>
-                    </div>
-                    <span className="font-body-md text-body-md">
-                      PKR {(item.price * item.qty).toLocaleString()}
-                    </span>
+            {order.items.map(
+              (item: {
+                id: string;
+                image: string;
+                title: string;
+                qty: number;
+                price: number;
+                stitchingLabel: string | null;
+              }) => (
+                <div
+                  key={item.id}
+                  className="flex flex-col md:flex-row gap-6 items-start py-6 border-b border-border-subtle last:border-0"
+                >
+                  <div className="w-32 aspect-[4/5] bg-surface-variant shrink-0 relative overflow-hidden">
+                    <Image src={item.image} alt={item.title} fill className="object-cover" />
                   </div>
-                  {item.stitchingLabel && (
-                    <div className="mt-6 p-4 bg-surface-container-low border-l-2 border-tertiary-fixed flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="material-symbols-outlined text-tertiary-fixed-dim"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          precision_manufacturing
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-label-sm text-label-sm text-marketplace-bronze uppercase mb-1 block">
+                          FUJRS
                         </span>
-                        <div>
-                          <p className="font-label-md text-label-md uppercase">Stitching Status</p>
-                          <p className="font-body-md text-body-md font-medium text-marketplace-bronze italic">
-                            Moving to the Atelier
-                          </p>
-                        </div>
+                        <h4 className="font-body-lg text-body-lg font-semibold">{item.title}</h4>
+                        <p className="font-label-md text-label-md text-on-surface-variant mt-1">
+                          Qty: {item.qty}
+                        </p>
                       </div>
-                      <span className="font-label-sm text-label-sm px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed">
-                        MASTER TAILORED
+                      <span className="font-body-md text-body-md">
+                        PKR {(item.price * item.qty).toLocaleString()}
                       </span>
                     </div>
-                  )}
+                    {item.stitchingLabel && (
+                      <div className="mt-6 p-4 bg-surface-container-low border-l-2 border-tertiary-fixed flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="material-symbols-outlined text-tertiary-fixed-dim"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            precision_manufacturing
+                          </span>
+                          <div>
+                            <p className="font-label-md text-label-md uppercase">
+                              Stitching Status
+                            </p>
+                            <p className="font-body-md text-body-md font-medium text-marketplace-bronze italic">
+                              Moving to the Atelier
+                            </p>
+                          </div>
+                        </div>
+                        <span className="font-label-sm text-label-sm px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed">
+                          MASTER TAILORED
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
             <div className="mt-10 space-y-4">
               <div className="flex justify-between font-label-md text-label-md text-on-surface-variant">
                 <span>Subtotal</span>
@@ -176,8 +181,8 @@ export default async function OrderConfirmationPage({
                         step.state === "done"
                           ? "bg-tertiary-fixed"
                           : step.state === "active"
-                          ? "bg-white animate-pulse"
-                          : "bg-white/20"
+                            ? "bg-white animate-pulse"
+                            : "bg-white/20"
                       }`}
                     />
                     <div>
@@ -189,7 +194,9 @@ export default async function OrderConfirmationPage({
                         {step.status}
                       </p>
                       <h4 className="font-body-lg text-body-lg font-bold">{step.title}</h4>
-                      <p className="font-body-md text-body-md text-on-primary/60 mt-1 text-sm">{step.body}</p>
+                      <p className="font-body-md text-body-md text-on-primary/60 mt-1 text-sm">
+                        {step.body}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -213,7 +220,9 @@ export default async function OrderConfirmationPage({
               Pakistan
             </p>
             <div className="mt-6 pt-6 border-t border-border-subtle flex items-center justify-between">
-              <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Method</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+                Method
+              </span>
               <span className="font-label-md text-label-md font-bold">
                 {order.paymentMethod === "cod" ? "Cash on Delivery" : "Standard Courier"}
               </span>
@@ -225,7 +234,8 @@ export default async function OrderConfirmationPage({
       <section className="mt-20 py-20 border-t border-primary/10 text-center">
         <h3 className="font-headline-sm text-headline-sm mb-6">Need artisanal assistance?</h3>
         <p className="font-body-md text-body-md text-on-surface-variant mb-10 max-w-xl mx-auto">
-          Our concierge is available to discuss measurement adjustments or tailoring specifics within the next 12 hours.
+          Our concierge is available to discuss measurement adjustments or tailoring specifics
+          within the next 12 hours.
         </p>
         <div className="flex justify-center gap-8">
           <Link

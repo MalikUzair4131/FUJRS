@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, forwardRef } from "react";
 import Link from "next/link";
 
-type Variant = "primary" | "secondary" | "gold" | "ghost";
+type Variant = "primary" | "secondary" | "gold" | "ghost" | "inverse";
 
 interface BaseProps {
   variant?: Variant;
@@ -19,9 +19,12 @@ interface LinkButtonProps extends BaseProps {
 
 const variantClasses: Record<Variant, string> = {
   primary: "bg-primary text-on-primary hover:bg-gold border border-primary",
-  secondary: "bg-transparent text-on-surface border border-primary hover:bg-primary hover:text-on-primary",
+  secondary:
+    "bg-transparent text-on-surface border border-primary hover:bg-primary hover:text-on-primary",
   gold: "bg-gold text-on-primary border border-gold hover:opacity-90",
   ghost: "bg-transparent text-on-surface hover:text-gold border border-transparent",
+  inverse:
+    "bg-transparent text-on-primary border border-on-primary backdrop-blur-sm hover:bg-on-primary hover:text-primary",
 };
 
 const base =
@@ -34,7 +37,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
-export function LinkButton({ href, variant = "primary", className = "", children }: LinkButtonProps) {
+export function LinkButton({
+  href,
+  variant = "primary",
+  className = "",
+  children,
+}: LinkButtonProps) {
   return (
     <Link href={href} className={`${base} ${variantClasses[variant]} ${className}`}>
       {children}

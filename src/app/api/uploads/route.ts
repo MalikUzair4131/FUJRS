@@ -17,7 +17,13 @@ export async function POST(request: Request) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const path = `products/${auth.profile.id}/${Date.now()}-${file.name}`;
-  const url = await uploadService.uploadFile(buffer, file.name, "product-images", path, file.type || undefined);
+  const url = await uploadService.uploadFile(
+    buffer,
+    file.name,
+    "product-images",
+    path,
+    file.type || undefined
+  );
 
   return NextResponse.json({ url, path });
 }

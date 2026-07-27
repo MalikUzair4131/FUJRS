@@ -20,8 +20,17 @@ interface AuthContextValue {
   session: AuthSession | null;
   status: "loading" | "authenticated" | "unauthenticated";
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (input: { email: string; password: string; name: string; role?: AppRole; assignedStitcherSlug?: string | null }) => Promise<{ error?: string }>;
+  signUp: (input: {
+    email: string;
+    password: string;
+    name: string;
+    role?: AppRole;
+    assignedStitcherSlug?: string | null;
+  }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<{ error?: string }>;
+  updateEmail: (newEmail: string) => Promise<{ error?: string }>;
+  updateName: (newName: string) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,7 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function hydrate() {
-      const { data: { session: initialSession }, error } = await client.auth.getSession();
+      const {
+        data: { session: initialSession },
+        error,
+      } = await client.auth.getSession();
       if (!mounted) return;
       if (error) {
         setSession(null);
@@ -65,16 +77,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     hydrate();
 
-    const { data: subscription } = client.auth.onAuthStateChange((event: string, nextSession: { user?: any } | null) => {
-      if (!mounted) return;
-      if (nextSession?.user) {
-        setSession({ user: toUser(nextSession.user) });
-        setStatus("authenticated");
-      } else {
-        setSession(null);
-        setStatus("unauthenticated");
+    const { data: subscription } = client.auth.onAuthStateChange(
+      (event: string, nextSession: { user?: any } | null) => {
+        if (!mounted) return;
+        if (nextSession?.user) {
+          setSession({ user: toUser(nextSession.user) });
+          setStatus("authenticated");
+        } else {
+          setSession(null);
+          setStatus("unauthenticated");
+        }
       }
-    });
+    );
 
     return () => {
       mounted = false;
@@ -106,6 +120,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signOut() {
         await client.auth.signOut();
+      },
+      async updatePassword(newPassword) {
+        const { error } = await client.auth.updateUser({ password: newPassword });
+        return { error: error?.message };
+      },
+      async updateEmail(newEmail) {
+        const { error } = await client.auth.updateUser({ email: newEmail });
+        return { error: error?.message };
+      },
+      async updateName(newName) {
+        const { error } = await client.auth.updateUser({ data: { name: newName } });
+        return { error: error?.message };
       },
     }),
     [client, session, status]

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { products } from "@/data/products";
 import { Reveal } from "@/components/ui/Reveal";
 import { WomenProductTile } from "@/components/product/WomenProductTile";
+import { LinkButton } from "@/components/ui/Button";
 
 const fabricTabs = ["Lawn", "Chiffon", "Silk", "Net"];
 
@@ -48,7 +49,13 @@ export default function WomenPage() {
     return womenProducts.filter((p) => p.fabric === activeTab);
   }, [activeTab, womenProducts]);
 
-  const quickAddLabels = ["Quick Add to Bag", "Select Size", "Quick Add", "View Details", "Add to Bag"];
+  const quickAddLabels = [
+    "Quick Add to Bag",
+    "Select Size",
+    "Quick Add",
+    "View Details",
+    "Add to Bag",
+  ];
 
   return (
     <div>
@@ -67,7 +74,7 @@ export default function WomenPage() {
         <div className="relative h-full max-w-container-max mx-auto px-gutter flex flex-col justify-center items-start">
           <div className="max-w-xl">
             <span className="font-label-md text-label-md uppercase tracking-[0.2em] text-primary mb-4 block">
-              Spring/Summer &apos;24
+              This Season
             </span>
             <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-8">
               The Jardin
@@ -75,29 +82,26 @@ export default function WomenPage() {
               Edit
             </h1>
             <p className="font-body-lg text-body-lg text-secondary mb-10 max-w-md">
-              Discover our signature unstitched collection featuring
-              hand-worked embroideries on premium Swiss Lawn and Pure Silk.
+              Discover our signature unstitched collection featuring hand-worked embroideries on
+              premium Swiss Lawn and Pure Silk.
             </p>
             <div className="flex gap-4">
-              <Link
-                href="#collection"
-                className="bg-primary text-on-primary px-10 py-5 font-label-md text-label-md uppercase tracking-widest hover:bg-secondary transition-all"
-              >
+              <LinkButton href="#collection" variant="primary" className="!px-10 !py-5">
                 Shop Collection
-              </Link>
-              <Link
-                href="/new-arrivals"
-                className="border border-primary text-primary px-10 py-5 font-label-md text-label-md uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all"
-              >
+              </LinkButton>
+              <LinkButton href="/new-arrivals" variant="secondary" className="!px-10 !py-5">
                 Explore Lookbook
-              </Link>
+              </LinkButton>
             </div>
           </div>
         </div>
       </section>
 
       {/* Filter Bar */}
-      <section id="collection" className="sticky top-20 z-40 bg-surface/95 border-b border-outline-variant backdrop-blur-md">
+      <section
+        id="collection"
+        className="sticky top-20 z-40 bg-surface/95 border-b border-outline-variant backdrop-blur-md"
+      >
         <div className="max-w-container-max mx-auto px-gutter py-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-8 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
             <button
@@ -165,9 +169,8 @@ export default function WomenPage() {
               for Every Suite
             </h2>
             <p className="font-body-lg text-secondary-fixed mb-10 opacity-80">
-              Our master tailors ensure your luxury unstitched fabrics are
-              crafted into the perfect silhouette. Choose from signature
-              FUJRS patterns or provide your custom measurements.
+              Our master tailors ensure your luxury unstitched fabrics are crafted into the perfect
+              silhouette. Choose from signature FUJRS patterns or provide your custom measurements.
             </p>
             <div className="space-y-6 mb-12">
               {[
@@ -222,7 +225,11 @@ export default function WomenPage() {
         </Reveal>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-gutter h-[600px]">
           {shopByFabric.map((tile, i) => (
-            <Reveal key={i} delay={i * 80} className={`${tile.span} relative group overflow-hidden cursor-pointer`}>
+            <Reveal
+              key={i}
+              delay={i * 80}
+              className={`${tile.span} relative group overflow-hidden cursor-pointer`}
+            >
               <div
                 className="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                 style={{ backgroundImage: `url('${tile.image}')` }}

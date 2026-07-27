@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
@@ -117,11 +112,10 @@ export function StripePaymentForm({
     return (
       <div className="border border-error/40 bg-error/5 p-6">
         <p className="font-label-sm text-error">
-          Card payments aren&apos;t configured yet — add{" "}
-          <code>STRIPE_SECRET_KEY</code> and{" "}
-          <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to your{" "}
-          <code>.env</code> to enable them (Stripe test keys work fine for
-          development). Cash on Delivery is available in the meantime.
+          Card payments aren&apos;t configured yet — add <code>STRIPE_SECRET_KEY</code> and{" "}
+          <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to your <code>.env</code> to enable them
+          (Stripe test keys work fine for development). Cash on Delivery is available in the
+          meantime.
         </p>
       </div>
     );

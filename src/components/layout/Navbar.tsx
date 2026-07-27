@@ -35,11 +35,15 @@ export function Navbar() {
   }
 
   return (
-    <nav className="docked full-width top-0 sticky z-50 bg-surface/90 backdrop-blur-md border-b border-outline-variant">
+    <nav className="docked full-width top-0 sticky z-50 border-b border-outline-variant">
+      <div className="absolute inset-0 -z-10 bg-surface/90 backdrop-blur-md" />
       <div className="flex flex-col items-center w-full px-gutter max-w-container-max mx-auto py-4">
         <div className="flex items-center justify-between w-full">
           {/* Branding */}
-          <Link href="/" className="block py-2 font-display-lg text-headline-sm uppercase tracking-widest">
+          <Link
+            href="/"
+            className="block py-2 font-display-lg text-headline-sm uppercase tracking-widest"
+          >
             FUJRS
           </Link>
 
@@ -137,7 +141,9 @@ export function Navbar() {
           <div className="absolute inset-0 bg-primary/40" onClick={() => setMobileOpen(false)} />
           <div className="absolute right-0 top-0 flex h-full w-[80%] max-w-xs flex-col bg-surface-container-lowest">
             <div className="flex items-center justify-between border-b border-outline-variant px-6 py-5">
-              <span className="font-display-lg text-headline-sm uppercase tracking-widest">FUJRS</span>
+              <span className="font-display-lg text-headline-sm uppercase tracking-widest">
+                FUJRS
+              </span>
               <button
                 aria-label="Close menu"
                 className="material-symbols-outlined"

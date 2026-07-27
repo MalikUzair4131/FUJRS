@@ -17,7 +17,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   // "Complete the Look": same-category pieces first, falling back to
   // accessories so the section is never empty.
-  const sameCategory = products.filter((p) => p.id !== product.id && p.category === product.category);
+  const sameCategory = products.filter(
+    (p) => p.id !== product.id && p.category === product.category
+  );
   const accessoryCategories = ["Accessories", "Jewelry", "Footwear"];
   const accessories = products.filter(
     (p) => p.id !== product.id && accessoryCategories.includes(p.category)

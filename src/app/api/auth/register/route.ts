@@ -48,7 +48,10 @@ export async function POST(request: Request) {
 
   try {
     const supabase = await createAdminSupabaseClient();
-    const { data: { user }, error } = await supabase.auth.admin.createUser({
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.admin.createUser({
       email: normalizedEmail,
       password,
       email_confirm: true,
@@ -60,7 +63,10 @@ export async function POST(request: Request) {
     });
 
     if (error || !user) {
-      return NextResponse.json({ error: error?.message ?? "Unable to create account." }, { status: 400 });
+      return NextResponse.json(
+        { error: error?.message ?? "Unable to create account." },
+        { status: 400 }
+      );
     }
 
     const { error: profileError } = await supabase.from("profiles").insert({
@@ -75,7 +81,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ user: { id: user.id, name, email: normalizedEmail, role } }, { status: 201 });
+    return NextResponse.json(
+      { user: { id: user.id, name, email: normalizedEmail, role } },
+      { status: 201 }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unable to create account.";
     return NextResponse.json({ error: message }, { status: 500 });

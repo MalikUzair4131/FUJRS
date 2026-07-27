@@ -68,11 +68,17 @@ export function SpecsAccordion({ product }: { product: Product }) {
         <div className="pb-6 font-body-md text-on-surface-variant space-y-4">
           <div className="flex gap-3">
             <span className="material-symbols-outlined text-primary">local_shipping</span>
-            <p>Complimentary express shipping within Pakistan. International shipping calculated at checkout.</p>
+            <p>
+              Complimentary express shipping within Pakistan. International shipping calculated at
+              checkout.
+            </p>
           </div>
           <div className="flex gap-3">
             <span className="material-symbols-outlined text-primary">cached</span>
-            <p>14-day hassle-free returns for unstitched items. Stitched items are bespoke and non-returnable.</p>
+            <p>
+              14-day hassle-free returns for unstitched items. Stitched items are bespoke and
+              non-returnable.
+            </p>
           </div>
         </div>
       </details>

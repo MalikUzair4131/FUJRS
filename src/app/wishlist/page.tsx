@@ -8,7 +8,13 @@ import { products } from "@/data/products";
 export default function WishlistPage() {
   const { slugs, mounted } = useWishlist();
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <div className="container-luxe flex min-h-[50vh] items-center justify-center py-24">
+        <p className="text-body-md text-text-muted">Loading your wishlist…</p>
+      </div>
+    );
+  }
 
   const wishlisted = products.filter((p) => slugs.includes(p.slug));
 

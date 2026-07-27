@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Button } from "@/components/ui/Button";
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
@@ -15,9 +16,8 @@ export default function ContactPage() {
         </span>
         <h2 className="font-display text-display-lg mb-8">Elegance in Every Inquiry</h2>
         <p className="max-w-2xl mx-auto font-body text-body-lg text-on-surface-variant leading-relaxed">
-          Whether you seek bespoke tailoring, wholesale partnerships, or
-          general assistance, our concierge team is dedicated to providing
-          a seamless luxury experience.
+          Whether you seek bespoke tailoring, wholesale partnerships, or general assistance, our
+          concierge team is dedicated to providing a seamless luxury experience.
         </p>
       </section>
 
@@ -27,7 +27,9 @@ export default function ContactPage() {
           <h3 className="font-display text-headline-md mb-12">General Inquiry</h3>
           {sent ? (
             <div className="text-center py-12">
-              <span className="material-symbols-outlined text-4xl text-marketplace-bronze">check_circle</span>
+              <span className="material-symbols-outlined text-4xl text-marketplace-bronze">
+                check_circle
+              </span>
               <p className="mt-4 font-display text-headline-sm">Message Sent</p>
               <p className="mt-2 font-body text-body-md text-on-surface-variant">
                 Our concierge team will respond within 24 hours.
@@ -43,20 +45,28 @@ export default function ContactPage() {
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block">
+                  <label
+                    htmlFor="contact-name"
+                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block"
+                  >
                     Full Name
                   </label>
                   <input
+                    id="contact-name"
                     required
                     className="w-full bg-transparent border-0 border-b border-outline-variant py-3 px-0 font-body text-body-md focus:outline-none focus:border-marketplace-bronze transition-colors"
                     placeholder="e.g. Zoya Malik"
                   />
                 </div>
                 <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block">
+                  <label
+                    htmlFor="contact-email"
+                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block"
+                  >
                     Email Address
                   </label>
                   <input
+                    id="contact-email"
                     required
                     type="email"
                     className="w-full bg-transparent border-0 border-b border-outline-variant py-3 px-0 font-body text-body-md focus:outline-none focus:border-marketplace-bronze transition-colors"
@@ -66,10 +76,16 @@ export default function ContactPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block">
+                  <label
+                    htmlFor="contact-subject"
+                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block"
+                  >
                     Subject
                   </label>
-                  <select className="w-full bg-transparent border-0 border-b border-outline-variant py-3 px-0 font-body text-body-md focus:outline-none focus:border-marketplace-bronze transition-colors">
+                  <select
+                    id="contact-subject"
+                    className="w-full bg-transparent border-0 border-b border-outline-variant py-3 px-0 font-body text-body-md focus:outline-none focus:border-marketplace-bronze transition-colors"
+                  >
                     <option>Order Status</option>
                     <option>Tailoring Appointment</option>
                     <option>Product Feedback</option>
@@ -77,32 +93,37 @@ export default function ContactPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block">
+                  <label
+                    htmlFor="contact-phone"
+                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block"
+                  >
                     Phone Number
                   </label>
                   <input
+                    id="contact-phone"
                     className="w-full bg-transparent border-0 border-b border-outline-variant py-3 px-0 font-body text-body-md focus:outline-none focus:border-marketplace-bronze transition-colors"
                     placeholder="+92 300 1234567"
                   />
                 </div>
               </div>
               <div>
-                <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block">
+                <label
+                  htmlFor="contact-message"
+                  className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant mb-2 block"
+                >
                   Your Message
                 </label>
                 <textarea
+                  id="contact-message"
                   required
                   rows={4}
                   className="w-full bg-transparent border-0 border-b border-outline-variant py-3 px-0 font-body text-body-md focus:outline-none focus:border-marketplace-bronze transition-colors resize-none"
                   placeholder="How may we assist you today?"
                 />
               </div>
-              <button
-                type="submit"
-                className="w-full bg-primary text-on-primary py-5 font-body text-label-md uppercase tracking-[0.2em] hover:bg-marketplace-bronze transition-colors duration-500"
-              >
+              <Button type="submit" variant="primary" className="w-full !py-5">
                 Send Message
-              </button>
+              </Button>
             </form>
           )}
         </div>
@@ -112,7 +133,9 @@ export default function ContactPage() {
             <h3 className="font-display text-headline-sm mb-6">Our Flagship Studio</h3>
             <div className="space-y-6 font-body text-body-md text-on-surface-variant">
               <div className="flex gap-4">
-                <span className="material-symbols-outlined text-marketplace-bronze">location_on</span>
+                <span className="material-symbols-outlined text-marketplace-bronze">
+                  location_on
+                </span>
                 <p>
                   Suite 302, Park Towers, Clifton Block 5,
                   <br />
@@ -147,9 +170,8 @@ export default function ContactPage() {
           <div className="space-y-6">
             <h4 className="font-display text-headline-md">Wholesale Inquiries</h4>
             <p className="font-body text-body-md text-on-surface-variant leading-relaxed">
-              Partner with us to bring FUJRS&apos;s signature elegance to
-              your retail space. We offer exclusive collections and
-              curated fabric bundles for global stockists.
+              Partner with us to bring FUJRS&apos;s signature elegance to your retail space. We
+              offer exclusive collections and curated fabric bundles for global stockists.
             </p>
             <a
               href="mailto:wholesale@fujrs.com"
@@ -164,9 +186,8 @@ export default function ContactPage() {
           <div className="space-y-6">
             <h4 className="font-display text-headline-md">Press &amp; Media</h4>
             <p className="font-body text-body-md text-on-surface-variant leading-relaxed">
-              For lookbooks, high-resolution campaign imagery, and
-              interview requests regarding our latest collections or craft
-              initiatives.
+              For lookbooks, high-resolution campaign imagery, and interview requests regarding our
+              latest collections or craft initiatives.
             </p>
             <a
               href="mailto:press@fujrs.com"

@@ -88,9 +88,8 @@ export function VendorView() {
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Products you submit here go into a real review queue — they&apos;re
-        proposals for the live catalog (which is code-managed), not
-        instantly published.
+        Products you submit here go into a real review queue — they&apos;re proposals for the live
+        catalog (which is code-managed), not instantly published.
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -170,7 +169,12 @@ export function VendorView() {
             />
           </div>
           {formError && <p className="sm:col-span-2 text-label-sm text-error">{formError}</p>}
-          <Button type="submit" variant="primary" className="sm:col-span-2 w-fit" disabled={submitting}>
+          <Button
+            type="submit"
+            variant="primary"
+            className="sm:col-span-2 w-fit"
+            disabled={submitting}
+          >
             {submitting ? "Submitting…" : "Submit for Review"}
           </Button>
         </form>

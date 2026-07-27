@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentAppUser } from "@/lib/auth";
 import { tailoringQueueService } from "@/lib/supabase/services";
+import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -11,22 +12,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const items = await tailoringQueueService.list(auth.profile.role, auth.profile.assignedStitcherSlug);
+  const items = await tailoringQueueService.list(
+    auth.profile.role,
+    auth.profile.assignedStitcherSlug
+  );
 
   return NextResponse.json({ items });
 }
 
-const STATUSES = [
-  "Awaiting Measurements",
-  "In Progress",
-  "Quality Check",
-  "Ready for Fitting",
-  "Delivered",
-] as const;
-
 const updateSchema = z.object({
   itemId: z.string(),
-  status: z.enum(STATUSES),
+  status: z.enum(STITCHING_STATUSES),
 });
 
 export async function PATCH(request: Request) {

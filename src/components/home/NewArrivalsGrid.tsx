@@ -37,19 +37,17 @@ export function NewArrivalsGrid() {
                   />
                   <div className="absolute top-4 left-4 flex flex-col gap-2">
                     <span className="bg-primary text-on-primary text-[10px] px-2 py-1 uppercase tracking-tighter">
-                      New Collection
+                      {product.badge ?? "New Arrival"}
                     </span>
                   </div>
                 </Link>
-                <div className="quick-add-bar absolute bottom-0 left-0 w-full bg-primary py-4 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="quick-add-bar absolute bottom-0 left-0 w-full bg-primary py-4 text-center opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                   <AddToBagButton product={product} />
                 </div>
               </div>
               <div className="mt-4 text-center">
                 <h4 className="font-headline-sm text-[18px] mb-2">{product.title}</h4>
-                <p className="font-label-md text-label-md">
-                  PKR {product.price.toLocaleString()}
-                </p>
+                <p className="font-label-md text-label-md">PKR {product.price.toLocaleString()}</p>
               </div>
             </div>
           ))}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { stitchers } from "@/data/stitchers";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { Button } from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -84,10 +85,14 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="register-name"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Full Name
             </label>
             <input
+              id="register-name"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -95,10 +100,14 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="register-email"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Email
             </label>
             <input
+              id="register-email"
               type="email"
               required
               value={email}
@@ -107,10 +116,14 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="register-password"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Password
             </label>
             <input
+              id="register-password"
               type="password"
               required
               minLength={8}
@@ -135,10 +148,14 @@ export default function RegisterPage() {
             {isStaff && (
               <div className="mt-4 space-y-4 border border-marketplace-bronze/30 bg-surface-container-low p-4">
                 <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+                  <label
+                    htmlFor="register-role"
+                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+                  >
                     Role
                   </label>
                   <select
+                    id="register-role"
                     value={staffRole}
                     onChange={(e) => setStaffRole(e.target.value as "VENDOR" | "TAILOR")}
                     className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
@@ -150,10 +167,14 @@ export default function RegisterPage() {
 
                 {staffRole === "TAILOR" && (
                   <div>
-                    <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+                    <label
+                      htmlFor="register-assigned-stitcher"
+                      className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+                    >
                       Which Master Stitcher is this?
                     </label>
                     <select
+                      id="register-assigned-stitcher"
                       value={assignedStitcherSlug}
                       onChange={(e) => setAssignedStitcherSlug(e.target.value)}
                       className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
@@ -168,18 +189,22 @@ export default function RegisterPage() {
                 )}
 
                 <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+                  <label
+                    htmlFor="register-invite-code"
+                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+                  >
                     Staff Invite Code
                   </label>
                   <input
+                    id="register-invite-code"
                     required={isStaff}
                     value={staffInviteCode}
                     onChange={(e) => setStaffInviteCode(e.target.value)}
                     className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
                   />
                   <p className="mt-1 font-label-sm text-on-surface-variant">
-                    Ask an admin for this. Without a valid code, the
-                    account is created as a regular customer instead.
+                    Ask an admin for this. Without a valid code, the account is created as a regular
+                    customer instead.
                   </p>
                 </div>
               </div>
@@ -188,13 +213,9 @@ export default function RegisterPage() {
 
           {error && <p className="font-label-sm text-error">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-on-primary py-4 font-body text-label-md uppercase tracking-widest hover:bg-marketplace-bronze transition-colors disabled:opacity-60"
-          >
+          <Button type="submit" disabled={loading} variant="primary" className="w-full !py-4">
             {loading ? "Creating Account…" : "Create Account"}
-          </button>
+          </Button>
         </form>
 
         <p className="mt-6 text-center font-body text-body-md text-on-surface-variant">

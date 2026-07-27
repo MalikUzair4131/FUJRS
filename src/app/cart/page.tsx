@@ -1,36 +1,61 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart, cartTotals } from "@/components/cart/CartContext";
 import { products } from "@/data/products";
 import { AddToBagButton } from "@/components/product/AddToBagButton";
+import { LinkButton } from "@/components/ui/Button";
 
 const completeTheLook = products.filter((p) =>
-  ["antique-gold-zardozi-khussa", "mughal-pearl-chandbalis", "gilded-silk-frame-clutch", "cream-needlework-pashmina"].includes(p.slug)
+  [
+    "antique-gold-zardozi-khussa",
+    "mughal-pearl-chandbalis",
+    "gilded-silk-frame-clutch",
+    "cream-needlework-pashmina",
+  ].includes(p.slug)
 );
 
 export default function CartPage() {
   const { items, removeItem, updateQty, mounted } = useCart();
+  const [promoCode, setPromoCode] = useState("");
+  const [promoMessage, setPromoMessage] = useState<string | null>(null);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <main className="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-[60vh] flex items-center justify-center">
+        <p className="font-body-md text-on-surface-variant">Loading your bag…</p>
+      </main>
+    );
+  }
 
   const { fabricTotal, stitchingTotal, shipping, total } = cartTotals(items);
+
+  function handleApplyPromo(e: React.FormEvent) {
+    e.preventDefault();
+    setPromoMessage(
+      promoCode.trim()
+        ? "Promo codes aren't available yet — check back soon."
+        : "Enter a code first."
+    );
+  }
 
   if (items.length === 0) {
     return (
       <main className="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-[60vh] flex flex-col items-center justify-center text-center">
-        <span className="material-symbols-outlined text-5xl text-on-surface-variant">shopping_bag</span>
-        <h2 className="mt-6 font-display-lg text-headline-md uppercase tracking-tight">Your Bag is Empty</h2>
+        <span className="material-symbols-outlined text-5xl text-on-surface-variant">
+          shopping_bag
+        </span>
+        <h2 className="mt-6 font-display-lg text-headline-md uppercase tracking-tight">
+          Your Bag is Empty
+        </h2>
         <p className="mt-2 font-body-md text-on-surface-variant">
           Browse the collection and add something beautiful.
         </p>
-        <Link
-          href="/new-arrivals"
-          className="mt-8 px-12 py-5 bg-primary text-on-primary font-label-md text-label-md uppercase tracking-widest hover:bg-on-surface-variant transition-colors"
-        >
+        <LinkButton href="/new-arrivals" variant="primary" className="mt-8 !px-12 !py-5">
           Continue Shopping
-        </Link>
+        </LinkButton>
       </main>
     );
   }
@@ -70,10 +95,17 @@ export default function CartPage() {
               className="flex flex-col md:flex-row gap-6 py-6 border-b border-outline-variant/30"
             >
               <Link
-                href={item.slug.startsWith("bespoke") ? "/tailoring/review" : `/products/${item.slug}`}
+                href={
+                  item.slug.startsWith("bespoke") ? "/tailoring/review" : `/products/${item.slug}`
+                }
                 className="w-full md:w-40 aspect-[4/5] bg-surface-container overflow-hidden relative shrink-0"
               >
-                <Image src={item.image} alt={item.title} fill className="object-cover hover:scale-105 transition-transform duration-700" />
+                <Image
+                  src={item.image}
+                  alt={item.title}
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-700"
+                />
               </Link>
               <div className="flex-1 flex flex-col">
                 <div className="flex justify-between items-start mb-2">
@@ -91,7 +123,9 @@ export default function CartPage() {
                     <div className="flex justify-between items-center mb-1">
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-[18px]">architecture</span>
-                        <span className="font-label-md text-label-md uppercase">Custom Stitching Service</span>
+                        <span className="font-label-md text-label-md uppercase">
+                          Custom Stitching Service
+                        </span>
                       </div>
                       <p className="font-label-md text-label-md">
                         PKR {item.stitching.addOn.toLocaleString()}
@@ -106,6 +140,7 @@ export default function CartPage() {
                 <div className="mt-auto flex items-center justify-between pt-6">
                   <div className="flex items-center border border-black px-3 py-1">
                     <button
+                      aria-label="Decrease quantity"
                       className="hover:text-primary-container"
                       onClick={() => updateQty(item.id, item.qty - 1, !!item.stitching)}
                     >
@@ -113,6 +148,7 @@ export default function CartPage() {
                     </button>
                     <span className="px-6 font-label-md">{item.qty}</span>
                     <button
+                      aria-label="Increase quantity"
                       className="hover:text-primary-container"
                       onClick={() => updateQty(item.id, item.qty + 1, !!item.stitching)}
                     >
@@ -134,16 +170,22 @@ export default function CartPage() {
         {/* Order Summary */}
         <aside className="lg:col-span-4 lg:sticky lg:top-32">
           <div className="p-8 bg-surface-container-lowest border border-outline-variant">
-            <h3 className="font-label-md text-label-md uppercase tracking-[0.2em] mb-8">Order Summary</h3>
+            <h3 className="font-label-md text-label-md uppercase tracking-[0.2em] mb-8">
+              Order Summary
+            </h3>
             <div className="space-y-4 mb-8">
               <div className="flex justify-between text-on-surface-variant">
                 <span className="font-label-sm text-label-sm uppercase">Fabric Total</span>
-                <span className="font-label-md text-label-md">PKR {fabricTotal.toLocaleString()}</span>
+                <span className="font-label-md text-label-md">
+                  PKR {fabricTotal.toLocaleString()}
+                </span>
               </div>
               {stitchingTotal > 0 && (
                 <div className="flex justify-between text-on-surface-variant">
                   <span className="font-label-sm text-label-sm uppercase">Stitching Total</span>
-                  <span className="font-label-md text-label-md">PKR {stitchingTotal.toLocaleString()}</span>
+                  <span className="font-label-md text-label-md">
+                    PKR {stitchingTotal.toLocaleString()}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-on-surface-variant">
@@ -151,17 +193,22 @@ export default function CartPage() {
                 <span className="font-label-md text-label-md">PKR {shipping.toLocaleString()}</span>
               </div>
               <div className="pt-4 border-t border-outline-variant flex justify-between items-center">
-                <span className="font-label-md text-label-md uppercase text-primary">Total Amount</span>
-                <span className="font-headline-sm text-headline-sm">PKR {total.toLocaleString()}</span>
+                <span className="font-label-md text-label-md uppercase text-primary">
+                  Total Amount
+                </span>
+                <span className="font-headline-sm text-headline-sm">
+                  PKR {total.toLocaleString()}
+                </span>
               </div>
             </div>
             <div className="space-y-4">
-              <Link
+              <LinkButton
                 href="/checkout"
-                className="block w-full text-center bg-primary text-on-primary font-label-md py-4 uppercase tracking-widest active:scale-[0.98] transition-transform"
+                variant="primary"
+                className="w-full !py-4 active:scale-[0.98] transition-transform"
               >
                 Proceed to Checkout
-              </Link>
+              </LinkButton>
               <div className="flex items-center gap-2 justify-center py-2 text-on-surface-variant">
                 <span className="material-symbols-outlined text-[18px]">verified_user</span>
                 <span className="text-label-sm font-label-sm uppercase">Secure Checkout</span>
@@ -169,22 +216,40 @@ export default function CartPage() {
             </div>
 
             <div className="mt-8 pt-8 border-t border-outline-variant">
-              <label className="font-label-sm text-label-sm uppercase block mb-3">Promotional Code</label>
-              <div className="flex gap-2">
+              <label
+                htmlFor="promo-code"
+                className="font-label-sm text-label-sm uppercase block mb-3"
+              >
+                Promotional Code
+              </label>
+              <form className="flex gap-2" onSubmit={handleApplyPromo}>
                 <input
+                  id="promo-code"
                   className="flex-1 bg-transparent border border-outline-variant px-4 py-2 font-label-sm focus:ring-0 focus:border-primary outline-none"
                   placeholder="ENTER CODE"
                   type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
                 />
-                <button className="px-6 border border-primary font-label-sm uppercase hover:bg-primary hover:text-on-primary transition-colors">
+                <button
+                  type="submit"
+                  className="px-6 border border-primary font-label-sm uppercase hover:bg-primary hover:text-on-primary transition-colors"
+                >
                   Apply
                 </button>
-              </div>
+              </form>
+              {promoMessage && (
+                <p className="mt-2 text-label-sm font-label-sm text-on-surface-variant">
+                  {promoMessage}
+                </p>
+              )}
             </div>
 
             <div className="mt-8">
               <div className="flex items-start gap-4 p-4 border border-tertiary-fixed bg-tertiary-fixed/5">
-                <span className="material-symbols-outlined text-marketplace-bronze">local_shipping</span>
+                <span className="material-symbols-outlined text-marketplace-bronze">
+                  local_shipping
+                </span>
                 <div>
                   <p className="font-label-md text-label-md">Complimentary Shipping</p>
                   <p className="text-label-sm font-label-sm text-on-surface-variant">
@@ -208,7 +273,10 @@ export default function CartPage() {
               Complete the Look
             </h2>
           </div>
-          <Link href="/new-arrivals" className="font-label-md text-label-md uppercase border-b border-black">
+          <Link
+            href="/new-arrivals"
+            className="font-label-md text-label-md uppercase border-b border-black"
+          >
             View All
           </Link>
         </div>
@@ -230,7 +298,9 @@ export default function CartPage() {
                 </div>
               </Link>
               <div className="space-y-1">
-                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">FUJRS</p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+                  FUJRS
+                </p>
                 <h4 className="font-body-md text-body-md">{product.title}</h4>
                 <p className="font-label-md text-label-md">PKR {product.price.toLocaleString()}</p>
               </div>

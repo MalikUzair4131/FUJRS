@@ -9,13 +9,19 @@
   body {
     @apply bg-background text-on-background font-body;
   }
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     font-family: var(--font-playfair), serif;
   }
 }
 
 .material-symbols-outlined {
-  font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 300,
+    "GRAD" 0,
+    "opsz" 24;
   font-size: 22px;
   line-height: 1;
   cursor: pointer;

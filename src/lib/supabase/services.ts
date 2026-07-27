@@ -1,4 +1,5 @@
 import { createAdminSupabaseClient, type AppRole, type AppUserProfile } from "./server";
+import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
 export interface ProductRecord {
   id: string;
@@ -80,6 +81,12 @@ export interface CustomerRecord {
   created_at?: string;
 }
 
+export interface AddressRecord {
+  street: string;
+  city: string;
+  postalCode: string;
+}
+
 async function getSupabaseClient() {
   return createAdminSupabaseClient();
 }
@@ -123,14 +130,21 @@ function mapOrderItemRow(row: any) {
 export const productService = {
   async list() {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []) as ProductRecord[];
   },
 
   async getBySlug(slug: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("products").select("*").eq("slug", slug).maybeSingle();
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("slug", slug)
+      .maybeSingle();
     if (error) throw error;
     return data as ProductRecord | null;
   },
@@ -159,12 +173,38 @@ export const customerService = {
     if (error) throw error;
     return (data ?? []) as CustomerRecord[];
   },
+
+  async updateName(userId: string, name: string) {
+    const supabase = await getSupabaseClient();
+    const { error } = await supabase.from("profiles").update({ name }).eq("id", userId);
+    if (error) throw error;
+  },
+
+  async getAddress(userId: string) {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("address")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data?.address ?? null) as AddressRecord | null;
+  },
+
+  async updateAddress(userId: string, address: AddressRecord) {
+    const supabase = await getSupabaseClient();
+    const { error } = await supabase.from("profiles").update({ address }).eq("id", userId);
+    if (error) throw error;
+  },
 };
 
 export const reviewService = {
   async list(productSlug: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("reviews").select("*").eq("product_slug", productSlug);
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("*")
+      .eq("product_slug", productSlug);
     if (error) throw error;
     return (data ?? []) as ReviewRecord[];
   },
@@ -196,7 +236,13 @@ export const orderService = {
   async getById(id: string, userId?: string) {
     const supabase = await getSupabaseClient();
     let query = supabase.from("orders").select("*, order_items(*)").eq("id", id).maybeSingle();
-    if (userId) query = supabase.from("orders").select("*, order_items(*)").eq("id", id).eq("user_id", userId).maybeSingle();
+    if (userId)
+      query = supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("id", id)
+        .eq("user_id", userId)
+        .maybeSingle();
 
     const { data, error } = await query;
     if (error) throw error;
@@ -207,7 +253,23 @@ export const orderService = {
     };
   },
 
-  async create(userId: string, payload: { items: OrderItemPayload[]; fabricTotal: number; stitchingTotal: number; shipping: number; total: number; firstName: string; lastName: string; street: string; city: string; postalCode: string; paymentMethod: string; stripePaymentIntentId?: string | null; }) {
+  async create(
+    userId: string,
+    payload: {
+      items: OrderItemPayload[];
+      fabricTotal: number;
+      stitchingTotal: number;
+      shipping: number;
+      total: number;
+      firstName: string;
+      lastName: string;
+      street: string;
+      city: string;
+      postalCode: string;
+      paymentMethod: string;
+      stripePaymentIntentId?: string | null;
+    }
+  ) {
     const supabase = await getSupabaseClient();
     const { data: order, error } = await supabase
       .from("orders")
@@ -242,10 +304,13 @@ export const orderService = {
       stitching_label: item.stitchingLabel,
       stitching_add_on: item.stitchingAddOn,
       stitcher_slug: item.stitcherSlug,
-      stitching_status: item.stitchingLabel ? "Awaiting Measurements" : null,
+      stitching_status: item.stitchingLabel ? STITCHING_STATUSES[0] : null,
     }));
 
-    const { data: items, error: itemsError } = await supabase.from("order_items").insert(insertedItems).select();
+    const { data: items, error: itemsError } = await supabase
+      .from("order_items")
+      .insert(insertedItems)
+      .select();
     if (itemsError) throw itemsError;
 
     return {
@@ -259,10 +324,17 @@ export const orderService = {
     const [{ count: totalOrders }, { data: totals }, { data: recent }] = await Promise.all([
       supabase.from("orders").select("id", { count: "exact", head: true }),
       supabase.from("orders").select("total"),
-      supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }).limit(5),
+      supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
 
-    const totalRevenue = (totals ?? []).reduce((sum: number, item: any) => sum + Number(item.total ?? 0), 0);
+    const totalRevenue = (totals ?? []).reduce(
+      (sum: number, item: any) => sum + Number(item.total ?? 0),
+      0
+    );
     return {
       totalOrders: totalOrders ?? 0,
       totalRevenue,
@@ -280,7 +352,11 @@ export const orderService = {
 export const cartService = {
   async list(userId: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("cart_items").select("*").eq("user_id", userId).order("created_at", { ascending: true });
+    const { data, error } = await supabase
+      .from("cart_items")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
     if (error) throw error;
     return (data ?? []).map((item: any) => ({
       id: item.id,
@@ -289,12 +365,26 @@ export const cartService = {
       image: item.image,
       price: item.price,
       qty: item.qty,
-      stitching: item.stitching_label && item.stitching_add_on != null ? { label: item.stitching_label, addOn: item.stitching_add_on } : undefined,
+      stitching:
+        item.stitching_label && item.stitching_add_on != null
+          ? { label: item.stitching_label, addOn: item.stitching_add_on }
+          : undefined,
       stitcherSlug: item.stitcher_slug ?? undefined,
     }));
   },
 
-  async sync(userId: string, items: Array<{ slug: string; title: string; image: string; price: number; qty: number; stitching?: { label: string; addOn: number }; stitcherSlug?: string }>) {
+  async sync(
+    userId: string,
+    items: Array<{
+      slug: string;
+      title: string;
+      image: string;
+      price: number;
+      qty: number;
+      stitching?: { label: string; addOn: number };
+      stitcherSlug?: string;
+    }>
+  ) {
     const supabase = await getSupabaseClient();
     await supabase.from("cart_items").delete().eq("user_id", userId);
 
@@ -319,14 +409,22 @@ export const cartService = {
 export const wishlistService = {
   async list(userId: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("wishlist_items").select("product_slug").eq("user_id", userId);
+    const { data, error } = await supabase
+      .from("wishlist_items")
+      .select("product_slug")
+      .eq("user_id", userId);
     if (error) throw error;
     return (data ?? []).map((item: any) => item.product_slug);
   },
 
   async toggle(userId: string, productSlug: string) {
     const supabase = await getSupabaseClient();
-    const { data: existing } = await supabase.from("wishlist_items").select("id").eq("user_id", userId).eq("product_slug", productSlug).maybeSingle();
+    const { data: existing } = await supabase
+      .from("wishlist_items")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("product_slug", productSlug)
+      .maybeSingle();
     if (existing) {
       await supabase.from("wishlist_items").delete().eq("id", existing.id);
       return false;
@@ -340,7 +438,11 @@ export const wishlistService = {
 export const tailoringService = {
   async getConfig(userId: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("tailoring_configs").select("*").eq("user_id", userId).maybeSingle();
+    const { data, error } = await supabase
+      .from("tailoring_configs")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
     if (error) throw error;
     if (!data) return null;
     return {
@@ -373,7 +475,9 @@ export const tailoringService = {
       stitcher_slug: config.stitcherSlug,
     };
 
-    const { error } = await supabase.from("tailoring_configs").upsert(payload, { onConflict: "user_id" });
+    const { error } = await supabase
+      .from("tailoring_configs")
+      .upsert(payload, { onConflict: "user_id" });
     if (error) throw error;
   },
 };
@@ -381,11 +485,17 @@ export const tailoringService = {
 export const tailoringQueueService = {
   async list(userRole: AppRole, assignedStitcherSlug?: string | null) {
     const supabase = await getSupabaseClient();
-    let query = supabase.from("order_items").select("*, orders(id, first_name, last_name, created_at)").not("stitching_label", "is", null);
+    let query = supabase
+      .from("order_items")
+      .select("*, orders(id, first_name, last_name, created_at)")
+      .not("stitching_label", "is", null);
     if (userRole === "TAILOR") {
       query = query.eq("stitcher_slug", assignedStitcherSlug ?? "__none__");
     }
-    const { data, error } = await query.order("created_at", { foreignTable: "orders", ascending: false });
+    const { data, error } = await query.order("created_at", {
+      foreignTable: "orders",
+      ascending: false,
+    });
     if (error) throw error;
     return (data ?? []).map((row: any) => ({
       id: row.id,
@@ -394,21 +504,32 @@ export const tailoringQueueService = {
       garment: row.title,
       stitchingLabel: row.stitching_label,
       stitcherSlug: row.stitcher_slug,
-      status: row.stitching_status ?? "Awaiting Measurements",
+      status: row.stitching_status ?? STITCHING_STATUSES[0],
       createdAt: row.orders?.created_at,
     }));
   },
 
   async updateStatus(itemId: string, status: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("order_items").update({ stitching_status: status }).eq("id", itemId).select().single();
+    const { data, error } = await supabase
+      .from("order_items")
+      .update({ stitching_status: status })
+      .eq("id", itemId)
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },
 };
 
 export const uploadService = {
-  async uploadFile(fileBuffer: Buffer, fileName: string, bucket: string, path: string, contentType?: string) {
+  async uploadFile(
+    fileBuffer: Buffer,
+    fileName: string,
+    bucket: string,
+    path: string,
+    contentType?: string
+  ) {
     const supabase = await getSupabaseClient();
     const { error } = await supabase.storage.from(bucket).upload(path, fileBuffer, {
       contentType,
@@ -435,14 +556,23 @@ export const productDraftService = {
 
   async create(userId: string, payload: any) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("product_drafts").insert({ vendor_id: userId, ...payload }).select().single();
+    const { data, error } = await supabase
+      .from("product_drafts")
+      .insert({ vendor_id: userId, ...payload })
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },
 
   async updateStatus(id: string, status: string) {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase.from("product_drafts").update({ status }).eq("id", id).select().single();
+    const { data, error } = await supabase
+      .from("product_drafts")
+      .update({ status })
+      .eq("id", id)
+      .select()
+      .single();
     if (error) throw error;
     return data;
   },

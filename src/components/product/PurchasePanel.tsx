@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/components/cart/CartContext";
 import { useWishlist } from "@/components/wishlist/WishlistContext";
 import type { Product } from "@/data/products";
+import { Button } from "@/components/ui/Button";
 
 export function PurchasePanel({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
@@ -21,7 +22,9 @@ export function PurchasePanel({ product }: { product: Product }) {
     addItem(
       product,
       qty,
-      stitched ? { label: "Signature Style, Standard Measurements", addOn: stitchingAddOn } : undefined
+      stitched
+        ? { label: "Signature Style, Standard Measurements", addOn: stitchingAddOn }
+        : undefined
     );
     setFeedback(stitched ? `Added ${qty} with Bespoke Stitching to bag.` : `Added ${qty} to bag.`);
     setTimeout(() => setFeedback(null), 2500);
@@ -43,7 +46,9 @@ export function PurchasePanel({ product }: { product: Product }) {
             aria-label="Share"
             onClick={() => {
               if (typeof navigator !== "undefined" && navigator.share) {
-                navigator.share({ title: product.title, url: window.location.href }).catch(() => {});
+                navigator
+                  .share({ title: product.title, url: window.location.href })
+                  .catch(() => {});
               }
             }}
             className="text-primary hover:text-marketplace-bronze transition-colors"
@@ -82,13 +87,17 @@ export function PurchasePanel({ product }: { product: Product }) {
               </span>
               <span className="font-label-sm text-text-muted">
                 {(product.stitcher?.rating ?? product.rating).toFixed(1)} (
-                {(product.stitcher?.reviewCount ?? product.reviewCount)} reviews)
+                {product.stitcher?.reviewCount ?? product.reviewCount} reviews)
               </span>
             </div>
           </div>
         </div>
         <Link
-          href={product.stitcher ? `/tailoring/stitchers/${product.stitcher.slug}` : "/tailoring/stitchers"}
+          href={
+            product.stitcher
+              ? `/tailoring/stitchers/${product.stitcher.slug}`
+              : "/tailoring/stitchers"
+          }
           className="font-label-sm text-primary underline underline-offset-4 uppercase tracking-widest hover:text-marketplace-bronze transition-colors"
         >
           View Profile
@@ -100,8 +109,12 @@ export function PurchasePanel({ product }: { product: Product }) {
         <div className="border border-marketplace-bronze/20 bg-surface-container-low p-6 space-y-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-marketplace-bronze">architecture</span>
-              <h3 className="font-label-md text-primary uppercase tracking-widest">Bespoke Stitching</h3>
+              <span className="material-symbols-outlined text-marketplace-bronze">
+                architecture
+              </span>
+              <h3 className="font-label-md text-primary uppercase tracking-widest">
+                Bespoke Stitching
+              </h3>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -114,8 +127,8 @@ export function PurchasePanel({ product }: { product: Product }) {
             </label>
           </div>
           <p className="font-body-md text-on-surface-variant text-sm">
-            Hand-finished by Master Tailors in our signature style or custom
-            measurements. Includes lining and premium finishing materials.
+            Hand-finished by Master Tailors in our signature style or custom measurements. Includes
+            lining and premium finishing materials.
           </p>
           <ul className="space-y-2">
             {["7-Day Priority Delivery", "Complimentary Design Consultation"].map((item) => (
@@ -154,22 +167,16 @@ export function PurchasePanel({ product }: { product: Product }) {
               +
             </button>
           </div>
-          <button
-            onClick={handleAddToBag}
-            className="flex-1 bg-black text-white font-label-md py-4 uppercase tracking-widest hover:bg-marketplace-bronze transition-all duration-300"
-          >
+          <Button onClick={handleAddToBag} variant="primary" className="flex-1 !py-4">
             Add to Bag
-          </button>
+          </Button>
         </div>
-        <button
-          onClick={() => toggle(product)}
-          className="w-full border border-black font-label-md py-4 uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-surface-bright transition-all"
-        >
+        <Button onClick={() => toggle(product)} variant="secondary" className="w-full !py-4">
           <span className="material-symbols-outlined text-[18px]">
             {wishlisted ? "favorite" : "favorite_border"}
           </span>
           {wishlisted ? "Saved to Wishlist" : "Add to Wishlist"}
-        </button>
+        </Button>
         {feedback && (
           <p role="status" className="text-label-sm text-marketplace-bronze">
             {feedback}

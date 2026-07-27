@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ProductCard } from "@/components/ui/ProductCard";
+import { ProductFilterGrid } from "@/components/ui/ProductFilterGrid";
 import { products } from "@/data/products";
 
 function searchProducts(query: string) {
@@ -10,7 +10,11 @@ function searchProducts(query: string) {
   );
 }
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams.q ?? "";
   const results = searchProducts(query);
@@ -33,10 +37,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       {query && results.length === 0 && (
         <div className="mx-auto mt-16 max-w-lg text-center">
           <span className="material-symbols-outlined text-5xl text-text-muted">search_off</span>
-          <p className="mt-6 font-display text-headline-sm">Nothing matched &ldquo;{query}&rdquo;</p>
+          <p className="mt-6 font-display text-headline-sm">
+            Nothing matched &ldquo;{query}&rdquo;
+          </p>
           <p className="mt-3 text-body-md text-text-muted">
-            Try a broader term like a fabric or category — or browse a
-            collection instead.
+            Try a broader term like a fabric or category — or browse a collection instead.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/men" className="label-caps border border-outline-variant px-6 py-3">
@@ -45,7 +50,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <Link href="/women" className="label-caps border border-outline-variant px-6 py-3">
               Women
             </Link>
-            <Link href="/new-arrivals" className="label-caps border border-outline-variant px-6 py-3">
+            <Link
+              href="/new-arrivals"
+              className="label-caps border border-outline-variant px-6 py-3"
+            >
               New Arrivals
             </Link>
           </div>
@@ -53,10 +61,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       )}
 
       {results.length > 0 && (
-        <div className="mt-12 grid grid-cols-2 gap-gutter lg:grid-cols-4">
-          {results.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        <div className="mt-12">
+          <ProductFilterGrid products={results} />
         </div>
       )}
     </div>

@@ -38,10 +38,9 @@ export function AtelierPromo() {
               CUSTOM STITCHING SERVICES
             </h2>
             <p className="font-body-lg text-on-surface-variant mb-10 max-w-xl">
-              Transform your unstitched fabrics into a masterpiece with our
-              concierge tailoring service. From heritage patterns to modern
-              silhouettes, our master artisans ensure a fit that is as
-              unique as you are.
+              Transform your unstitched fabrics into a masterpiece with our concierge tailoring
+              service. From heritage patterns to modern silhouettes, our master artisans ensure a
+              fit that is as unique as you are.
             </p>
             <div className="space-y-6 mb-12">
               {features.map((feature) => (

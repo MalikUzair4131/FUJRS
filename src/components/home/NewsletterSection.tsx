@@ -12,12 +12,10 @@ export function NewsletterSection() {
         <span className="material-symbols-outlined text-[48px] mb-8 text-tertiary-fixed-dim block">
           mail
         </span>
-        <h2 className="font-display-lg text-headline-md md:text-[48px] mb-6">
-          THE INNER CIRCLE
-        </h2>
+        <h2 className="font-display-lg text-headline-md md:text-[48px] mb-6">THE INNER CIRCLE</h2>
         <p className="font-body-lg text-on-primary-container mb-12">
-          Be the first to experience our seasonal drops, atelier events, and
-          exclusive styling sessions.
+          Be the first to experience our seasonal drops, atelier events, and exclusive styling
+          sessions.
         </p>
         {subscribed ? (
           <p className="font-label-md text-label-md uppercase tracking-widest text-tertiary-fixed-dim">
