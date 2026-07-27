@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
+import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { DEMO_DRAFTS, DEMO_STATS, type DemoDraft } from "@/lib/auth/demoData";
 
 interface RecentOrder {
   id: string;
@@ -13,19 +17,26 @@ interface RecentOrder {
 interface StatsResponse {
   totalOrders: number;
   totalRevenue: number;
+  revenueByDay: { date: string; revenue: number }[];
+  ordersByStatus: { status: string; count: number }[];
   recentOrders: RecentOrder[];
 }
 
 export function AdminView() {
+  const { session } = useAuth();
+  const isDemo = !!session?.user.isDemo;
+
   const [data, setData] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<any[] | null>(null);
+  const [drafts, setDrafts] = useState<DemoDraft[] | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
 
   async function handleDraftAction(id: string, action: "APPROVED" | "REJECTED") {
     setDraftError(null);
     const previous = drafts;
     setDrafts((prev) => prev?.map((d) => (d.id === id ? { ...d, status: action } : d)) ?? null);
+
+    if (isDemo) return;
 
     const res = await fetch("/api/admin/drafts", {
       method: "PATCH",
@@ -46,6 +57,10 @@ export function AdminView() {
   }
 
   useEffect(() => {
+    if (isDemo) {
+      setData(DEMO_STATS);
+      return;
+    }
     fetch("/api/dashboard/stats")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load stats");
@@ -53,9 +68,13 @@ export function AdminView() {
       })
       .then(setData)
       .catch(() => setError("Couldn't load live stats right now."));
-  }, []);
+  }, [isDemo]);
 
   useEffect(() => {
+    if (isDemo) {
+      setDrafts(DEMO_DRAFTS);
+      return;
+    }
     // Load pending drafts (admin only)
     fetch("/api/admin/drafts")
       .then((res) => {
@@ -64,7 +83,7 @@ export function AdminView() {
       })
       .then((d) => setDrafts(d.drafts))
       .catch(() => setDraftError("Couldn't load product drafts right now."));
-  }, []);
+  }, [isDemo]);
 
   const stats = [
     { label: "Total Orders", value: data ? data.totalOrders.toLocaleString() : "—" },
@@ -76,8 +95,9 @@ export function AdminView() {
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Orders &amp; Revenue are live from the database. Product count and tailoring queue are still
-        placeholders — no product-management or tailoring-request tables exist yet.
+        {isDemo
+          ? "Demo data — not connected to a live database."
+          : "Orders & Revenue are live from the database. Product count and tailoring queue are still placeholders — no product-management or tailoring-request tables exist yet."}
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -87,6 +107,34 @@ export function AdminView() {
             <p className="mt-2 font-display text-headline-sm">{stat.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-10">
+        <p className="label-caps text-gold">Operations</p>
+        <h2 className="mt-2 font-display text-headline-sm">Revenue &amp; Orders</h2>
+        <div className="mt-4 grid gap-6 lg:grid-cols-2">
+          <div className="border border-border-subtle p-6">
+            <p className="text-label-sm uppercase text-text-muted">
+              Revenue, last {data?.revenueByDay.length ?? 14} days
+            </p>
+            <div className="mt-4">
+              <RevenueTrendChart
+                data={(data?.revenueByDay ?? []).map((d) => ({ label: d.date.slice(5), value: d.revenue }))}
+                valueFormatter={(v) => `PKR ${v.toLocaleString()}`}
+                emptyMessage={data ? "No revenue in this window yet." : "Loading…"}
+              />
+            </div>
+          </div>
+          <div className="border border-border-subtle p-6">
+            <p className="text-label-sm uppercase text-text-muted">Orders by status</p>
+            <div className="mt-4">
+              <CategoryBarChart
+                data={(data?.ordersByStatus ?? []).map((s) => ({ label: s.status, value: s.count }))}
+                emptyMessage={data ? "No orders placed yet." : "Loading…"}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-10">

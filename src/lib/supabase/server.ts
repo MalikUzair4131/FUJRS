@@ -65,7 +65,7 @@ function createNoopSupabaseClient() {
   } as any;
 }
 
-export type AppRole = "CUSTOMER" | "ADMIN" | "VENDOR" | "TAILOR";
+export type AppRole = "CUSTOMER" | "ADMIN" | "VENDOR" | "TAILOR" | "SUPER_ADMIN";
 
 export interface AppUserProfile {
   id: string;

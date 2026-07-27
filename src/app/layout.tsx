@@ -36,7 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="flex min-h-screen flex-col bg-background text-on-surface font-body-md selection:bg-tertiary-fixed-dim selection:text-primary">
+      <body
+        className="flex min-h-screen flex-col bg-background text-on-surface font-body-md selection:bg-tertiary-fixed-dim selection:text-primary"
+        suppressHydrationWarning
+      >
         <AuthProvider>
           <CartProvider>
             <WishlistProvider>

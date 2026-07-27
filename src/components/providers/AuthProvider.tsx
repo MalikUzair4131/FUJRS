@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { AppRole } from "@/lib/supabase/server";
+import { isDemoAuthEnabled, isDemoEmail } from "@/lib/auth/roles";
+import { clearDemoSession, createDemoUser, persistDemoSession, readDemoSession } from "@/lib/auth/demoSession";
 
 interface AuthUser {
   id: string;
@@ -10,6 +12,7 @@ interface AuthUser {
   name: string;
   role: AppRole;
   assignedStitcherSlug: string | null;
+  isDemo?: boolean;
 }
 
 interface AuthSession {
@@ -19,19 +22,15 @@ interface AuthSession {
 interface AuthContextValue {
   session: AuthSession | null;
   status: "loading" | "authenticated" | "unauthenticated";
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (input: {
-    email: string;
-    password: string;
-    name: string;
-    role?: AppRole;
-    assignedStitcherSlug?: string | null;
-  }) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string; role?: AppRole }>;
+  signUp: (input: { email: string; password: string; name: string }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<{ error?: string }>;
   updateEmail: (newEmail: string) => Promise<{ error?: string }>;
   updateName: (newName: string) => Promise<{ error?: string }>;
 }
+
+const DEMO_MODE_ERROR = "Not available for demo accounts.";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -55,6 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function hydrate() {
+      const demoUser = readDemoSession();
+      if (demoUser) {
+        if (!mounted) return;
+        setSession({ user: demoUser });
+        setStatus("authenticated");
+        return;
+      }
+
       const {
         data: { session: initialSession },
         error,
@@ -80,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: subscription } = client.auth.onAuthStateChange(
       (event: string, nextSession: { user?: any } | null) => {
         if (!mounted) return;
+        if (readDemoSession()) return;
         if (nextSession?.user) {
           setSession({ user: toUser(nextSession.user) });
           setStatus("authenticated");
@@ -101,6 +109,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       status,
       async signIn(email, password) {
+        if (isDemoAuthEnabled() && isDemoEmail(email)) {
+          const demoUser = createDemoUser(email);
+          if (demoUser) {
+            persistDemoSession(demoUser);
+            setSession({ user: demoUser });
+            setStatus("authenticated");
+            return { role: demoUser.role };
+          }
+        }
         const { error } = await client.auth.signInWithPassword({ email, password });
         return { error: error?.message };
       },
@@ -111,25 +128,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: {
             data: {
               name: input.name,
-              role: input.role ?? "CUSTOMER",
-              assigned_stitcher_slug: input.assignedStitcherSlug ?? null,
+              role: "CUSTOMER",
             },
           },
         });
         return { error: error?.message };
       },
       async signOut() {
+        clearDemoSession();
+        setSession(null);
+        setStatus("unauthenticated");
         await client.auth.signOut();
       },
       async updatePassword(newPassword) {
+        if (session?.user.isDemo) return { error: DEMO_MODE_ERROR };
         const { error } = await client.auth.updateUser({ password: newPassword });
         return { error: error?.message };
       },
       async updateEmail(newEmail) {
+        if (session?.user.isDemo) return { error: DEMO_MODE_ERROR };
         const { error } = await client.auth.updateUser({ email: newEmail });
         return { error: error?.message };
       },
       async updateName(newName) {
+        if (session?.user.isDemo) return { error: DEMO_MODE_ERROR };
         const { error } = await client.auth.updateUser({ data: { name: newName } });
         return { error: error?.message };
       },

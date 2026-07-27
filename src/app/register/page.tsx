@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { stitchers } from "@/data/stitchers";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 
@@ -13,11 +12,6 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const [isStaff, setIsStaff] = useState(false);
-  const [staffRole, setStaffRole] = useState<"VENDOR" | "TAILOR">("VENDOR");
-  const [staffInviteCode, setStaffInviteCode] = useState("");
-  const [assignedStitcherSlug, setAssignedStitcherSlug] = useState(stitchers[0].slug);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,18 +24,7 @@ export default function RegisterPage() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        email,
-        password,
-        ...(isStaff
-          ? {
-              staffRole,
-              staffInviteCode,
-              ...(staffRole === "TAILOR" ? { assignedStitcherSlug } : {}),
-            }
-          : {}),
-      }),
+      body: JSON.stringify({ name, email, password }),
     });
     const data = await res.json();
 
@@ -51,13 +34,7 @@ export default function RegisterPage() {
       return;
     }
 
-    const signUpResult = await signUp({
-      email,
-      password,
-      name,
-      role: isStaff ? staffRole : "CUSTOMER",
-      assignedStitcherSlug: isStaff && staffRole === "TAILOR" ? assignedStitcherSlug : null,
-    });
+    const signUpResult = await signUp({ email, password, name });
     if (signUpResult.error) {
       setError(signUpResult.error);
       setLoading(false);
@@ -71,7 +48,7 @@ export default function RegisterPage() {
       router.push("/login");
       return;
     }
-    router.push(isStaff ? "/dashboard" : "/account");
+    router.push("/account");
     router.refresh();
   }
 
@@ -132,83 +109,6 @@ export default function RegisterPage() {
               className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
             />
             <p className="mt-1 font-label-sm text-on-surface-variant">At least 8 characters.</p>
-          </div>
-
-          <div className="border-t border-outline-variant pt-4">
-            <label className="flex items-center gap-2 font-label-sm uppercase tracking-widest text-on-surface-variant cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isStaff}
-                onChange={(e) => setIsStaff(e.target.checked)}
-                className="h-4 w-4"
-              />
-              This is a staff account (Vendor / Tailor)
-            </label>
-
-            {isStaff && (
-              <div className="mt-4 space-y-4 border border-marketplace-bronze/30 bg-surface-container-low p-4">
-                <div>
-                  <label
-                    htmlFor="register-role"
-                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
-                  >
-                    Role
-                  </label>
-                  <select
-                    id="register-role"
-                    value={staffRole}
-                    onChange={(e) => setStaffRole(e.target.value as "VENDOR" | "TAILOR")}
-                    className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
-                  >
-                    <option value="VENDOR">Vendor (merchandising)</option>
-                    <option value="TAILOR">Tailor (master stitcher)</option>
-                  </select>
-                </div>
-
-                {staffRole === "TAILOR" && (
-                  <div>
-                    <label
-                      htmlFor="register-assigned-stitcher"
-                      className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
-                    >
-                      Which Master Stitcher is this?
-                    </label>
-                    <select
-                      id="register-assigned-stitcher"
-                      value={assignedStitcherSlug}
-                      onChange={(e) => setAssignedStitcherSlug(e.target.value)}
-                      className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
-                    >
-                      {stitchers.map((s) => (
-                        <option key={s.slug} value={s.slug}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label
-                    htmlFor="register-invite-code"
-                    className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
-                  >
-                    Staff Invite Code
-                  </label>
-                  <input
-                    id="register-invite-code"
-                    required={isStaff}
-                    value={staffInviteCode}
-                    onChange={(e) => setStaffInviteCode(e.target.value)}
-                    className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
-                  />
-                  <p className="mt-1 font-label-sm text-on-surface-variant">
-                    Ask an admin for this. Without a valid code, the account is created as a regular
-                    customer instead.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           {error && <p className="font-label-sm text-error">{error}</p>}

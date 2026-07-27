@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
+import { DEMO_ACCOUNTS, ROLE_LABELS, isDemoAuthEnabled, isStaffRole } from "@/lib/auth/roles";
 
 function LoginForm() {
   const router = useRouter();
@@ -29,7 +30,15 @@ function LoginForm() {
       setError("Incorrect email or password.");
       return;
     }
-    router.push(callbackUrl);
+
+    if (result.role) {
+      // Demo session: no real Supabase cookie, so server-rendered pages like
+      // /account (which hard-redirect unauthenticated visitors) don't work.
+      // Only /dashboard is safe to land on for a demo session.
+      router.push(callbackUrl === "/dashboard" ? callbackUrl : isStaffRole(result.role) ? "/dashboard" : "/");
+    } else {
+      router.push(callbackUrl);
+    }
     router.refresh();
   }
 
@@ -96,6 +105,21 @@ function LoginForm() {
             Create an account
           </Link>
         </p>
+
+        {isDemoAuthEnabled() && (
+          <div className="mt-8 border-t border-outline-variant pt-6">
+            <p className="font-label-sm uppercase tracking-widest text-marketplace-bronze">
+              Demo accounts (any password)
+            </p>
+            <ul className="mt-2 space-y-1 font-body text-body-md text-on-surface-variant">
+              {DEMO_ACCOUNTS.map((account) => (
+                <li key={account.email}>
+                  {account.email} — {ROLE_LABELS[account.role]}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

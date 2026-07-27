@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { DEMO_DRAFTS } from "@/lib/auth/demoData";
 
 interface Draft {
   id: string;
@@ -25,6 +27,9 @@ const emptyForm = {
 };
 
 export function VendorView() {
+  const { session } = useAuth();
+  const isDemo = !!session?.user.isDemo;
+
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -33,6 +38,10 @@ export function VendorView() {
   const [formError, setFormError] = useState<string | null>(null);
 
   function loadDrafts() {
+    if (isDemo) {
+      setDrafts(DEMO_DRAFTS);
+      return;
+    }
     fetch("/api/vendor/products")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load");
@@ -44,7 +53,8 @@ export function VendorView() {
 
   useEffect(() => {
     loadDrafts();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +63,24 @@ export function VendorView() {
     const price = Number(form.price);
     if (!form.title || !price || !form.fabric || !form.category || form.description.length < 10) {
       setFormError("Fill in every field — description needs at least 10 characters.");
+      return;
+    }
+
+    if (isDemo) {
+      const newDraft: Draft = {
+        id: `demo-draft-${Date.now()}`,
+        title: form.title,
+        price,
+        fabric: form.fabric,
+        category: form.category,
+        gender: form.gender,
+        description: form.description,
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+      };
+      setDrafts((prev) => [newDraft, ...(prev ?? [])]);
+      setForm(emptyForm);
+      setShowForm(false);
       return;
     }
 
@@ -88,8 +116,9 @@ export function VendorView() {
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Products you submit here go into a real review queue — they&apos;re proposals for the live
-        catalog (which is code-managed), not instantly published.
+        {isDemo
+          ? "Demo data — submissions here are local only and not persisted."
+          : "Products you submit here go into a real review queue — they're proposals for the live catalog (which is code-managed), not instantly published."}
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
