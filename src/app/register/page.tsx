@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { signIn, signUp } = useAuth();
+  const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,35 +21,16 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong.");
-      setLoading(false);
-      return;
-    }
-
-    const signUpResult = await signUp({ email, password, name });
-    if (signUpResult.error) {
-      setError(signUpResult.error);
-      setLoading(false);
-      return;
-    }
-
-    const result = await signIn(email, password);
+    // The account is created on this device only — there's no backend to
+    // register against, and the password is intentionally not stored.
+    const result = await signUp({ email, password, name });
     setLoading(false);
 
-    if (result?.error) {
-      router.push("/login");
+    if (result.error) {
+      setError(result.error);
       return;
     }
     router.push("/account");
-    router.refresh();
   }
 
   return (

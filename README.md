@@ -1,47 +1,88 @@
 # FUJRS — Premium Fashion & Bespoke Tailoring
 
-A full-stack Next.js storefront for a single-brand fashion &
-bespoke-tailoring business, rebuilt page-by-page from source HTML designs
-and then extended with a real backend: auth, database persistence, Stripe
-payments, and role-gated staff accounts.
+A Next.js storefront and staff dashboard for a single-brand fashion &
+bespoke-tailoring business.
 
-The product requirements this is being built against are in
-[REQUIREMENTS.md](./REQUIREMENTS.md); current status against that spec —
-including where the build has diverged from it — is in
-[TASKS.md](./TASKS.md).
+> **UI-only build.** There is no backend, database, auth provider, or
+> payment provider. The whole app runs in the browser so the UI/UX can be
+> finalised first — the schema and backend will be designed against the
+> finished screens. Clone, `npm install`, `npm run dev`, done: no `.env`, no
+> services to provision.
+
+Product requirements are in [REQUIREMENTS.md](./REQUIREMENTS.md); status
+against that spec is in [TASKS.md](./TASKS.md); the frontend audit log is in
+[UI_AUDIT.md](./UI_AUDIT.md).
 
 ## Stack
 
 - **Framework**: Next.js 15 (App Router), React 18, TypeScript, Tailwind CSS
-- **Auth & database**: Supabase — Supabase Auth for accounts/sessions,
-  Postgres tables via `src/lib/supabase/services.ts` for orders, cart,
-  wishlist, tailoring configs, and product drafts. (Prisma/NextAuth were
-  used in earlier build passes and are still referenced in some file names,
-  but `src/lib/prisma.ts` is now a stub and the NextAuth route is empty —
-  Supabase is what's actually live.)
-- **Payments**: Stripe (PaymentElement for cards, Cash on Delivery as a
-  non-Stripe option)
-- API input validated with `zod`
-- **Product catalog**: currently a static file (`src/data/products.ts`),
-  not database-backed — see TASKS.md for what that blocks (admin product
-  management)
+- **Runtime dependencies**: `next`, `react`, `react-dom` — that's all
+- **Catalog**: static data in `src/data/products.ts` and `src/data/stitchers.ts`
 
-## Marketplace → single-brand adaptations
+## Running it
 
-The source designs were marketplace/multi-vendor patterns (seller badges,
-"Sold by X Official," external designer credits, a "Marketplace" nav link).
-Every instance was adapted to single-brand FUJRS, consistently across the
-whole app:
+```bash
+npm install
+npm run dev          # http://localhost:3000
+```
 
-- "Shop by Seller" → **"Our Ateliers"** (in-house specialty studios: Bridal
-  Atelier, Prêt Studio, Menswear Guild)
-- Individual artisan/seller credits → **Master Stitchers**, an internal
-  FUJRS tailoring team with their own directory and profiles
-- "Sold by [Brand] Official" / "Verified Seller" badges → "Sold by FUJRS" /
-  dropped where purely marketplace-signaling
-- Terms & Conditions' "Marketplace Seller Policies" → "Product Quality &
-  Descriptions"
-- Cart's seller-grouped sections → single "Sold by FUJRS" section
+### Demo sign-in
+
+Any password works. The account list is also shown on `/login`.
+
+| Email | Role |
+|---|---|
+| `user@gmail.com` | Customer |
+| `admin@gmail.com` | Admin |
+| `vendor@gmail.com` | Vendor |
+| `tailor@gmail.com` | Tailor |
+| `superadmin@gmail.com` | Super Admin |
+
+Registering on `/register` creates a browser-local customer account.
+Passwords are deliberately never stored — there's nothing to authenticate
+against yet.
+
+## Where the data lives
+
+Everything is in `localStorage`, behind small modules so there's exactly one
+place to swap when the real backend arrives:
+
+| Data | Module | Key |
+|---|---|---|
+| Session | `src/lib/auth/session.ts` | `fujrs-session` |
+| Accounts + saved address | `src/lib/local/profile.ts` | `fujrs-accounts` |
+| Orders | `src/lib/local/orders.ts` | `fujrs-orders` |
+| Bag | `src/components/cart/CartContext.tsx` | `fujrs-cart` |
+| Wishlist | `src/components/wishlist/WishlistContext.tsx` | `fujrs-wishlist` |
+| Measurements | `src/components/tailoring/TailoringContext.tsx` | `fujrs-tailoring-config` |
+
+The four role dashboards render fixtures from `src/lib/auth/demoData.ts` and
+say so on screen. Their actions (approve draft, change stitching status,
+create user, toggle access) update local state only.
+
+Clearing site data resets the app to a fresh install.
+
+## What works end to end
+
+Browse → product detail → add to bag → checkout (shipping, Cash on
+Delivery) → order confirmation → order history → order detail with live
+bespoke stitching progress. Wishlist, catalog filters, search, the full
+tailoring configurator with live pricing, and all four role dashboards.
+
+## What's deliberately stubbed
+
+These show the real UI and a "coming soon" toast rather than a dead button:
+
+- **Card payments** — Cash on Delivery is the only method that completes an
+  order
+- **Promo codes**
+- **Password changes** and the forgot/reset-password flow (validation runs;
+  nothing is saved)
+- **Email verification** on an email change
+
+Missing screens on the staff side (admin product CRUD, order actions,
+reports, the real vendor affiliate system) are tracked in
+[TASKS.md](./TASKS.md).
 
 ## Site structure (source → route mapping)
 
@@ -63,80 +104,39 @@ whole app:
 | contact us | `/contact` |
 | returns & exchanges | `/returns-exchanges` |
 | terms & conditions | `/terms` |
-| account / dashboard (customer, admin, vendor, tailor) | `/account`, `/dashboard` |
+| account / dashboard | `/account`, `/dashboard` |
 
-## Architecture notes
+## Marketplace → single-brand adaptations
 
-- **Cart & tailoring config**: signed-out users get `localStorage`;
-  signing in syncs to the database and merges any local guest data into the
-  account (matching cart items combine quantities; a local tailoring config
-  only wins if the account doesn't already have a saved one). Cart sync uses
-  a full replace (`PUT /api/cart` deletes + recreates all rows) rather than
-  per-row diffing — simpler and robust at this scale.
-- **Wishlist**: same signed-out/signed-in + merge-on-login pattern as cart.
-- **Orders**: require sign-in. Written to `Order` + `OrderItem[]`, referenced
-  by product `slug` (the catalog itself isn't database-backed, so `slug` is
-  the correct join key). `/checkout/confirmation` is a server component with
-  an ownership check.
-- **Payments**: card payments go through Stripe's `PaymentElement`; the
-  server re-verifies the PaymentIntent (status + amount) against Stripe
-  before writing an order — the client's claim that payment succeeded is
-  never trusted on its own. Cash on Delivery skips Stripe entirely.
-- **Roles**: a `role` field on the Supabase `profiles` table is
-  `CUSTOMER` (default) | `ADMIN` | `VENDOR` | `TAILOR` — a single
-  hardcoded field, not the granular per-user permission model
-  REQUIREMENTS.md Section 4.2 calls for (see TASKS.md). `/dashboard` is
-  access-controlled per role. Vendor/Tailor registration requires a shared
-  `STAFF_INVITE_CODE`; there is no self-serve Admin signup — promote a user
-  to Admin manually in the Supabase dashboard (`profiles` table).
-- Today's "Vendor" role submits product drafts for Admin approval — it is
-  not the affiliate/referral-link/commission system described in
-  REQUIREMENTS.md Section 5, which hasn't been built yet.
+The source designs were marketplace/multi-vendor patterns (seller badges,
+"Sold by X Official," external designer credits, a "Marketplace" nav link).
+Every instance was adapted to single-brand FUJRS, consistently across the
+whole app:
 
-## Setup
+- "Shop by Seller" → **"Our Ateliers"** (in-house specialty studios: Bridal
+  Atelier, Prêt Studio, Menswear Guild)
+- Individual artisan/seller credits → **Master Stitchers**, an internal
+  FUJRS tailoring team with their own directory and profiles
+- "Sold by [Brand] Official" / "Verified Seller" badges → "Sold by FUJRS" /
+  dropped where purely marketplace-signaling
+- Terms & Conditions' "Marketplace Seller Policies" → "Product Quality &
+  Descriptions"
+- Cart's seller-grouped sections → single "Sold by FUJRS" section
 
-```bash
-npm install
-npm run dev          # http://localhost:3000
-```
+## Deployment
 
-Environment variables (`.env.local` locally; set in Vercel/host for
-deployment):
+Deploys as a static-first Next.js app with no environment variables. Use
+`npm ci` as the install command for deterministic builds.
 
-```
-NEXT_PUBLIC_SUPABASE_URL="..."
-NEXT_PUBLIC_SUPABASE_ANON_KEY="..."
-SUPABASE_SERVICE_ROLE_KEY="..."                      # server-only
-STRIPE_SECRET_KEY="sk_test_..."
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-STAFF_INVITE_CODE="pick-a-real-shared-secret"        # required for Vendor/Tailor registration
-```
+Product images currently reference `lh3.googleusercontent.com` (a
+design-tool preview CDN, whitelisted in `next.config.mjs`). Migrate to your
+own asset storage (Vercel Blob, Cloudinary, S3) before relying on this in
+production — it isn't meant for long-term hosting.
 
-(`.env.example` also lists `DATABASE_URL`, `NEXTAUTH_SECRET`, and
-`MONGODB_URI` — leftovers from earlier architecture passes that the running
-app no longer reads. Safe to ignore/remove.)
+## When the backend arrives
 
-Stripe test keys: https://dashboard.stripe.com/test/apikeys — test card
-`4242 4242 4242 4242`, any future expiry, any 3-digit CVC. Full test-card
-library (declines, 3D Secure, etc.): https://docs.stripe.com/testing
-
-## Deployment (Vercel)
-
-Required environment variables — set in Project → Settings → Environment
-Variables:
-
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-  `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `STAFF_INVITE_CODE`
-
-Notes:
-- Use `npm ci` as the Install Command for deterministic installs; if you hit
-  peer-dependency errors, use `npm ci --legacy-peer-deps`.
-- Do not commit `.env` or secrets — use `.env.local` locally and keep it in
-  `.gitignore`. Rotate any credential that's ever been exposed publicly, and
-  use least-privilege DB users.
-- Product images currently reference `lh3.googleusercontent.com` (a
-  design-tool preview CDN, whitelisted in `next.config.mjs`). Migrate to your
-  own asset storage (Vercel Blob, Cloudinary, S3) before relying on this in
-  production — it isn't meant for long-term hosting.
+1. Design the schema against these finished screens.
+2. Replace each module in the table above with an API client — the call
+   sites don't change.
+3. Re-validate every payload server-side. The client-side validation in
+   these forms is UX, not a security boundary.

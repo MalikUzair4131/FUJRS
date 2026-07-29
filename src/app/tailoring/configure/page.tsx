@@ -9,6 +9,7 @@ import {
   SLEEVES,
   HEMLINES,
   GARMENT_PRICES,
+  type MeasurementField,
 } from "@/components/tailoring/TailoringContext";
 import { getStitcherBySlug, stitchers } from "@/data/stitchers";
 import { Button } from "@/components/ui/Button";
@@ -35,7 +36,7 @@ export default function ConfigurePage() {
 
   const [garmentType, setGarmentType] = useState(config.garmentType);
   const [measurements, setMeasurements] = useState<Record<string, string>>(config.measurements);
-  const [activeField, setActiveField] = useState<string>(MEASUREMENT_FIELDS[0]);
+  const [activeField, setActiveField] = useState<MeasurementField>(MEASUREMENT_FIELDS[0]);
   const [neckline, setNeckline] = useState(config.neckline);
   const [sleeve, setSleeve] = useState(config.sleeve);
   const [hemline, setHemline] = useState(config.hemline);
@@ -92,7 +93,7 @@ export default function ConfigurePage() {
               <div className="flex gap-2 items-center">
                 <span className="w-8 h-[1px] bg-primary mt-1" />
                 <span className="font-label-md">
-                  {MEASUREMENT_FIELDS.indexOf(activeField as any) + 1} / {MEASUREMENT_FIELDS.length}
+                  {MEASUREMENT_FIELDS.indexOf(activeField) + 1} / {MEASUREMENT_FIELDS.length}
                 </span>
               </div>
             </div>

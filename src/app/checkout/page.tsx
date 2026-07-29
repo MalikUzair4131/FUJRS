@@ -6,14 +6,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCart, cartTotals } from "@/components/cart/CartContext";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+import { createOrder } from "@/lib/local/orders";
+import { getAddress } from "@/lib/local/profile";
 
 type Step = 1 | 2 | 3;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { session } = useAuth();
+  const { toast } = useToast();
   const { items, clear, mounted } = useCart();
   const [step, setStep] = useState<Step>(1);
 
@@ -24,8 +27,9 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
 
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("card");
-  const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
+  // Card payments need a payment provider on the server, which doesn't exist
+  // yet — Cash on Delivery is the only method that can complete an order.
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cod">("cod");
 
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,15 @@ export default function CheckoutPage() {
   }, [mounted, items.length, router]);
 
   useEffect(() => {
-    if (session?.user.email) setEmail((prev) => prev || session.user.email);
+    if (!session?.user.email) return;
+    setEmail((prev) => prev || session.user.email);
+
+    const saved = getAddress(session.user.email);
+    if (saved) {
+      setStreet((prev) => prev || saved.street);
+      setCity((prev) => prev || saved.city);
+      setPostalCode((prev) => prev || saved.postalCode);
+    }
   }, [session]);
 
   if (!mounted || items.length === 0) {
@@ -62,73 +74,54 @@ export default function CheckoutPage() {
 
   function handleApplyPromo(e: React.FormEvent) {
     e.preventDefault();
-    setPromoMessage(
-      promoCode.trim()
-        ? "Promo codes aren't available yet — check back soon."
-        : "Enter a code first."
-    );
+    if (!promoCode.trim()) {
+      setPromoMessage("Enter a code first.");
+      return;
+    }
+    setPromoMessage(null);
+    toast("Promo codes aren't available yet — coming with the live backend.", "soon");
   }
 
-  function goToReviewCod(e: React.FormEvent) {
+  function goToReview(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setStep(3);
   }
 
-  function onPaymentSuccess(paymentIntentId: string) {
-    setStripePaymentIntentId(paymentIntentId);
-    setError(null);
-    setStep(3);
-  }
-
-  async function placeOrder() {
-    setPlacing(true);
-    setError(null);
-
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: items.map((item) => ({
-          productSlug: item.slug,
-          title: item.title,
-          image: item.image,
-          price: item.price,
-          qty: item.qty,
-          stitchingLabel: item.stitching?.label,
-          stitchingAddOn: item.stitching?.addOn,
-          stitcherSlug: item.stitcherSlug,
-        })),
-        fabricTotal,
-        stitchingTotal,
-        shipping,
-        total,
-        firstName,
-        lastName,
-        street,
-        city,
-        postalCode,
-        paymentMethod,
-        stripePaymentIntentId: stripePaymentIntentId ?? undefined,
-      }),
-    });
-
-    const data = await res.json();
-    setPlacing(false);
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        setError(
-          "Guest checkout isn't available yet — please sign in to complete this order. Your bag will be right here."
-        );
-        return;
-      }
-      setError(data.error ?? "Could not place order. Please try again.");
+  function placeOrder() {
+    if (paymentMethod === "card") {
+      toast("Card payments aren't available yet — choose Cash on Delivery.", "soon");
       return;
     }
 
+    setPlacing(true);
+    setError(null);
+
+    const order = createOrder({
+      items: items.map((item) => ({
+        productSlug: item.slug,
+        title: item.title,
+        image: item.image,
+        price: item.price,
+        qty: item.qty,
+        stitchingLabel: item.stitching?.label,
+        stitchingAddOn: item.stitching?.addOn,
+        stitcherSlug: item.stitcherSlug,
+      })),
+      fabricTotal,
+      stitchingTotal,
+      shipping,
+      total,
+      firstName,
+      lastName,
+      street,
+      city,
+      postalCode,
+      paymentMethod,
+    });
+
     clear();
-    router.push(`/checkout/confirmation?orderId=${data.order.id}`);
+    router.push(`/checkout/confirmation?orderId=${order.id}`);
   }
 
   const steps: { n: Step; label: string }[] = [
@@ -273,7 +266,13 @@ export default function CheckoutPage() {
                       type="radio"
                       name="payment"
                       checked={paymentMethod === "card"}
-                      onChange={() => setPaymentMethod("card")}
+                      onChange={() => {
+                        setPaymentMethod("card");
+                        toast(
+                          "Card payments aren't available yet — coming with the live backend.",
+                          "soon"
+                        );
+                      }}
                       className="w-5 h-5"
                     />
                     <span className="font-label-md text-label-md uppercase">
@@ -291,11 +290,17 @@ export default function CheckoutPage() {
                 </label>
 
                 {paymentMethod === "card" && (
-                  <div className="border border-primary bg-surface-container-low p-8">
-                    <StripePaymentForm total={total} onSuccess={onPaymentSuccess} />
-                    <p className="mt-4 text-label-sm text-on-surface-variant">
-                      Test mode: use card number 4242 4242 4242 4242, any future expiry, any CVC.
-                    </p>
+                  <div className="flex items-start gap-3 border border-outline-variant border-l-4 border-l-tertiary-fixed-dim bg-surface-container-low p-6">
+                    <span className="material-symbols-outlined text-marketplace-bronze">
+                      schedule
+                    </span>
+                    <div>
+                      <p className="font-label-md text-label-md uppercase">Coming soon</p>
+                      <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                        Card payments go live with our secure payment provider. Choose Cash on
+                        Delivery to complete your order today.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -330,7 +335,7 @@ export default function CheckoutPage() {
                   <Button
                     type="button"
                     variant="primary"
-                    onClick={goToReviewCod}
+                    onClick={goToReview}
                     className="!px-12 !py-5"
                   >
                     Review Order
@@ -410,9 +415,7 @@ export default function CheckoutPage() {
                       EDIT
                     </button>
                   </div>
-                  <p className="font-body-md text-text-muted">
-                    {paymentMethod === "card" ? "Card payment confirmed" : "Cash on Delivery"}
-                  </p>
+                  <p className="font-body-md text-text-muted">Cash on Delivery</p>
                 </div>
               </div>
 
@@ -424,20 +427,7 @@ export default function CheckoutPage() {
                   </a>{" "}
                   and confirm that all custom measurements provided are accurate.
                 </p>
-                {error && (
-                  <p className="text-error font-label-sm mb-4">
-                    {error}
-                    {!session && (
-                      <>
-                        {" "}
-                        <Link href="/login?callbackUrl=/checkout" className="underline">
-                          Sign in now
-                        </Link>
-                        .
-                      </>
-                    )}
-                  </p>
-                )}
+                {error && <p className="text-error font-label-sm mb-4">{error}</p>}
                 <div className="flex flex-col md:flex-row gap-4">
                   <Button variant="secondary" onClick={() => setStep(2)} className="!px-12 !py-5">
                     Back to Payment

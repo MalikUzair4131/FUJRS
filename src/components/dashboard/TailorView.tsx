@@ -2,68 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
-import { useAuth } from "@/components/providers/AuthProvider";
-import { DEMO_TAILOR_QUEUE } from "@/lib/auth/demoData";
-
-interface QueueItem {
-  id: string;
-  orderId: string;
-  customer: string;
-  garment: string;
-  stitchingLabel: string;
-  status: string;
-  createdAt: string;
-}
+import { DEMO_TAILOR_QUEUE, type DemoQueueItem } from "@/lib/auth/demoData";
 
 export function TailorView() {
-  const { session } = useAuth();
-  const isDemo = !!session?.user.isDemo;
-
-  const [queue, setQueue] = useState<QueueItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [updating, setUpdating] = useState<string | null>(null);
+  // Fixture queue — status changes update local state only, since there is
+  // no backend to persist them to yet.
+  const [queue, setQueue] = useState<DemoQueueItem[] | null>(null);
 
   useEffect(() => {
-    if (isDemo) {
-      setQueue(DEMO_TAILOR_QUEUE);
-      return;
-    }
-    fetch("/api/tailor/queue")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then((data) => setQueue(data.items))
-      .catch(() => setError("Couldn't load your queue right now."));
-  }, [isDemo]);
+    setQueue(DEMO_TAILOR_QUEUE);
+  }, []);
 
-  async function updateStatus(itemId: string, status: string) {
-    setUpdating(itemId);
-    const previous = queue;
+  function updateStatus(itemId: string, status: string) {
     setQueue(
       (prev) => prev?.map((item) => (item.id === itemId ? { ...item, status } : item)) ?? null
     );
-
-    if (isDemo) {
-      setUpdating(null);
-      return;
-    }
-
-    const res = await fetch("/api/tailor/queue", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId, status }),
-    });
-
-    setUpdating(null);
-    if (!res.ok) {
-      setQueue(previous); // revert on failure
-      setError("Couldn't save that update — please try again.");
-    }
   }
 
   return (
     <div>
+      <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
+        Sample data — this queue isn&apos;t connected to a database yet.
+      </p>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {STITCHING_STATUSES.slice(0, 4).map((status) => (
           <div key={status} className="border border-border-subtle p-6">
@@ -76,9 +36,8 @@ export function TailorView() {
       </div>
 
       <h2 className="mt-10 font-display text-headline-sm">Active Measurement Queue</h2>
-      {error && <p className="mt-4 text-label-sm text-error">{error}</p>}
 
-      {!queue && !error && <p className="mt-4 text-text-muted">Loading…</p>}
+      {!queue && <p className="mt-4 text-text-muted">Loading…</p>}
       {queue?.length === 0 && (
         <p className="mt-4 text-text-muted">
           No bespoke orders assigned to you yet — they&apos;ll appear here as customers place custom
@@ -102,7 +61,7 @@ export function TailorView() {
             </div>
             <select
               value={item.status}
-              disabled={updating === item.id}
+              aria-label={`Stitching status for order ${item.orderId.slice(-8).toUpperCase()}`}
               onChange={(e) => updateStatus(item.id, e.target.value)}
               className="border border-outline-variant bg-transparent px-4 py-2 text-body-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
             >

@@ -4,15 +4,16 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
-import { useAuth } from "@/components/providers/AuthProvider";
+import { CatalogManager } from "@/components/dashboard/CatalogManager";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { DEMO_STATS, DEMO_USERS } from "@/lib/auth/demoData";
-import type { AppRole } from "@/lib/supabase/server";
+import type { AppRole } from "@/lib/auth/roles";
 
-type Section = "OVERVIEW" | "USERS" | "ACCESS";
+type Section = "OVERVIEW" | "CATALOGUE" | "USERS" | "ACCESS";
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "OVERVIEW", label: "Overview" },
+  { id: "CATALOGUE", label: "Catalogue" },
   { id: "USERS", label: "Users" },
   { id: "ACCESS", label: "Access" },
 ];
@@ -42,21 +43,16 @@ interface UsersResponse {
 }
 
 export function SuperAdminView() {
-  const { session } = useAuth();
-  const isDemo = !!session?.user.isDemo;
-
+  // Fixture data throughout — user creation and access toggles update local
+  // state only, since there is no backend to persist them to yet.
   const [section, setSection] = useState<Section>("OVERVIEW");
   const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [statsError, setStatsError] = useState<string | null>(null);
   const [usersData, setUsersData] = useState<UsersResponse | null>(null);
-  const [usersError, setUsersError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("CUSTOMER");
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
 
   const [access, setAccess] = useState<Record<AppRole, Record<string, boolean>>>(() => {
     const initial: Record<string, Record<string, boolean>> = {};
@@ -66,87 +62,34 @@ export function SuperAdminView() {
     return initial as Record<AppRole, Record<string, boolean>>;
   });
 
-  function loadUsers() {
-    if (isDemo) {
-      setUsersData(DEMO_USERS);
-      return;
-    }
-    fetch("/api/admin/users")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load users");
-        return res.json();
-      })
-      .then(setUsersData)
-      .catch(() => setUsersError("Couldn't load users right now."));
-  }
-
   useEffect(() => {
-    if (isDemo) {
-      setStats(DEMO_STATS);
-      return;
-    }
-    fetch("/api/dashboard/stats")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load stats");
-        return res.json();
-      })
-      .then(setStats)
-      .catch(() => setStatsError("Couldn't load live stats right now."));
-  }, [isDemo]);
+    setStats(DEMO_STATS);
+    setUsersData(DEMO_USERS);
+  }, []);
 
-  useEffect(() => {
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemo]);
-
-  async function handleCreateUser(e: React.FormEvent) {
+  function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-    setCreating(true);
-    setCreateError(null);
 
-    if (isDemo) {
-      const newUser = {
-        id: `demo-user-${Date.now()}`,
-        name,
-        email: email.toLowerCase(),
-        role,
-      };
-      setUsersData((prev) => {
-        const users = [...(prev?.users ?? []), newUser];
-        const roleCounts = Object.entries(
-          users.reduce<Record<string, number>>((acc, u) => {
-            acc[u.role] = (acc[u.role] ?? 0) + 1;
-            return acc;
-          }, {})
-        ).map(([r, count]) => ({ role: r as AppRole, count }));
-        return { users, roleCounts };
-      });
-      setCreating(false);
-      setName("");
-      setEmail("");
-      setPassword("");
-      setRole("CUSTOMER");
-      return;
-    }
-
-    const res = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role }),
+    const newUser = {
+      id: `user-${Date.now()}`,
+      name,
+      email: email.toLowerCase(),
+      role,
+    };
+    setUsersData((prev) => {
+      const users = [...(prev?.users ?? []), newUser];
+      const roleCounts = Object.entries(
+        users.reduce<Record<string, number>>((acc, u) => {
+          acc[u.role] = (acc[u.role] ?? 0) + 1;
+          return acc;
+        }, {})
+      ).map(([r, count]) => ({ role: r as AppRole, count }));
+      return { users, roleCounts };
     });
-    const data = await res.json().catch(() => null);
-    setCreating(false);
-
-    if (!res.ok) {
-      setCreateError(data?.error ?? "Unable to create account.");
-      return;
-    }
-
     setName("");
     setEmail("");
     setPassword("");
     setRole("CUSTOMER");
-    loadUsers();
   }
 
   function toggleAccess(r: AppRole, category: string) {
@@ -158,11 +101,9 @@ export function SuperAdminView() {
 
   return (
     <div>
-      {isDemo && (
-        <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest">
-          Demo data — not connected to a live database.
-        </p>
-      )}
+      <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest">
+        Sample data — this dashboard isn&apos;t connected to a database yet.
+      </p>
 
       <div className="mt-4 flex gap-2 border border-outline-variant p-1 w-fit">
         {SECTIONS.map((s) => (
@@ -209,8 +150,6 @@ export function SuperAdminView() {
             </div>
           </div>
 
-          {statsError && <p className="mt-4 text-label-sm text-error">{statsError}</p>}
-
           <div className="mt-10 grid gap-6 lg:grid-cols-2">
             <div className="border border-border-subtle p-6">
               <p className="text-label-sm uppercase text-text-muted">
@@ -243,13 +182,17 @@ export function SuperAdminView() {
         </div>
       )}
 
+      {section === "CATALOGUE" && (
+        <div className="mt-8">
+          <CatalogManager />
+        </div>
+      )}
+
       {section === "USERS" && (
         <div className="mt-8">
           <h2 className="font-display text-headline-sm">Create User</h2>
           <p className="mt-1 text-label-sm text-marketplace-bronze">
-            {isDemo
-              ? "Adds a local demo user (not persisted anywhere)."
-              : "Creates a real Supabase account with the role selected below."}
+            Adds a user to this screen only — not saved anywhere yet.
           </p>
           <form
             onSubmit={handleCreateUser}
@@ -290,16 +233,12 @@ export function SuperAdminView() {
                 </option>
               ))}
             </select>
-            <Button type="submit" disabled={creating} variant="primary">
-              {creating ? "Creating…" : "Create"}
+            <Button type="submit" variant="primary">
+              Create
             </Button>
-            {createError && (
-              <p className="sm:col-span-2 lg:col-span-5 font-label-sm text-error">{createError}</p>
-            )}
           </form>
 
           <h2 className="mt-10 font-display text-headline-sm">All Users</h2>
-          {usersError && <p className="mt-4 text-label-sm text-error">{usersError}</p>}
           <div className="mt-4 overflow-x-auto border border-border-subtle">
             <table className="w-full text-left text-body-md">
               <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
@@ -310,7 +249,7 @@ export function SuperAdminView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {!usersData && !usersError && (
+                {!usersData && (
                   <tr>
                     <td className="px-4 py-6 text-text-muted" colSpan={3}>
                       Loading…
@@ -332,8 +271,8 @@ export function SuperAdminView() {
             </table>
           </div>
           <p className="mt-2 text-label-sm text-text-muted">
-            Editing an existing user&apos;s role or deactivating an account isn&apos;t wired up
-            yet — there&apos;s no status column on profiles for it (see TASKS.md).
+            Editing an existing user&apos;s role or deactivating an account isn&apos;t wired up yet
+            — there&apos;s no status column on profiles for it (see TASKS.md).
           </p>
         </div>
       )}

@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/components/cart/CartContext";
 import { useWishlist } from "@/components/wishlist/WishlistContext";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { SlidingUnderline, useSlidingUnderline } from "@/components/ui/SlidingUnderline";
 import { canAccessDashboard } from "@/lib/auth/roles";
 
 const navLinks = [
@@ -15,11 +16,108 @@ const navLinks = [
   { label: "TAILORING", href: "/tailoring" },
 ];
 
+interface NavItem {
+  label: string;
+  href: string;
+  /** The Dashboard link, which carries the bronze accent instead of primary. */
+  accent?: boolean;
+}
+
+/**
+ * Desktop nav with a single underline that slides between items rather than
+ * one underline per link popping in and out.
+ */
+function DesktopNav({
+  items,
+  isActive,
+}: {
+  items: NavItem[];
+  isActive: (href: string) => boolean;
+}) {
+  const activeItem = items.find((item) => isActive(item.href));
+  const { containerRef, setItemRef, indicator, animate } = useSlidingUnderline(
+    activeItem?.href ?? null
+  );
+
+  // Spacing must be `gap-8`, not `space-x-8`: the latter sets margin-left on
+  // every child after the first, which would shift the indicator off-centre.
+  return (
+    <div ref={containerRef} className="relative hidden lg:flex items-center gap-8">
+      {items.map((item) => (
+        <Link
+          key={item.href}
+          ref={setItemRef(item.href)}
+          href={item.href}
+          aria-current={isActive(item.href) ? "page" : undefined}
+          className={`transition-colors duration-200 font-label-md text-label-md ${
+            item.accent
+              ? "text-marketplace-bronze hover:text-primary"
+              : isActive(item.href)
+                ? "text-primary"
+                : "text-on-surface-variant hover:text-primary"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+
+      <SlidingUnderline
+        indicator={indicator}
+        animate={animate}
+        className={`-bottom-1.5 ${activeItem?.accent ? "bg-marketplace-bronze" : "bg-primary"}`}
+      />
+    </div>
+  );
+}
+
+function MobileNavLink({
+  href,
+  active,
+  onNavigate,
+  className = "text-on-surface",
+  children,
+}: {
+  href: string;
+  active: boolean;
+  onNavigate: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={`group relative flex items-center justify-between border-b border-outline-variant py-4 font-label-md text-label-md transition-colors duration-200 ${
+        active ? "text-primary" : className
+      }`}
+    >
+      {/* Accent bar wipes in from the left on the current page. */}
+      <span
+        aria-hidden="true"
+        className={`absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 origin-center bg-marketplace-bronze transition-transform duration-300 ease-out motion-reduce:transition-none ${
+          active ? "scale-y-100" : "scale-y-0"
+        }`}
+      />
+      <span className={`transition-[padding] duration-300 ease-out ${active ? "pl-3" : "pl-0"}`}>
+        {children}
+      </span>
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 rounded-full bg-marketplace-bronze transition-all duration-300 ease-out motion-reduce:transition-none ${
+          active ? "scale-100 opacity-100" : "scale-0 opacity-0"
+        }`}
+      />
+    </Link>
+  );
+}
+
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
   const { session } = useAuth();
   const { items, mounted } = useCart();
   const { slugs, mounted: wishlistMounted } = useWishlist();
@@ -27,6 +125,17 @@ export function Navbar() {
   const cartCount = mounted ? items.reduce((sum, i) => sum + i.qty, 0) : 0;
   const wishlistCount = wishlistMounted ? slugs.length : 0;
   const showDashboardLink = canAccessDashboard(session?.user.role);
+
+  // A section counts as current for its own page and anything beneath it, so
+  // /tailoring stays lit on /tailoring/configure.
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  const desktopItems: NavItem[] = showDashboardLink
+    ? [...navLinks, { label: "DASHBOARD", href: "/dashboard", accent: true }]
+    : navLinks;
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -50,25 +159,7 @@ export function Navbar() {
           </Link>
 
           {/* Nav Links (Desktop Only) */}
-          <div className="hidden lg:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-on-surface-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md"
-              >
-                {link.label}
-              </Link>
-            ))}
-            {showDashboardLink && (
-              <Link
-                href="/dashboard"
-                className="text-marketplace-bronze hover:text-primary transition-colors duration-200 font-label-md text-label-md"
-              >
-                DASHBOARD
-              </Link>
-            )}
-          </div>
+          <DesktopNav items={desktopItems} isActive={isActive} />
 
           {/* Actions */}
           <div className="flex items-center gap-4">
@@ -82,7 +173,10 @@ export function Navbar() {
             <Link
               aria-label="Wishlist"
               href="/wishlist"
-              className="material-symbols-outlined relative hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90"
+              aria-current={isActive("/wishlist") ? "page" : undefined}
+              className={`material-symbols-outlined relative hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90 ${
+                isActive("/wishlist") ? "text-primary" : ""
+              }`}
             >
               favorite
               {wishlistCount > 0 && (
@@ -94,7 +188,10 @@ export function Navbar() {
             <Link
               aria-label={session ? "My Account" : "Sign In"}
               href={session ? "/account" : "/login"}
-              className="hidden sm:block hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90"
+              aria-current={isActive(session ? "/account" : "/login") ? "page" : undefined}
+              className={`hidden sm:block hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90 ${
+                isActive(session ? "/account" : "/login") ? "text-primary" : ""
+              }`}
             >
               <span
                 className="material-symbols-outlined"
@@ -106,7 +203,10 @@ export function Navbar() {
             <Link
               aria-label="Shopping bag"
               href="/cart"
-              className="material-symbols-outlined relative hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90"
+              aria-current={isActive("/cart") ? "page" : undefined}
+              className={`material-symbols-outlined relative hover:text-tertiary-fixed-dim transition-all duration-300 scale-95 active:scale-90 ${
+                isActive("/cart") ? "text-primary" : ""
+              }`}
             >
               shopping_bag
               {cartCount > 0 && (
@@ -168,30 +268,31 @@ export function Navbar() {
             </div>
             <nav className="flex flex-col gap-1 px-6 py-4">
               {navLinks.map((link) => (
-                <Link
+                <MobileNavLink
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="border-b border-outline-variant py-4 font-label-md text-label-md text-on-surface"
+                  active={isActive(link.href)}
+                  onNavigate={() => setMobileOpen(false)}
                 >
                   {link.label}
-                </Link>
+                </MobileNavLink>
               ))}
-              <Link
+              <MobileNavLink
                 href={session ? "/account" : "/login"}
-                onClick={() => setMobileOpen(false)}
-                className="border-b border-outline-variant py-4 font-label-md text-label-md text-on-surface"
+                active={isActive(session ? "/account" : "/login")}
+                onNavigate={() => setMobileOpen(false)}
               >
                 {session ? "MY ACCOUNT" : "ACCOUNT"}
-              </Link>
+              </MobileNavLink>
               {showDashboardLink && (
-                <Link
+                <MobileNavLink
                   href="/dashboard"
-                  onClick={() => setMobileOpen(false)}
-                  className="border-b border-outline-variant py-4 font-label-md text-label-md text-marketplace-bronze"
+                  active={isActive("/dashboard")}
+                  onNavigate={() => setMobileOpen(false)}
+                  className="text-marketplace-bronze"
                 >
                   DASHBOARD
-                </Link>
+                </MobileNavLink>
               )}
             </nav>
           </div>

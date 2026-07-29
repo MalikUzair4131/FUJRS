@@ -10,10 +10,9 @@ export default function ForgotPasswordPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // TODO: wire to Supabase Auth's resetPasswordForEmail(email) once
-    // project email/SMTP delivery is configured. UI-only for now — always
-    // shows the generic confirmation below so we don't leak which emails
-    // have accounts.
+    // No email delivery without a backend — this shows the real flow only.
+    // The confirmation is deliberately generic so it never leaks which
+    // addresses have accounts; keep it that way when this gets wired up.
     setSubmitted(true);
   }
 

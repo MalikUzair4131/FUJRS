@@ -1,4 +1,4 @@
-import type { AppRole } from "@/lib/supabase/server";
+export type AppRole = "CUSTOMER" | "ADMIN" | "VENDOR" | "TAILOR" | "SUPER_ADMIN";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   CUSTOMER: "Customer",
@@ -8,21 +8,62 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   SUPER_ADMIN: "Super Admin",
 };
 
-export const STAFF_ROLES: AppRole[] = ["ADMIN", "VENDOR", "TAILOR", "SUPER_ADMIN"];
+export type StaffRole = Exclude<AppRole, "CUSTOMER">;
 
-export function isStaffRole(role: AppRole | null | undefined): boolean {
-  return !!role && STAFF_ROLES.includes(role);
+export const STAFF_ROLES: StaffRole[] = ["ADMIN", "VENDOR", "TAILOR", "SUPER_ADMIN"];
+
+export function isStaffRole(role: AppRole | null | undefined): role is StaffRole {
+  return !!role && STAFF_ROLES.includes(role as StaffRole);
 }
 
 export function canAccessDashboard(role: AppRole | null | undefined): boolean {
   return isStaffRole(role);
 }
 
-// Demo accounts are a pure UI fixture — signing in with one of these emails
-// never touches Supabase. AuthProvider builds a client-only session from this
-// list, and the dashboard views read from src/lib/auth/demoData.ts instead of
-// hitting the real APIs. No Supabase project or env file is required.
-// Set NEXT_PUBLIC_DEMO_AUTH="false" later when wiring real Supabase auth.
+/**
+ * What each staff role is responsible for. Drives the staff account screen —
+ * customers get order history instead, which means nothing to these roles.
+ */
+export const ROLE_WORKSPACE: Record<StaffRole, { summary: string; duties: string[] }> = {
+  SUPER_ADMIN: {
+    summary:
+      "Full access across FUJRS — you manage who else gets in, and what they're allowed to see.",
+    duties: [
+      "Create and manage dashboard users",
+      "Assign roles and access permissions",
+      "Review store-wide revenue and orders",
+    ],
+  },
+  ADMIN: {
+    summary: "Day-to-day running of the store — orders, catalogue submissions, and performance.",
+    duties: [
+      "Review orders and revenue",
+      "Approve or reject vendor product drafts",
+      "Monitor the bespoke stitching pipeline",
+    ],
+  },
+  VENDOR: {
+    summary: "Propose new pieces for the FUJRS catalogue and track where each submission stands.",
+    duties: [
+      "Submit new products for review",
+      "Track pending and approved submissions",
+      "Keep fabric and pricing details current",
+    ],
+  },
+  TAILOR: {
+    summary: "Your bespoke queue — every made-to-measure order assigned to your atelier.",
+    duties: [
+      "Work through the measurement queue",
+      "Update stitching status as each piece progresses",
+      "Flag pieces ready for fitting",
+    ],
+  },
+};
+
+// This build has no backend. Signing in with one of these emails builds a
+// client-only session, and the dashboard views read fixtures from
+// src/lib/auth/demoData.ts. Any password is accepted — there is nothing to
+// authenticate against until the real backend exists.
 export const DEMO_ACCOUNTS: { email: string; role: AppRole }[] = [
   { email: "user@gmail.com", role: "CUSTOMER" },
   { email: "admin@gmail.com", role: "ADMIN" },
@@ -32,11 +73,6 @@ export const DEMO_ACCOUNTS: { email: string; role: AppRole }[] = [
 ];
 
 const DEMO_EMAILS = new Set(DEMO_ACCOUNTS.map((account) => account.email));
-
-export function isDemoAuthEnabled(): boolean {
-  // On by default for UI demos — no .env needed. Opt out with "false".
-  return process.env.NEXT_PUBLIC_DEMO_AUTH !== "false";
-}
 
 export function isDemoEmail(email: string): boolean {
   return DEMO_EMAILS.has(email.trim().toLowerCase());

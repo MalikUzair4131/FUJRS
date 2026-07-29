@@ -1,8 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { Product } from "@/data/products";
-import { useAuth } from "@/components/providers/AuthProvider";
 
 export interface StitchingSelection {
   label: string;
@@ -57,89 +56,25 @@ function lineKeyBySlug(slug: string, stitched: boolean) {
   return `${slug}::${stitched ? "stitched" : "plain"}`;
 }
 
-async function syncCartToServer(items: CartItem[]) {
-  try {
-    await fetch("/api/cart", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
-    });
-  } catch {
-    // Optimistic local state already applied — a retry/toast layer is a
-    // reasonable future addition, not required for this pass.
-  }
-}
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [mounted, setMounted] = useState(false);
-  const hydrated = useRef(false);
 
-  // Guests: load from localStorage. Signed-in: load from the DB, merging
-  // in anything saved locally before they signed in (by slug, since a
-  // DB-loaded row's id is a database id, not the product id).
+  // The bag lives in the browser — there is no backend to sync it to yet.
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (status === "authenticated") {
-      (async () => {
-        let localItems: CartItem[] = [];
-        try {
-          localItems = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-        } catch {
-          localItems = [];
-        }
-
-        try {
-          const res = await fetch("/api/cart");
-          const data = await res.json();
-          const dbItems: CartItem[] = res.ok ? data.items : [];
-
-          const merged = [...dbItems];
-          for (const localItem of localItems) {
-            const key = lineKeyBySlug(localItem.slug, !!localItem.stitching);
-            const existing = merged.find((i) => lineKeyBySlug(i.slug, !!i.stitching) === key);
-            if (existing) {
-              existing.qty += localItem.qty;
-            } else {
-              merged.push(localItem);
-            }
-          }
-
-          setItems(merged);
-          hydrated.current = true;
-          if (localItems.length > 0) {
-            await syncCartToServer(merged);
-            localStorage.removeItem(STORAGE_KEY);
-          }
-        } catch {
-          setItems(localItems);
-          hydrated.current = true;
-        }
-        setMounted(true);
-      })();
-    } else {
-      try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-        if (Array.isArray(stored)) setItems(stored);
-      } catch {
-        setItems([]);
-      }
-      hydrated.current = true;
-      setMounted(true);
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+      if (Array.isArray(stored)) setItems(stored);
+    } catch {
+      setItems([]);
     }
-  }, [status]);
+    setMounted(true);
+  }, []);
 
-  // Persist on every change, once initial hydration/merge is done.
   useEffect(() => {
-    if (!mounted || !hydrated.current) return;
-    if (status === "authenticated") {
-      syncCartToServer(items);
-    } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-  }, [items, mounted, status]);
+    if (!mounted) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items, mounted]);
 
   function addItem(
     product: Product,

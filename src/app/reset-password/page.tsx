@@ -25,9 +25,8 @@ export default function ResetPasswordPage() {
     }
 
     setSubmitting(true);
-    // TODO: wire to Supabase Auth's updateUser({ password }) — this page is
-    // reached via the reset-link token from resetPasswordForEmail(), which
-    // Supabase exchanges for a session automatically. UI-only for now.
+    // Validation is real; the save isn't — passwords need a backend to live
+    // in. This page is reached from the emailed reset link once that exists.
     router.push("/login");
   }
 

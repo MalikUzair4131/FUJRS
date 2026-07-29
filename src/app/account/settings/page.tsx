@@ -5,280 +5,214 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
+import { FormSection, ReadOnlyField, TextField } from "@/components/ui/Field";
+import { ImageUpload } from "@/components/ui/ImageUpload";
+import { useToast } from "@/components/ui/Toast";
+import { getAddress, getAvatar, updateAddress, updateAvatar } from "@/lib/local/profile";
 
-const inputClass =
-  "mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze";
-const labelClass = "font-body text-label-sm uppercase tracking-widest text-on-surface-variant";
+const MIN_PASSWORD_LENGTH = 8;
 
-function NameSection({ initialName }: { initialName: string }) {
+function ProfileSection({ email, name }: { email: string; name: string }) {
   const { updateName } = useAuth();
-  const [name, setName] = useState(initialName);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [value, setValue] = useState(name);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setMessage(null);
-    setError(null);
+  useEffect(() => {
+    setAvatar(getAvatar(email));
+  }, [email]);
 
-    const res = await fetch("/api/account/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      setError(data?.error ?? "Could not update name.");
-      setSaving(false);
-      return;
-    }
-
-    await updateName(name);
-    setSaving(false);
-    setMessage("Name updated.");
+  function handleAvatarChange(next: string | null) {
+    setAvatar(next);
+    updateAvatar(email, next);
+    toast(next ? "Profile photo updated." : "Profile photo removed.", "success");
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="settings-name" className={labelClass}>
-          Full Name
-        </label>
-        <input
-          id="settings-name"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={inputClass}
-        />
-      </div>
-      {message && <p className="font-label-sm text-marketplace-bronze">{message}</p>}
-      {error && <p className="font-label-sm text-error">{error}</p>}
-      <Button type="submit" disabled={saving} variant="secondary">
-        {saving ? "Saving…" : "Save Name"}
-      </Button>
-    </form>
-  );
-}
-
-function EmailSection({ initialEmail }: { initialEmail: string }) {
-  const { updateEmail } = useAuth();
-  const [email, setEmail] = useState(initialEmail);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setMessage(null);
+    if (!value.trim()) {
+      setError("Name can't be empty.");
+      return;
+    }
     setError(null);
-
-    const result = await updateEmail(email);
+    setSaving(true);
+    const result = await updateName(value);
     setSaving(false);
 
     if (result.error) {
       setError(result.error);
       return;
     }
-    setMessage("Check your new email address for a confirmation link.");
+    toast("Name updated.", "success");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="settings-email" className={labelClass}>
-          Email Address
-        </label>
-        <input
-          id="settings-email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
+    <FormSection title="Profile" description="How your name and photo appear across FUJRS.">
+      <ImageUpload
+        label="Profile Photo"
+        value={avatar}
+        onChange={handleAvatarChange}
+        shape="circle"
+        alt={`${name}'s profile photo`}
+        hint="Square images work best. Saved as soon as you choose one."
+      />
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <TextField
+          label="Full Name"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(null);
+          }}
+          error={error ?? undefined}
         />
-      </div>
-      {message && <p className="font-label-sm text-marketplace-bronze">{message}</p>}
-      {error && <p className="font-label-sm text-error">{error}</p>}
-      <Button type="submit" disabled={saving} variant="secondary">
-        {saving ? "Saving…" : "Update Email"}
-      </Button>
-    </form>
+
+        <ReadOnlyField
+          label="Email Address"
+          value={email}
+          hint="Your email is your sign-in identity and can't be changed here. Contact the concierge if it needs updating."
+        />
+
+        <Button type="submit" variant="secondary" disabled={saving}>
+          {saving ? "Saving…" : "Save Name"}
+        </Button>
+      </form>
+    </FormSection>
   );
 }
 
 function PasswordSection() {
-  const { updatePassword } = useAuth();
+  const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Validation is real; the save isn't — passwords need a backend to live in.
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMessage(null);
-    setError(null);
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
+    const next: typeof errors = {};
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      next.password = `At least ${MIN_PASSWORD_LENGTH} characters.`;
     }
-    if (password !== confirmPassword) {
-      setError("Passwords don't match.");
-      return;
-    }
+    if (password !== confirmPassword) next.confirm = "Passwords don't match.";
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
 
-    setSaving(true);
-    const result = await updatePassword(password);
-    setSaving(false);
-
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
     setPassword("");
     setConfirmPassword("");
-    setMessage("Password updated.");
+    toast("Password changes aren't available yet — coming with the live backend.", "soon");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="settings-password" className={labelClass}>
-          New Password
-        </label>
-        <input
-          id="settings-password"
+    <FormSection title="Password" description="Choose something you don't use anywhere else.">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <TextField
+          label="New Password"
           type="password"
-          required
-          minLength={8}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setErrors((p) => ({ ...p, password: undefined }));
+          }}
+          error={errors.password}
         />
-      </div>
-      <div>
-        <label htmlFor="settings-confirm-password" className={labelClass}>
-          Confirm New Password
-        </label>
-        <input
-          id="settings-confirm-password"
+        <TextField
+          label="Confirm New Password"
           type="password"
-          required
-          minLength={8}
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className={inputClass}
+          onChange={(e) => {
+            setConfirmPassword(e.target.value);
+            setErrors((p) => ({ ...p, confirm: undefined }));
+          }}
+          error={errors.confirm}
         />
-      </div>
-      {message && <p className="font-label-sm text-marketplace-bronze">{message}</p>}
-      {error && <p className="font-label-sm text-error">{error}</p>}
-      <Button type="submit" disabled={saving} variant="secondary">
-        {saving ? "Saving…" : "Update Password"}
-      </Button>
-    </form>
+        <Button type="submit" variant="secondary">
+          Update Password
+        </Button>
+      </form>
+    </FormSection>
   );
 }
 
-function AddressSection() {
+function AddressSection({ email }: { email: string }) {
+  const { toast } = useToast();
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [errors, setErrors] = useState<{ street?: string; city?: string; postalCode?: string }>({});
   const [loaded, setLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/account/address")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.address) {
-          setStreet(data.address.street ?? "");
-          setCity(data.address.city ?? "");
-          setPostalCode(data.address.postalCode ?? "");
-        }
-      })
-      .finally(() => setLoaded(true));
-  }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setMessage(null);
-    setError(null);
-
-    const res = await fetch("/api/account/address", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ street, city, postalCode }),
-    });
-    const data = await res.json().catch(() => null);
-    setSaving(false);
-
-    if (!res.ok) {
-      setError(data?.error ?? "Could not save address.");
-      return;
+    const saved = getAddress(email);
+    if (saved) {
+      setStreet(saved.street);
+      setCity(saved.city);
+      setPostalCode(saved.postalCode);
     }
-    setMessage("Address saved.");
-  }
+    setLoaded(true);
+  }, [email]);
 
-  if (!loaded) {
-    return <p className="text-body-md text-on-surface-variant">Loading…</p>;
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const next: typeof errors = {};
+    if (!street.trim()) next.street = "Enter a street address.";
+    if (!city.trim()) next.city = "Enter a city.";
+    if (!postalCode.trim()) next.postalCode = "Enter a postal code.";
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    updateAddress(email, { street, city, postalCode });
+    toast("Address saved.", "success");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="settings-street" className={labelClass}>
-          Street Address
-        </label>
-        <input
-          id="settings-street"
-          required
-          value={street}
-          onChange={(e) => setStreet(e.target.value)}
-          className={inputClass}
-          placeholder="House number and street name"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="settings-city" className={labelClass}>
-            City
-          </label>
-          <input
-            id="settings-city"
-            required
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            className={inputClass}
+    <FormSection
+      title="Saved Address"
+      description="Used to prefill your shipping details at checkout."
+    >
+      {!loaded ? (
+        <p className="font-body text-body-md text-on-surface-variant">Loading…</p>
+      ) : (
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
+          <TextField
+            label="Street Address"
+            value={street}
+            onChange={(e) => {
+              setStreet(e.target.value);
+              setErrors((p) => ({ ...p, street: undefined }));
+            }}
+            error={errors.street}
+            placeholder="House number and street name"
           />
-        </div>
-        <div>
-          <label htmlFor="settings-postal-code" className={labelClass}>
-            Postal Code
-          </label>
-          <input
-            id="settings-postal-code"
-            required
-            value={postalCode}
-            onChange={(e) => setPostalCode(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-      </div>
-      {message && <p className="font-label-sm text-marketplace-bronze">{message}</p>}
-      {error && <p className="font-label-sm text-error">{error}</p>}
-      <Button type="submit" disabled={saving} variant="secondary">
-        {saving ? "Saving…" : "Save Address"}
-      </Button>
-    </form>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              label="City"
+              value={city}
+              onChange={(e) => {
+                setCity(e.target.value);
+                setErrors((p) => ({ ...p, city: undefined }));
+              }}
+              error={errors.city}
+            />
+            <TextField
+              label="Postal Code"
+              value={postalCode}
+              onChange={(e) => {
+                setPostalCode(e.target.value);
+                setErrors((p) => ({ ...p, postalCode: undefined }));
+              }}
+              error={errors.postalCode}
+            />
+          </div>
+          <Button type="submit" variant="secondary">
+            Save Address
+          </Button>
+        </form>
+      )}
+    </FormSection>
   );
 }
 
@@ -299,7 +233,7 @@ export default function AccountSettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-margin-mobile md:px-margin-desktop py-16">
+    <div className="mx-auto max-w-2xl px-margin-mobile md:px-margin-desktop py-16">
       <Link
         href="/account"
         className="font-label-sm uppercase tracking-widest text-on-surface-variant hover:text-primary"
@@ -311,26 +245,10 @@ export default function AccountSettingsPage() {
       </p>
       <h1 className="mt-2 font-display text-headline-md">Account Settings</h1>
 
-      <div className="mt-10 space-y-10 divide-y divide-outline-variant/30">
-        <div>
-          <h2 className="font-headline-sm text-headline-sm mb-6">Name</h2>
-          <NameSection initialName={session.user.name} />
-        </div>
-        <div className="pt-10">
-          <h2 className="font-headline-sm text-headline-sm mb-6">Email</h2>
-          <EmailSection initialEmail={session.user.email} />
-        </div>
-        <div className="pt-10">
-          <h2 className="font-headline-sm text-headline-sm mb-6">Password</h2>
-          <PasswordSection />
-        </div>
-        <div className="pt-10">
-          <h2 className="font-headline-sm text-headline-sm mb-6">Saved Address</h2>
-          <p className="mb-6 text-body-md text-on-surface-variant">
-            Used to prefill your shipping details at checkout.
-          </p>
-          <AddressSection />
-        </div>
+      <div className="mt-10 space-y-6">
+        <ProfileSection email={session.user.email} name={session.user.name} />
+        <PasswordSection />
+        <AddressSection email={session.user.email} />
       </div>
     </div>
   );

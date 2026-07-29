@@ -4,6 +4,19 @@ Gap analysis of the current codebase against [REQUIREMENTS.md](./REQUIREMENTS.md
 Section 7's Phase 1 scope. Verified directly against the code on
 2026-07-27, not against old build-log narration.
 
+> **Update 2026-07-29 — the backend was removed on purpose.** The project is
+> now a UI-only build: no Supabase, no Stripe, no API routes, no database.
+> Everything below that describes server behaviour ("live from the database",
+> "Supabase tables", "Stripe re-verification") describes what *used to be
+> wired up* and is being kept as the reference for rebuilding it. The
+> decision was to finalise UI/UX first and design the schema against the
+> finished screens. See [README.md](./README.md) for how the app runs today.
+>
+> What this changes in the assessment below: every ✅ that depended on the
+> server is now "UI complete, persistence pending" — the screens, flows, and
+> states are all there and demoable against browser-local storage. The ❌ /
+> not-built items are unchanged; they were never built.
+
 **Headline gap: the biggest structural mismatch is Section 5.** The spec's
 "Vendor" is an affiliate/referral seller (trackable links, per-sale
 commission, wallet, payouts). What's built under the `VENDOR` role today is

@@ -1,19 +1,18 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { AppRole } from "@/lib/supabase/server";
-import { isDemoAuthEnabled, isDemoEmail } from "@/lib/auth/roles";
-import { clearDemoSession, createDemoUser, persistDemoSession, readDemoSession } from "@/lib/auth/demoSession";
+import type { AppRole } from "@/lib/auth/roles";
+import { isDemoEmail } from "@/lib/auth/roles";
+import {
+  clearSession,
+  createDemoUser,
+  persistSession,
+  readSession,
+  type StoredUser,
+} from "@/lib/auth/session";
+import * as accounts from "@/lib/local/profile";
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: AppRole;
-  assignedStitcherSlug: string | null;
-  isDemo?: boolean;
-}
+type AuthUser = StoredUser;
 
 interface AuthSession {
   user: AuthUser;
@@ -26,137 +25,95 @@ interface AuthContextValue {
   signUp: (input: { email: string; password: string; name: string }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<{ error?: string }>;
-  updateEmail: (newEmail: string) => Promise<{ error?: string }>;
   updateName: (newName: string) => Promise<{ error?: string }>;
 }
 
-const DEMO_MODE_ERROR = "Not available for demo accounts.";
+const NO_BACKEND_ERROR = "Password changes need the live backend — not wired up yet.";
+const UNKNOWN_ACCOUNT_ERROR =
+  "No account found for that email on this device. Create one, or use a demo login.";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function toUser(user: any): AuthUser {
-  const metadata = user?.user_metadata ?? {};
+function toUser(account: accounts.LocalAccount): AuthUser {
   return {
-    id: user?.id ?? "",
-    email: user?.email ?? "",
-    name: metadata.name ?? user?.email ?? "",
-    role: (metadata.role ?? "CUSTOMER") as AppRole,
-    assignedStitcherSlug: metadata.assigned_stitcher_slug ?? null,
+    id: `local-${account.email}`,
+    email: account.email,
+    name: account.name || account.email,
+    role: account.role,
+    assignedStitcherSlug: null,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
-  const [client] = useState(() => createBrowserSupabaseClient());
 
   useEffect(() => {
-    let mounted = true;
-
-    async function hydrate() {
-      const demoUser = readDemoSession();
-      if (demoUser) {
-        if (!mounted) return;
-        setSession({ user: demoUser });
-        setStatus("authenticated");
-        return;
-      }
-
-      const {
-        data: { session: initialSession },
-        error,
-      } = await client.auth.getSession();
-      if (!mounted) return;
-      if (error) {
-        setSession(null);
-        setStatus("unauthenticated");
-        return;
-      }
-
-      if (initialSession?.user) {
-        setSession({ user: toUser(initialSession.user) });
-        setStatus("authenticated");
-      } else {
-        setSession(null);
-        setStatus("unauthenticated");
-      }
+    const stored = readSession();
+    if (stored) {
+      // Profile edits are saved per-email, so re-apply them over the fixture.
+      const saved = accounts.findAccount(stored.email);
+      setSession({ user: saved?.name ? { ...stored, name: saved.name } : stored });
+      setStatus("authenticated");
+    } else {
+      setSession(null);
+      setStatus("unauthenticated");
     }
-
-    hydrate();
-
-    const { data: subscription } = client.auth.onAuthStateChange(
-      (event: string, nextSession: { user?: any } | null) => {
-        if (!mounted) return;
-        if (readDemoSession()) return;
-        if (nextSession?.user) {
-          setSession({ user: toUser(nextSession.user) });
-          setStatus("authenticated");
-        } else {
-          setSession(null);
-          setStatus("unauthenticated");
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.subscription.unsubscribe();
-    };
-  }, [client]);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       status,
-      async signIn(email, password) {
-        if (isDemoAuthEnabled() && isDemoEmail(email)) {
-          const demoUser = createDemoUser(email);
-          if (demoUser) {
-            persistDemoSession(demoUser);
-            setSession({ user: demoUser });
-            setStatus("authenticated");
-            return { role: demoUser.role };
-          }
+      async signIn(email) {
+        const demoUser = isDemoEmail(email) ? createDemoUser(email) : null;
+        if (demoUser) {
+          const saved = accounts.findAccount(demoUser.email);
+          const user = saved?.name ? { ...demoUser, name: saved.name } : demoUser;
+          persistSession(user);
+          setSession({ user });
+          setStatus("authenticated");
+          return { role: user.role };
         }
-        const { error } = await client.auth.signInWithPassword({ email, password });
-        return { error: error?.message };
+
+        const account = accounts.findAccount(email);
+        if (!account) return { error: UNKNOWN_ACCOUNT_ERROR };
+
+        const user = toUser(account);
+        persistSession(user);
+        setSession({ user });
+        setStatus("authenticated");
+        return { role: user.role };
       },
       async signUp(input) {
-        const { error } = await client.auth.signUp({
-          email: input.email,
-          password: input.password,
-          options: {
-            data: {
-              name: input.name,
-              role: "CUSTOMER",
-            },
-          },
-        });
-        return { error: error?.message };
+        if (isDemoEmail(input.email)) {
+          return { error: "That email is reserved for a demo login." };
+        }
+        const account = accounts.createAccount({ name: input.name, email: input.email });
+        const user = toUser(account);
+        persistSession(user);
+        setSession({ user });
+        setStatus("authenticated");
+        return {};
       },
       async signOut() {
-        clearDemoSession();
+        clearSession();
         setSession(null);
         setStatus("unauthenticated");
-        await client.auth.signOut();
       },
-      async updatePassword(newPassword) {
-        if (session?.user.isDemo) return { error: DEMO_MODE_ERROR };
-        const { error } = await client.auth.updateUser({ password: newPassword });
-        return { error: error?.message };
-      },
-      async updateEmail(newEmail) {
-        if (session?.user.isDemo) return { error: DEMO_MODE_ERROR };
-        const { error } = await client.auth.updateUser({ email: newEmail });
-        return { error: error?.message };
+      async updatePassword() {
+        return { error: NO_BACKEND_ERROR };
       },
       async updateName(newName) {
-        if (session?.user.isDemo) return { error: DEMO_MODE_ERROR };
-        const { error } = await client.auth.updateUser({ data: { name: newName } });
-        return { error: error?.message };
+        if (!session) return { error: "Not signed in." };
+        accounts.updateName(session.user.email, newName);
+        const user = { ...session.user, name: newName.trim() };
+        persistSession(user);
+        setSession({ user });
+        return {};
       },
     }),
-    [client, session, status]
+    [session, status]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
