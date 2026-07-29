@@ -1,17 +1,50 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { use, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentAppUser } from "@/lib/auth";
-import { orderService } from "@/lib/supabase/services";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { LinkButton } from "@/components/ui/Button";
+import { StatusScreen } from "@/components/ui/StatusScreen";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
+import { getOrder, type LocalOrder } from "@/lib/local/orders";
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const auth = await getCurrentAppUser();
-  if (!auth?.profile) redirect(`/login?callbackUrl=/account/orders/${id}`);
+export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const { status } = useAuth();
+  const router = useRouter();
+  const [order, setOrder] = useState<LocalOrder | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
-  const order = await orderService.getById(id, auth.profile.id);
-  if (!order) redirect("/account");
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace(`/login?callbackUrl=/account/orders/${id}`);
+  }, [status, router, id]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    setOrder(getOrder(id));
+    setLoaded(true);
+  }, [status, id]);
+
+  if (!loaded) {
+    return <StatusScreen pulse icon="receipt_long" title="Loading order…" />;
+  }
+
+  if (!order) {
+    return (
+      <StatusScreen
+        icon="receipt_long"
+        title="Order not found"
+        body="Orders are stored on this device — this one may have been placed elsewhere."
+        actions={
+          <LinkButton href="/account" variant="primary" className="!px-10 !py-4">
+            Back to Account
+          </LinkButton>
+        }
+      />
+    );
+  }
 
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-16">
@@ -43,68 +76,57 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       <div className="mt-12 grid grid-cols-1 gap-gutter md:grid-cols-12">
         <div className="md:col-span-7 space-y-6">
-          {order.items.map(
-            (item: {
-              id: string;
-              image: string;
-              title: string;
-              qty: number;
-              price: number;
-              stitchingLabel: string | null;
-              stitchingStatus: string | null;
-            }) => (
-              <div
-                key={item.id}
-                className="flex flex-col gap-4 border border-outline-variant p-6 sm:flex-row"
-              >
-                <div className="relative aspect-[4/5] w-full shrink-0 overflow-hidden bg-surface-container sm:w-28">
-                  <Image src={item.image} alt={item.title} fill className="object-cover" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-headline-sm text-headline-sm">{item.title}</h3>
-                      <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant uppercase">
-                        Qty {item.qty}
-                      </p>
-                    </div>
-                    <p className="font-body-md text-body-md">
-                      PKR {(item.price * item.qty).toLocaleString()}
+          {order.items.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col gap-4 border border-outline-variant p-6 sm:flex-row"
+            >
+              <div className="relative aspect-[4/5] w-full shrink-0 overflow-hidden bg-surface-container sm:w-28">
+                <Image src={item.image} alt={item.title} fill className="object-cover" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-headline-sm text-headline-sm">{item.title}</h3>
+                    <p className="mt-1 font-label-sm text-label-sm text-on-surface-variant uppercase">
+                      Qty {item.qty}
                     </p>
                   </div>
-
-                  {item.stitchingLabel && (
-                    <div className="mt-4 border-t border-outline-variant/30 pt-4">
-                      <p className="mb-3 font-label-sm text-label-sm uppercase text-on-surface-variant">
-                        Bespoke Stitching — {item.stitchingLabel}
-                      </p>
-                      <ol className="flex flex-wrap gap-2">
-                        {STITCHING_STATUSES.map((stage, i) => {
-                          const currentIndex = STITCHING_STATUSES.indexOf(
-                            (item.stitchingStatus as (typeof STITCHING_STATUSES)[number]) ??
-                              STITCHING_STATUSES[0]
-                          );
-                          const reached = i <= currentIndex;
-                          return (
-                            <li
-                              key={stage}
-                              className={`font-label-sm text-label-sm px-3 py-1.5 uppercase tracking-wide ${
-                                reached
-                                  ? "bg-primary text-on-primary"
-                                  : "border border-outline-variant text-on-surface-variant"
-                              }`}
-                            >
-                              {stage}
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
-                  )}
+                  <p className="font-body-md text-body-md">
+                    PKR {(item.price * item.qty).toLocaleString()}
+                  </p>
                 </div>
+
+                {item.stitchingLabel && (
+                  <div className="mt-4 border-t border-outline-variant/30 pt-4">
+                    <p className="mb-3 font-label-sm text-label-sm uppercase text-on-surface-variant">
+                      Bespoke Stitching — {item.stitchingLabel}
+                    </p>
+                    <ol className="flex flex-wrap gap-2">
+                      {STITCHING_STATUSES.map((stage, i) => {
+                        const currentIndex = STITCHING_STATUSES.indexOf(
+                          item.stitchingStatus ?? STITCHING_STATUSES[0]
+                        );
+                        const reached = i <= currentIndex;
+                        return (
+                          <li
+                            key={stage}
+                            className={`font-label-sm text-label-sm px-3 py-1.5 uppercase tracking-wide ${
+                              reached
+                                ? "bg-primary text-on-primary"
+                                : "border border-outline-variant text-on-surface-variant"
+                            }`}
+                          >
+                            {stage}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                )}
               </div>
-            )
-          )}
+            </div>
+          ))}
         </div>
 
         <div className="md:col-span-5 space-y-6">

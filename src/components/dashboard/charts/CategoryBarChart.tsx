@@ -24,7 +24,13 @@ interface CategoryBarChartProps {
 const TOP_PADDING = 28;
 const BOTTOM_PADDING = 32;
 
-function topRoundedRectPath(x: number, yTop: number, width: number, height: number, radius: number) {
+function topRoundedRectPath(
+  x: number,
+  yTop: number,
+  width: number,
+  height: number,
+  radius: number
+) {
   const r = Math.max(0, Math.min(radius, width / 2, height));
   const yBottom = yTop + height;
   if (height <= 0) return "";

@@ -1,9 +1,12 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentAppUser } from "@/lib/auth";
-import { orderService } from "@/lib/supabase/services";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LinkButton } from "@/components/ui/Button";
+import { StatusScreen } from "@/components/ui/StatusScreen";
+import { getOrder, type LocalOrder } from "@/lib/local/orders";
 
 const timelineSteps = [
   {
@@ -32,21 +35,42 @@ const timelineSteps = [
   },
 ];
 
-export default async function OrderConfirmationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ orderId?: string }>;
-}) {
-  const resolvedSearchParams = await searchParams;
-  const auth = await getCurrentAppUser();
-  if (!auth?.profile) redirect("/login");
-  if (!resolvedSearchParams.orderId) redirect("/account");
+function OrderConfirmation() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const orderId = searchParams.get("orderId");
+  const [order, setOrder] = useState<LocalOrder | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
-  const order = await orderService.getById(resolvedSearchParams.orderId, auth.profile.id);
+  useEffect(() => {
+    if (!orderId) {
+      router.replace("/account");
+      return;
+    }
+    setOrder(getOrder(orderId));
+    setLoaded(true);
+  }, [orderId, router]);
 
-  if (!order) redirect("/account");
+  if (!loaded) {
+    return <StatusScreen pulse icon="receipt_long" title="Loading your order…" />;
+  }
 
-  const hasStitching = order.items.some((i: { stitchingLabel: string | null }) => i.stitchingLabel);
+  if (!order) {
+    return (
+      <StatusScreen
+        icon="receipt_long"
+        title="Order not found"
+        body="Orders are stored on this device — this one may have been placed elsewhere."
+        actions={
+          <LinkButton href="/account" variant="primary" className="!px-10 !py-4">
+            Go to My Account
+          </LinkButton>
+        }
+      />
+    );
+  }
+
+  const hasStitching = order.items.some((i) => i.stitchingLabel);
 
   return (
     <main className="pt-12 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
@@ -81,64 +105,53 @@ export default async function OrderConfirmationPage({
             <h3 className="font-headline-sm text-headline-sm mb-8 border-b border-border-subtle pb-4">
               Order Summary
             </h3>
-            {order.items.map(
-              (item: {
-                id: string;
-                image: string;
-                title: string;
-                qty: number;
-                price: number;
-                stitchingLabel: string | null;
-              }) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col md:flex-row gap-6 items-start py-6 border-b border-border-subtle last:border-0"
-                >
-                  <div className="w-32 aspect-[4/5] bg-surface-variant shrink-0 relative overflow-hidden">
-                    <Image src={item.image} alt={item.title} fill className="object-cover" />
+            {order.items.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-col md:flex-row gap-6 items-start py-6 border-b border-border-subtle last:border-0"
+              >
+                <div className="w-32 aspect-[4/5] bg-surface-variant shrink-0 relative overflow-hidden">
+                  <Image src={item.image} alt={item.title} fill className="object-cover" />
+                </div>
+                <div className="flex-grow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-label-sm text-label-sm text-marketplace-bronze uppercase mb-1 block">
+                        FUJRS
+                      </span>
+                      <h4 className="font-body-lg text-body-lg font-semibold">{item.title}</h4>
+                      <p className="font-label-md text-label-md text-on-surface-variant mt-1">
+                        Qty: {item.qty}
+                      </p>
+                    </div>
+                    <span className="font-body-md text-body-md">
+                      PKR {(item.price * item.qty).toLocaleString()}
+                    </span>
                   </div>
-                  <div className="flex-grow">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="font-label-sm text-label-sm text-marketplace-bronze uppercase mb-1 block">
-                          FUJRS
+                  {item.stitchingLabel && (
+                    <div className="mt-6 p-4 bg-surface-container-low border-l-2 border-tertiary-fixed flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="material-symbols-outlined text-tertiary-fixed-dim"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          precision_manufacturing
                         </span>
-                        <h4 className="font-body-lg text-body-lg font-semibold">{item.title}</h4>
-                        <p className="font-label-md text-label-md text-on-surface-variant mt-1">
-                          Qty: {item.qty}
-                        </p>
+                        <div>
+                          <p className="font-label-md text-label-md uppercase">Stitching Status</p>
+                          <p className="font-body-md text-body-md font-medium text-marketplace-bronze italic">
+                            Moving to the Atelier
+                          </p>
+                        </div>
                       </div>
-                      <span className="font-body-md text-body-md">
-                        PKR {(item.price * item.qty).toLocaleString()}
+                      <span className="font-label-sm text-label-sm px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed">
+                        MASTER TAILORED
                       </span>
                     </div>
-                    {item.stitchingLabel && (
-                      <div className="mt-6 p-4 bg-surface-container-low border-l-2 border-tertiary-fixed flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className="material-symbols-outlined text-tertiary-fixed-dim"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            precision_manufacturing
-                          </span>
-                          <div>
-                            <p className="font-label-md text-label-md uppercase">
-                              Stitching Status
-                            </p>
-                            <p className="font-body-md text-body-md font-medium text-marketplace-bronze italic">
-                              Moving to the Atelier
-                            </p>
-                          </div>
-                        </div>
-                        <span className="font-label-sm text-label-sm px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed">
-                          MASTER TAILORED
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )
-            )}
+              </div>
+            ))}
             <div className="mt-10 space-y-4">
               <div className="flex justify-between font-label-md text-label-md text-on-surface-variant">
                 <span>Subtotal</span>
@@ -255,5 +268,13 @@ export default async function OrderConfirmationPage({
         </div>
       </section>
     </main>
+  );
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <Suspense fallback={<StatusScreen pulse icon="receipt_long" title="Loading your order…" />}>
+      <OrderConfirmation />
+    </Suspense>
   );
 }

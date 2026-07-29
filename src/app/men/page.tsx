@@ -6,6 +6,7 @@ import { products } from "@/data/products";
 import { Reveal } from "@/components/ui/Reveal";
 import { MenProductTile } from "@/components/product/MenProductTile";
 import { LinkButton } from "@/components/ui/Button";
+import { SlidingUnderline, useSlidingUnderline } from "@/components/ui/SlidingUnderline";
 
 const fabricTabs = ["All Fabrics", "Egyptian Cotton", "Latha", "Karandi", "Wash & Wear"];
 
@@ -26,6 +27,7 @@ const fabricGuide = [
 
 export default function MenPage() {
   const [activeTab, setActiveTab] = useState("All Fabrics");
+  const tabIndicator = useSlidingUnderline(activeTab);
   const menProducts = useMemo(() => products.filter((p) => p.gender === "Men"), []);
 
   const filtered = useMemo(() => {
@@ -77,20 +79,28 @@ export default function MenPage() {
       {/* Collection & Filters */}
       <section id="collection" className="py-16 md:py-24 max-w-container-max mx-auto px-gutter">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-outline-variant pb-8 mb-16">
-          <div className="flex gap-8 overflow-x-auto w-full md:w-auto">
+          <div
+            ref={tabIndicator.containerRef}
+            className="relative flex gap-8 overflow-x-auto w-full md:w-auto"
+          >
             {fabricTabs.map((tab) => (
               <button
                 key={tab}
+                ref={tabIndicator.setItemRef(tab)}
                 onClick={() => setActiveTab(tab)}
+                aria-pressed={activeTab === tab}
                 className={`font-label-md text-label-md uppercase tracking-widest pb-2 whitespace-nowrap transition-colors ${
-                  activeTab === tab
-                    ? "text-primary border-b border-primary"
-                    : "text-secondary hover:text-primary"
+                  activeTab === tab ? "text-primary" : "text-secondary hover:text-primary"
                 }`}
               >
                 {tab}
               </button>
             ))}
+            <SlidingUnderline
+              indicator={tabIndicator.indicator}
+              animate={tabIndicator.animate}
+              className="bottom-0 bg-primary"
+            />
           </div>
           <p className="font-label-md text-label-md uppercase text-secondary shrink-0">
             {filtered.length} {filtered.length === 1 ? "Fabric" : "Fabrics"}

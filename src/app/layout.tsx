@@ -9,6 +9,7 @@ import { CartProvider } from "@/components/cart/CartContext";
 import { WishlistProvider } from "@/components/wishlist/WishlistContext";
 import { TailoringProvider } from "@/components/tailoring/TailoringContext";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -40,20 +41,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="flex min-h-screen flex-col bg-background text-on-surface font-body-md selection:bg-tertiary-fixed-dim selection:text-primary"
         suppressHydrationWarning
       >
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <TailoringProvider>
-                <Suspense fallback={null}>
-                  <RouteProgress />
-                </Suspense>
-                <Navbar />
-                <main className="flex-1">{children}</main>
-                <Footer />
-              </TailoringProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <TailoringProvider>
+                  <Suspense fallback={null}>
+                    <RouteProgress />
+                  </Suspense>
+                  <Navbar />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </TailoringProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/components/providers/AuthProvider";
 
 export interface TailoringConfig {
   measurements: Record<string, string>;
@@ -30,6 +29,8 @@ export const MEASUREMENT_FIELDS = [
   "Trouser Length",
   "Inseam",
 ] as const;
+
+export type MeasurementField = (typeof MEASUREMENT_FIELDS)[number];
 
 export const NECKLINES = [
   { label: "Boat Neck", icon: "horizontal_rule", price: 0 },
@@ -68,10 +69,6 @@ const defaultConfig: TailoringConfig = {
   stitcherSlug: "khyber-artisans",
 };
 
-function hasMeasurements(config: TailoringConfig) {
-  return Object.values(config.measurements).some((v) => v?.trim());
-}
-
 interface TailoringContextValue {
   config: TailoringConfig;
   setConfig: (c: TailoringConfig) => void;
@@ -82,70 +79,24 @@ interface TailoringContextValue {
 const TailoringContext = createContext<TailoringContextValue | null>(null);
 const STORAGE_KEY = "fujrs-tailoring-config";
 
-async function syncConfigToServer(config: TailoringConfig) {
-  try {
-    await fetch("/api/tailoring-config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    });
-  } catch {
-    // Optimistic local state already applied.
-  }
-}
-
 export function TailoringProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useAuth();
   const [config, setConfigState] = useState<TailoringConfig>(defaultConfig);
   const [mounted, setMounted] = useState(false);
 
+  // Measurements live in the browser — there is no backend to sync them to yet.
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (status === "authenticated") {
-      (async () => {
-        let localConfig: TailoringConfig | null = null;
-        try {
-          localConfig = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-        } catch {
-          localConfig = null;
-        }
-
-        try {
-          const res = await fetch("/api/tailoring-config");
-          const data = await res.json();
-          const dbConfig: TailoringConfig | null = res.ok ? data.config : null;
-
-          if (dbConfig) {
-            // A saved account config takes priority — it's the
-            // deliberately-saved cross-device one.
-            setConfigState(dbConfig);
-          } else if (localConfig && hasMeasurements(localConfig)) {
-            setConfigState(localConfig);
-            await syncConfigToServer(localConfig);
-            localStorage.removeItem(STORAGE_KEY);
-          }
-        } catch {
-          if (localConfig) setConfigState(localConfig);
-        }
-        setMounted(true);
-      })();
-    } else {
-      try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-        if (stored) setConfigState(stored);
-      } catch {
-        /* ignore */
-      }
-      setMounted(true);
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+      if (stored) setConfigState(stored);
+    } catch {
+      /* ignore */
     }
-  }, [status]);
+    setMounted(true);
+  }, []);
 
   function setConfig(c: TailoringConfig) {
     setConfigState(c);
-    if (status === "authenticated") {
-      syncConfigToServer(c);
-    } else if (typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
     }
   }

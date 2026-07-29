@@ -12,6 +12,19 @@ Deferred (explicit decision, not forgotten), or 🔲 Remaining. Nothing
 currently reads as broken — what's left is either out of scope for a
 frontend-only pass (needs backend) or was intentionally left alone.
 
+> **Update 2026-07-29.** The backend (Supabase, Stripe, all API routes) was
+> removed on purpose — see [README.md](./README.md). Three consequences for
+> this document:
+>
+> - The "one manual Supabase step" for `profiles.address` (Sections 9 and
+>   "What's left") is **moot** — saved addresses now persist to
+>   `src/lib/local/profile.ts` and work with no setup.
+> - Features that previously dead-ended now surface a **"coming soon" toast**
+>   (`src/components/ui/Toast.tsx`) instead: card payments, promo codes,
+>   password changes. This replaces the promo-code stub noted in Section 2.
+> - Dashboard placeholder stats (Section 4) are unchanged, but every
+>   dashboard now labels itself as sample data on screen.
+
 ---
 
 ## 1. ✅ Done — "transparent" mobile hamburger menu

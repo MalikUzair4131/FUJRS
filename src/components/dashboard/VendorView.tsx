@@ -1,124 +1,69 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { DEMO_DRAFTS } from "@/lib/auth/demoData";
-
-interface Draft {
-  id: string;
-  title: string;
-  price: number;
-  fabric: string;
-  category: string;
-  gender: string;
-  description: string;
-  status: string;
-  createdAt: string;
-}
-
-const emptyForm = {
-  title: "",
-  price: "",
-  fabric: "",
-  category: "",
-  gender: "Women" as "Men" | "Women" | "Unisex",
-  description: "",
-};
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+import { ProductForm } from "@/components/dashboard/ProductForm";
+import { SubmissionTable } from "@/components/dashboard/SubmissionTable";
+import {
+  CatalogStorageError,
+  createItem,
+  listBySubmitter,
+  type CatalogItem,
+  type NewCatalogItem,
+} from "@/lib/local/catalog";
 
 export function VendorView() {
   const { session } = useAuth();
-  const isDemo = !!session?.user.isDemo;
-
-  const [drafts, setDrafts] = useState<Draft[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [items, setItems] = useState<CatalogItem[] | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
-  function loadDrafts() {
-    if (isDemo) {
-      setDrafts(DEMO_DRAFTS);
-      return;
-    }
-    fetch("/api/vendor/products")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load");
-        return res.json();
-      })
-      .then((data) => setDrafts(data.drafts))
-      .catch(() => setError("Couldn't load your submitted products right now."));
-  }
+  const email = session?.user.email ?? "";
 
-  useEffect(() => {
-    loadDrafts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemo]);
+  const refresh = useCallback(() => {
+    if (email) setItems(listBySubmitter(email));
+  }, [email]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setFormError(null);
+  useEffect(refresh, [refresh]);
 
-    const price = Number(form.price);
-    if (!form.title || !price || !form.fabric || !form.category || form.description.length < 10) {
-      setFormError("Fill in every field — description needs at least 10 characters.");
-      return;
-    }
-
-    if (isDemo) {
-      const newDraft: Draft = {
-        id: `demo-draft-${Date.now()}`,
-        title: form.title,
-        price,
-        fabric: form.fabric,
-        category: form.category,
-        gender: form.gender,
-        description: form.description,
-        status: "PENDING",
-        createdAt: new Date().toISOString(),
-      };
-      setDrafts((prev) => [newDraft, ...(prev ?? [])]);
-      setForm(emptyForm);
+  function handleSubmit(input: NewCatalogItem) {
+    if (!session) return;
+    try {
+      createItem(input, {
+        email: session.user.email,
+        name: session.user.name,
+        role: session.user.role,
+      });
       setShowForm(false);
-      return;
+      refresh();
+      toast("Submitted for review — an Admin will approve or reject it.", "success");
+    } catch (err) {
+      toast(
+        err instanceof CatalogStorageError
+          ? "Storage is full. Remove an older submission or use a smaller image."
+          : "Couldn't save that submission.",
+        "info"
+      );
     }
-
-    setSubmitting(true);
-    const res = await fetch("/api/vendor/products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, price }),
-    });
-    const data = await res.json();
-    setSubmitting(false);
-
-    if (!res.ok) {
-      setFormError(data.error ?? "Could not submit product.");
-      return;
-    }
-
-    setForm(emptyForm);
-    setShowForm(false);
-    loadDrafts();
   }
 
-  const pending = drafts?.filter((d) => d.status === "PENDING").length ?? 0;
-  const approved = drafts?.filter((d) => d.status === "APPROVED").length ?? 0;
+  const pending = items?.filter((i) => i.status === "PENDING").length ?? 0;
+  const approved = items?.filter((i) => i.status === "APPROVED").length ?? 0;
+  const rejected = items?.filter((i) => i.status === "REJECTED").length ?? 0;
 
   const shopStats = [
     { label: "Shop Status", value: "Active" },
-    { label: "Submitted Drafts", value: drafts ? String(drafts.length) : "—" },
-    { label: "Pending Review", value: drafts ? String(pending) : "—" },
-    { label: "Approved to Catalog", value: drafts ? String(approved) : "—" },
+    { label: "Submitted", value: items ? String(items.length) : "—" },
+    { label: "Pending Review", value: items ? String(pending) : "—" },
+    { label: "Approved", value: items ? String(approved) : "—" },
   ];
 
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        {isDemo
-          ? "Demo data — submissions here are local only and not persisted."
-          : "Products you submit here go into a real review queue — they're proposals for the live catalog (which is code-managed), not instantly published."}
+        Saved on this device — submissions aren&apos;t sent anywhere yet.
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -130,125 +75,42 @@ export function VendorView() {
         ))}
       </div>
 
-      <div className="mt-10 flex items-center justify-between">
-        <h2 className="font-display text-headline-sm">Your Submitted Products</h2>
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display text-headline-sm">Your Submissions</h2>
+          <p className="mt-1 text-label-sm text-marketplace-bronze">
+            Every piece you submit goes to an Admin for approval before it reaches the catalogue.
+          </p>
+        </div>
         <Button variant="primary" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? "Close" : "+ Add Product"}
+          {showForm ? "Close" : "+ Submit Product"}
         </Button>
       </div>
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="mt-6 grid grid-cols-1 gap-4 border border-border-subtle p-6 sm:grid-cols-2"
-        >
-          <div>
-            <label className="text-label-sm uppercase text-text-muted">Product Name</label>
-            <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-label-sm uppercase text-text-muted">Price (PKR)</label>
-            <input
-              inputMode="numeric"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-              className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-label-sm uppercase text-text-muted">Fabric</label>
-            <input
-              value={form.fabric}
-              onChange={(e) => setForm({ ...form, fabric: e.target.value })}
-              className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-label-sm uppercase text-text-muted">Category</label>
-            <input
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              placeholder="e.g. 3-Piece Suits"
-              className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="text-label-sm uppercase text-text-muted">Gender</label>
-            <select
-              value={form.gender}
-              onChange={(e) => setForm({ ...form, gender: e.target.value as typeof form.gender })}
-              className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="Women">Women</option>
-              <option value="Men">Men</option>
-              <option value="Unisex">Unisex</option>
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-label-sm uppercase text-text-muted">Description</label>
-            <textarea
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="mt-1 w-full border border-outline-variant bg-transparent px-4 py-3 text-body-md focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          {formError && <p className="sm:col-span-2 text-label-sm text-error">{formError}</p>}
-          <Button
-            type="submit"
-            variant="primary"
-            className="sm:col-span-2 w-fit"
-            disabled={submitting}
-          >
-            {submitting ? "Submitting…" : "Submit for Review"}
-          </Button>
-        </form>
+        <div className="mt-6">
+          <ProductForm
+            submitLabel="Submit for Review"
+            onSubmit={handleSubmit}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
       )}
 
-      {error && <p className="mt-6 text-label-sm text-error">{error}</p>}
-
-      <div className="mt-6 overflow-x-auto border border-border-subtle">
-        <table className="w-full text-left text-body-md">
-          <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
-            <tr>
-              <th className="px-4 py-3">Product</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Price</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-subtle">
-            {!drafts && !error && (
-              <tr>
-                <td className="px-4 py-6 text-text-muted" colSpan={4}>
-                  Loading…
-                </td>
-              </tr>
-            )}
-            {drafts?.length === 0 && (
-              <tr>
-                <td className="px-4 py-6 text-text-muted" colSpan={4}>
-                  No products submitted yet.
-                </td>
-              </tr>
-            )}
-            {drafts?.map((draft) => (
-              <tr key={draft.id}>
-                <td className="px-4 py-3">{draft.title}</td>
-                <td className="px-4 py-3">{draft.category}</td>
-                <td className="px-4 py-3">PKR {draft.price.toLocaleString()}</td>
-                <td className="px-4 py-3">
-                  <span className="text-label-sm uppercase text-text-muted">{draft.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="mt-6">
+        <SubmissionTable
+          items={items}
+          emptyMessage="You haven't submitted a product yet."
+          showReviewer
+        />
       </div>
+
+      {rejected > 0 && (
+        <p className="mt-4 font-label-sm text-label-sm text-text-muted">
+          {rejected} submission{rejected === 1 ? " was" : "s were"} rejected. Revise the details and
+          submit again.
+        </p>
+      )}
     </div>
   );
 }

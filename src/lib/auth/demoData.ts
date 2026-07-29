@@ -1,6 +1,6 @@
-// Fixtures for demo-auth mode (on by default) — used instead of the real APIs
-// so role dashboards work with zero Supabase project or .env configured.
-import type { AppRole } from "@/lib/supabase/server";
+// Sample data for the role dashboards. This build has no backend, so these
+// fixtures are what every dashboard renders.
+import type { AppRole } from "@/lib/auth/roles";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
 const DEMO_REVENUE_DAYS = 14;
