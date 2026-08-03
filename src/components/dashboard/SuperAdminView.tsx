@@ -5,15 +5,24 @@ import { Button } from "@/components/ui/Button";
 import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
+import { useToast } from "@/components/ui/Toast";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { DEMO_STATS, DEMO_USERS } from "@/lib/auth/demoData";
+import { DEMO_STATS, DEMO_USERS, DEMO_VENDORS, type DemoVendor } from "@/lib/auth/demoData";
+import {
+  COMMISSION_TYPES,
+  COMMISSION_TYPE_LABELS,
+  formatCommissionRate,
+  validateCommission,
+  type CommissionType,
+} from "@/lib/commission";
 import type { AppRole } from "@/lib/auth/roles";
 
-type Section = "OVERVIEW" | "CATALOGUE" | "USERS" | "ACCESS";
+type Section = "OVERVIEW" | "CATALOGUE" | "VENDORS" | "USERS" | "ACCESS";
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "OVERVIEW", label: "Overview" },
   { id: "CATALOGUE", label: "Catalogue" },
+  { id: "VENDORS", label: "Vendors" },
   { id: "USERS", label: "Users" },
   { id: "ACCESS", label: "Access" },
 ];
@@ -45,9 +54,11 @@ interface UsersResponse {
 export function SuperAdminView() {
   // Fixture data throughout — user creation and access toggles update local
   // state only, since there is no backend to persist them to yet.
+  const { toast } = useToast();
   const [section, setSection] = useState<Section>("OVERVIEW");
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [usersData, setUsersData] = useState<UsersResponse | null>(null);
+  const [vendors, setVendors] = useState<DemoVendor[]>(DEMO_VENDORS);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -90,6 +101,25 @@ export function SuperAdminView() {
     setEmail("");
     setPassword("");
     setRole("CUSTOMER");
+  }
+
+  /**
+   * Commission is the Super Admin's alone to set — vendors only ever read it.
+   * Validation runs here so a bad rate never reaches the (future) API.
+   */
+  function updateCommission(id: string, patch: { type?: CommissionType; value?: number }) {
+    setVendors((prev) =>
+      prev.map((vendor) => {
+        if (vendor.id !== id) return vendor;
+        const commission = { ...vendor.commission, ...patch };
+        const problem = validateCommission(commission);
+        if (problem) {
+          toast(problem, "info");
+          return vendor;
+        }
+        return { ...vendor, commission };
+      })
+    );
   }
 
   function toggleAccess(r: AppRole, category: string) {
@@ -185,6 +215,93 @@ export function SuperAdminView() {
       {section === "CATALOGUE" && (
         <div className="mt-8">
           <CatalogManager />
+        </div>
+      )}
+
+      {section === "VENDORS" && (
+        <div className="mt-8">
+          <h2 className="font-display text-headline-sm">Vendor Commission</h2>
+          <p className="mt-1 max-w-prose text-label-sm text-marketplace-bronze">
+            Vendors market products through their referral link and earn on what sells. Only you set
+            the rate — changes here update this screen only, they aren&apos;t saved anywhere yet.
+          </p>
+
+          <div className="mt-4 overflow-x-auto border border-border-subtle">
+            <table className="w-full text-left text-body-md">
+              <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Vendor</th>
+                  <th className="px-4 py-3 font-medium">Referral Code</th>
+                  <th className="px-4 py-3 font-medium">Commission Type</th>
+                  <th className="px-4 py-3 font-medium">Rate</th>
+                  <th className="px-4 py-3 font-medium">Clicks</th>
+                  <th className="px-4 py-3 font-medium">Sales</th>
+                  <th className="px-4 py-3 font-medium">Earned</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {vendors.map((vendor) => (
+                  <tr key={vendor.id} className="align-middle">
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{vendor.name}</p>
+                      <p className="text-label-sm text-text-muted">{vendor.email}</p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap tracking-widest text-text-muted">
+                      {vendor.referralCode}
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={vendor.commission.type}
+                        onChange={(e) =>
+                          updateCommission(vendor.id, { type: e.target.value as CommissionType })
+                        }
+                        aria-label={`Commission type for ${vendor.name}`}
+                        className="border border-outline-variant bg-white px-3 py-2 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
+                      >
+                        {COMMISSION_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {COMMISSION_TYPE_LABELS[type]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step={vendor.commission.type === "PERCENT" ? 0.5 : 100}
+                          value={vendor.commission.value}
+                          onChange={(e) =>
+                            updateCommission(vendor.id, { value: Number(e.target.value) })
+                          }
+                          aria-label={`Commission rate for ${vendor.name}`}
+                          className="w-24 border border-outline-variant bg-transparent px-3 py-2 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
+                        />
+                        <span className="text-label-sm text-text-muted">
+                          {vendor.commission.type === "PERCENT" ? "%" : "PKR"}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-label-sm text-marketplace-bronze">
+                        {formatCommissionRate(vendor.commission)} per sale
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">{vendor.clicks.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-text-muted">{vendor.sales.toLocaleString()}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      PKR {vendor.earned.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-2 max-w-prose text-label-sm text-text-muted">
+            Clicks, sales and earnings are sample figures. Crediting a real sale to a vendor needs
+            the backend to read the <code className="font-mono">ref</code> code off the incoming
+            link.
+          </p>
         </div>
       )}
 

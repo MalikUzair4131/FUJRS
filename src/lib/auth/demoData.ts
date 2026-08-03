@@ -1,6 +1,8 @@
 // Sample data for the role dashboards. This build has no backend, so these
 // fixtures are what every dashboard renders.
 import type { AppRole } from "@/lib/auth/roles";
+import type { CommissionRate } from "@/lib/commission";
+import { referralCodeFor } from "@/lib/local/affiliate";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
 const DEMO_REVENUE_DAYS = 14;
@@ -93,44 +95,107 @@ export const DEMO_USERS: {
   ],
 };
 
-export interface DemoDraft {
+/** A vendor's affiliate account, as the Super Admin sees it. */
+export interface DemoVendor {
   id: string;
-  title: string;
-  vendorId: string;
-  price: number;
-  fabric: string;
-  category: string;
-  gender: string;
-  description: string;
-  status: string;
-  createdAt: string;
+  name: string;
+  email: string;
+  referralCode: string;
+  commission: CommissionRate;
+  clicks: number;
+  sales: number;
+  /** Commission earned to date, in PKR. */
+  earned: number;
+  pendingPayout: number;
 }
 
-export const DEMO_DRAFTS: DemoDraft[] = [
+export const DEMO_VENDORS: DemoVendor[] = [
   {
-    id: "demo-draft-1",
-    title: "Ivory Silk Sherwani",
-    vendorId: "demo-vendor",
-    price: 32000,
-    fabric: "Silk",
-    category: "Sherwanis",
-    gender: "Men",
-    description: "Hand-embroidered ivory sherwani with a matching stole.",
-    status: "PENDING",
-    createdAt: new Date().toISOString(),
+    id: "demo-vendor",
+    name: "Demo Vendor",
+    email: "vendor@gmail.com",
+    referralCode: referralCodeFor("vendor@gmail.com"),
+    commission: { type: "PERCENT", value: 12 },
+    clicks: 1_284,
+    sales: 37,
+    earned: 186_400,
+    pendingPayout: 42_300,
   },
   {
-    id: "demo-draft-2",
-    title: "Emerald Velvet Waistcoat",
-    vendorId: "demo-vendor",
-    price: 12500,
-    fabric: "Velvet",
-    category: "Waistcoats",
-    gender: "Men",
-    description: "Emerald green velvet waistcoat with brass buttons.",
-    status: "APPROVED",
-    createdAt: new Date().toISOString(),
+    id: "demo-vendor-2",
+    name: "Hina Malik",
+    email: "hina.malik@example.com",
+    referralCode: referralCodeFor("hina.malik@example.com"),
+    commission: { type: "PERCENT", value: 8 },
+    clicks: 642,
+    sales: 14,
+    earned: 61_200,
+    pendingPayout: 0,
   },
+  {
+    id: "demo-vendor-3",
+    name: "Faisal Sheikh",
+    email: "faisal.sheikh@example.com",
+    referralCode: referralCodeFor("faisal.sheikh@example.com"),
+    commission: { type: "FLAT", value: 2_500 },
+    clicks: 310,
+    sales: 9,
+    earned: 22_500,
+    pendingPayout: 7_500,
+  },
+];
+
+/** Sales credited to a vendor's referral links. Commission is derived at render. */
+export interface DemoReferredSale {
+  id: string;
+  orderId: string;
+  product: string;
+  salePrice: number;
+  date: string;
+}
+
+export const DEMO_REFERRED_SALES: DemoReferredSale[] = [
+  {
+    id: "demo-ref-1",
+    orderId: "demo-order-4f2a9c31",
+    product: "Emerald Silk Unstitched Set",
+    salePrice: 45_000,
+    date: "2026-07-28",
+  },
+  {
+    id: "demo-ref-2",
+    orderId: "demo-order-88b1d740",
+    product: "Midnight Zardozi Velvet",
+    salePrice: 62_500,
+    date: "2026-07-24",
+  },
+  {
+    id: "demo-ref-3",
+    orderId: "demo-order-1c7e5b92",
+    product: "Blush Pearl Organza",
+    salePrice: 38_000,
+    date: "2026-07-19",
+  },
+  {
+    id: "demo-ref-4",
+    orderId: "demo-order-a30f6d15",
+    product: "Ivory Karandi Suiting",
+    salePrice: 12_900,
+    date: "2026-07-11",
+  },
+];
+
+export interface DemoPayout {
+  id: string;
+  date: string;
+  amount: number;
+  status: "Paid" | "Processing";
+}
+
+export const DEMO_PAYOUTS: DemoPayout[] = [
+  { id: "demo-payout-1", date: "2026-07-01", amount: 58_900, status: "Paid" },
+  { id: "demo-payout-2", date: "2026-06-01", amount: 44_200, status: "Paid" },
+  { id: "demo-payout-3", date: "2026-08-01", amount: 42_300, status: "Processing" },
 ];
 
 export interface DemoQueueItem {

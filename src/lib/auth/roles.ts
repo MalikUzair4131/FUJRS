@@ -43,11 +43,12 @@ export const ROLE_WORKSPACE: Record<StaffRole, { summary: string; duties: string
     ],
   },
   VENDOR: {
-    summary: "Propose new pieces for the FUJRS catalogue and track where each submission stands.",
+    summary:
+      "Market FUJRS pieces through your own channels and earn commission on everything that sells through your links.",
     duties: [
-      "Submit new products for review",
-      "Track pending and approved submissions",
-      "Keep fabric and pricing details current",
+      "Take a referral link for any piece in the catalogue",
+      "Share it across your social channels",
+      "Track referred sales and commission earned",
     ],
   },
   TAILOR: {

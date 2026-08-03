@@ -5,21 +5,20 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ProductForm } from "@/components/dashboard/ProductForm";
-import { SubmissionTable } from "@/components/dashboard/SubmissionTable";
+import { CatalogTable } from "@/components/dashboard/CatalogTable";
 import {
   CatalogStorageError,
-  approveItem,
   createItem,
   listItems,
-  rejectItem,
+  removeItem,
   type CatalogItem,
   type NewCatalogItem,
 } from "@/lib/local/catalog";
 
 /**
- * Catalogue management for the roles that can publish directly — reviewing
- * vendor submissions and adding pieces straight to the catalogue. Shared by
- * the Admin and Super Admin dashboards so the flow is identical for both.
+ * Catalogue management for the roles that can publish — shared by the Admin
+ * and Super Admin dashboards so the flow is identical for both. Pieces added
+ * here go live immediately; there is no review queue.
  */
 export function CatalogManager() {
   const { session } = useAuth();
@@ -30,16 +29,10 @@ export function CatalogManager() {
   const refresh = useCallback(() => setItems(listItems()), []);
   useEffect(refresh, [refresh]);
 
-  const reviewerName = session?.user.name ?? "Admin";
-
   function handleAdd(input: NewCatalogItem) {
     if (!session) return;
     try {
-      createItem(input, {
-        email: session.user.email,
-        name: session.user.name,
-        role: session.user.role,
-      });
+      createItem(input, { email: session.user.email, name: session.user.name });
       setShowForm(false);
       refresh();
       toast("Product published to the catalogue.", "success");
@@ -53,94 +46,50 @@ export function CatalogManager() {
     }
   }
 
-  function handleApprove(item: CatalogItem) {
-    approveItem(item.id, reviewerName);
+  function handleRemove(item: CatalogItem) {
+    removeItem(item.id);
     refresh();
-    toast(`“${item.title}” approved.`, "success");
+    toast(`“${item.title}” removed from the catalogue.`, "info");
   }
-
-  function handleReject(item: CatalogItem) {
-    rejectItem(item.id, reviewerName);
-    refresh();
-    toast(`“${item.title}” rejected.`, "info");
-  }
-
-  const pending = items?.filter((i) => i.status === "PENDING") ?? null;
-  const published = items?.filter((i) => i.status === "APPROVED") ?? null;
 
   return (
-    <div className="space-y-10">
-      <section>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-headline-sm">Pending Vendor Submissions</h2>
-            <p className="mt-1 text-label-sm text-marketplace-bronze">
-              {items === null
-                ? "Loading…"
-                : pending && pending.length > 0
-                  ? `${pending.length} awaiting your review.`
-                  : "Nothing awaiting review."}
-            </p>
-          </div>
+    <section>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display text-headline-sm">Catalogue</h2>
+          <p className="mt-1 text-label-sm text-marketplace-bronze">
+            Pieces you add here publish immediately — saved on this device only.
+          </p>
         </div>
+        <Button variant="primary" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? "Close" : "+ Add Product"}
+        </Button>
+      </div>
 
-        <div className="mt-4">
-          <SubmissionTable
-            items={pending}
-            emptyMessage="No submissions are waiting for review."
-            showSubmitter
-            actions={(item) => (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleApprove(item)}
-                  className="bg-primary px-3 py-1.5 font-label-sm text-label-sm uppercase tracking-widest text-on-primary transition-opacity hover:opacity-80"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleReject(item)}
-                  className="border border-outline-variant px-3 py-1.5 font-label-sm text-label-sm uppercase tracking-widest transition-colors hover:border-error hover:text-error"
-                >
-                  Reject
-                </button>
-              </div>
-            )}
-          />
-        </div>
-      </section>
-
-      <section>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-headline-sm">Catalogue</h2>
-            <p className="mt-1 text-label-sm text-marketplace-bronze">
-              Pieces you add here publish immediately — no review step.
-            </p>
-          </div>
-          <Button variant="primary" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "Close" : "+ Add Product"}
-          </Button>
-        </div>
-
-        {showForm && (
-          <div className="mt-6">
-            <ProductForm
-              submitLabel="Publish to Catalogue"
-              onSubmit={handleAdd}
-              onCancel={() => setShowForm(false)}
-            />
-          </div>
-        )}
-
+      {showForm && (
         <div className="mt-6">
-          <SubmissionTable
-            items={published}
-            emptyMessage="No products published yet."
-            showSubmitter
-            showReviewer
+          <ProductForm
+            submitLabel="Publish to Catalogue"
+            onSubmit={handleAdd}
+            onCancel={() => setShowForm(false)}
           />
         </div>
-      </section>
-    </div>
+      )}
+
+      <div className="mt-6">
+        <CatalogTable
+          items={items}
+          emptyMessage="No products added yet."
+          actions={(item) => (
+            <button
+              onClick={() => handleRemove(item)}
+              className="border border-outline-variant px-3 py-1.5 font-label-sm text-label-sm uppercase tracking-widest transition-colors hover:border-error hover:text-error"
+            >
+              Remove
+            </button>
+          )}
+        />
+      </div>
+    </section>
   );
 }

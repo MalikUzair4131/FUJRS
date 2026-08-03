@@ -4,28 +4,25 @@ import { useEffect, useState } from "react";
 import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
-import { DEMO_STATS } from "@/lib/auth/demoData";
-import { listByStatus } from "@/lib/local/catalog";
+import { DEMO_STATS, DEMO_VENDORS } from "@/lib/auth/demoData";
+import { listItems } from "@/lib/local/catalog";
 
 export function AdminView() {
   // Everything here reads fixtures — there is no backend to query yet, and
   // actions update local state only.
   const [data, setData] = useState<typeof DEMO_STATS | null>(null);
-  const [counts, setCounts] = useState<{ published: number; pending: number } | null>(null);
+  const [productCount, setProductCount] = useState<number | null>(null);
 
   useEffect(() => {
     setData(DEMO_STATS);
-    setCounts({
-      published: listByStatus("APPROVED").length,
-      pending: listByStatus("PENDING").length,
-    });
+    setProductCount(listItems().length);
   }, []);
 
   const stats = [
     { label: "Total Orders", value: data ? data.totalOrders.toLocaleString() : "—" },
     { label: "Total Revenue", value: data ? `PKR ${data.totalRevenue.toLocaleString()}` : "—" },
-    { label: "Catalogue Products", value: counts ? String(counts.published) : "—" },
-    { label: "Awaiting Review", value: counts ? String(counts.pending) : "—" },
+    { label: "Catalogue Products", value: productCount === null ? "—" : String(productCount) },
+    { label: "Active Vendors", value: String(DEMO_VENDORS.length) },
   ];
 
   return (
