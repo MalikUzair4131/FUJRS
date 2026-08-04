@@ -172,6 +172,14 @@ function OrderConfirmation() {
                 <span>PKR {order.total.toLocaleString()}</span>
               </div>
             </div>
+            {order.referralCode && (
+              <p className="mt-6 border-t border-border-subtle pt-4 font-label-sm text-label-sm text-on-surface-variant">
+                Referred by{" "}
+                <span className="uppercase tracking-widest text-marketplace-bronze">
+                  {order.referralCode}
+                </span>
+              </p>
+            )}
           </div>
         </div>
 

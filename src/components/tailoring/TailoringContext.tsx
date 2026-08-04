@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import type { MeasurementSet } from "@/lib/measurements";
 
 export interface TailoringConfig {
-  measurements: Record<string, string>;
+  measurements: MeasurementSet;
   neckline: string;
   necklinePrice: number;
   sleeve: string;
@@ -14,23 +15,6 @@ export interface TailoringConfig {
   basePrice: number;
   stitcherSlug: string;
 }
-
-export const MEASUREMENT_FIELDS = [
-  "Chest",
-  "Waist",
-  "Hips",
-  "Shoulder",
-  "Arm Length",
-  "Length",
-  "Bicep",
-  "Neck",
-  "Front Length",
-  "Back Length",
-  "Trouser Length",
-  "Inseam",
-] as const;
-
-export type MeasurementField = (typeof MEASUREMENT_FIELDS)[number];
 
 export const NECKLINES = [
   { label: "Boat Neck", icon: "horizontal_rule", price: 0 },

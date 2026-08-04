@@ -43,6 +43,23 @@ export function referralCodeFor(email: string): string {
   return `${REFERRAL_PREFIX}-${code.slice(0, REFERRAL_CODE_LENGTH)}`;
 }
 
+const REFERRAL_CODE_PATTERN = new RegExp(`^${REFERRAL_PREFIX}-[0-9A-Z]{${REFERRAL_CODE_LENGTH}}$`);
+
+/** Codes arrive from a URL, so they're untrusted until they match the issued shape. */
+export function normaliseReferralCode(code: string): string {
+  return code.trim().toUpperCase();
+}
+
+export function isValidReferralCode(code: string): boolean {
+  return REFERRAL_CODE_PATTERN.test(normaliseReferralCode(code));
+}
+
+/** The vendor a code belongs to, or null when no vendor claims it. */
+export function vendorEmailForCode(code: string, vendorEmails: string[]): string | null {
+  const target = normaliseReferralCode(code);
+  return vendorEmails.find((email) => referralCodeFor(email) === target) ?? null;
+}
+
 export function buildReferralUrl(origin: string, productSlug: string, code: string): string {
   return `${origin}/products/${productSlug}?${REFERRAL_PARAM}=${code}`;
 }

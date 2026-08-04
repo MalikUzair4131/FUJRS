@@ -1,8 +1,9 @@
 // Orders live in the browser until a real backend exists. This module is the
 // single place that reads/writes them — pages never touch localStorage
 // directly, so swapping this for an API client later is a one-file change.
-import { INITIAL_ORDER_STATUS, type OrderStatus } from "@/lib/orderStatus";
+import { INITIAL_ORDER_STATUS, canTransition, type OrderStatus } from "@/lib/orderStatus";
 import { STITCHING_STATUSES, type StitchingStatus } from "@/lib/stitchingStatus";
+import { activeReferralCode } from "@/lib/local/referral";
 
 const STORAGE_KEY = "fujrs-orders";
 
@@ -36,6 +37,12 @@ export interface LocalOrder {
   city: string;
   postalCode: string;
   paymentMethod: PaymentMethod;
+  /**
+   * Referral code the shopper arrived with, or null for a direct order. This is
+   * what credits a vendor's commission — the server will have to re-derive it
+   * from its own click record rather than trusting the browser.
+   */
+  referralCode: string | null;
 }
 
 export interface NewOrderInput {
@@ -117,8 +124,25 @@ export function createOrder(input: NewOrderInput): LocalOrder {
     city: input.city,
     postalCode: input.postalCode,
     paymentMethod: input.paymentMethod,
+    // Read here rather than passed in, so every path that places an order is
+    // attributed the same way and no caller can forget.
+    referralCode: activeReferralCode(),
   };
 
   writeAll([...readAll(), order]);
   return order;
+}
+
+/**
+ * Moves an order to a new status. Returns the updated order, or null when the
+ * order is gone or the transition isn't allowed — the caller shows the reason.
+ */
+export function updateOrderStatus(id: string, status: OrderStatus): LocalOrder | null {
+  const orders = readAll();
+  const order = orders.find((o) => o.id === id);
+  if (!order || !canTransition(order.status, status)) return null;
+
+  const updated = { ...order, status };
+  writeAll(orders.map((o) => (o.id === id ? updated : o)));
+  return updated;
 }

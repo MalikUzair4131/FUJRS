@@ -3,6 +3,8 @@
 import type { AppRole } from "@/lib/auth/roles";
 import type { CommissionRate } from "@/lib/commission";
 import { referralCodeFor } from "@/lib/local/affiliate";
+import type { PayoutStatus } from "@/lib/local/payouts";
+import type { MeasurementSet } from "@/lib/measurements";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
 const DEMO_REVENUE_DAYS = 14;
@@ -189,7 +191,7 @@ export interface DemoPayout {
   id: string;
   date: string;
   amount: number;
-  status: "Paid" | "Processing";
+  status: PayoutStatus;
 }
 
 export const DEMO_PAYOUTS: DemoPayout[] = [
@@ -206,6 +208,14 @@ export interface DemoQueueItem {
   stitchingLabel: string;
   status: string;
   createdAt: string;
+  /** What the customer entered at `/tailoring/configure`, in inches. */
+  measurements: MeasurementSet;
+  /** The style choices priced into the order, which change how it's cut. */
+  neckline: string;
+  sleeve: string;
+  hemline: string;
+  /** Anything the customer asked for in their own words. */
+  notes: string | null;
 }
 
 export const DEMO_TAILOR_QUEUE: DemoQueueItem[] = [
@@ -217,6 +227,24 @@ export const DEMO_TAILOR_QUEUE: DemoQueueItem[] = [
     stitchingLabel: "Bespoke Fit",
     status: STITCHING_STATUSES[0],
     createdAt: new Date().toISOString(),
+    measurements: {
+      Chest: "36",
+      Waist: "30",
+      Hips: "38",
+      Shoulder: "15",
+      "Arm Length": "23",
+      Length: "42",
+      Bicep: "12",
+      Neck: "14",
+      "Front Length": "23",
+      "Back Length": "24",
+      "Trouser Length": "38",
+      Inseam: "29",
+    },
+    neckline: "Mandarin",
+    sleeve: "Bell Cuff",
+    hemline: "Scalloped Edge",
+    notes: "Please keep the sleeves a touch loose at the cuff.",
   },
   {
     id: "demo-queue-2",
@@ -226,5 +254,23 @@ export const DEMO_TAILOR_QUEUE: DemoQueueItem[] = [
     stitchingLabel: "Custom Measurements",
     status: STITCHING_STATUSES[1],
     createdAt: new Date().toISOString(),
+    measurements: {
+      Chest: "40",
+      Waist: "34",
+      Hips: "40",
+      Shoulder: "17",
+      "Arm Length": "25",
+      Length: "46",
+      Bicep: "14",
+      Neck: "16",
+      "Front Length": "26",
+      "Back Length": "27",
+      "Trouser Length": "40",
+      Inseam: "31",
+    },
+    neckline: "Mandarin",
+    sleeve: "Full Length",
+    hemline: "Straight Classic",
+    notes: null,
   },
 ];

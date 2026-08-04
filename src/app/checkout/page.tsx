@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { createOrder } from "@/lib/local/orders";
 import { getAddress } from "@/lib/local/profile";
+import { activeReferralCode } from "@/lib/local/referral";
 
 type Step = 1 | 2 | 3;
 
@@ -37,11 +38,20 @@ export default function CheckoutPage() {
   const [promoCode, setPromoCode] = useState("");
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
 
+  // Read after mount — the referral lives in the browser, and reading it during
+  // render would not match the server-rendered HTML.
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  useEffect(() => setReferralCode(activeReferralCode()), []);
+
   const { fabricTotal, stitchingTotal, shipping, total } = cartTotals(items);
 
+  // An empty bag means there's nothing to check out — except in the moment
+  // after the order is placed, when the bag is emptied on purpose. Without the
+  // `placing` guard this races the push to the confirmation page and can strand
+  // the customer on /cart with no record of what they just ordered.
   useEffect(() => {
-    if (mounted && items.length === 0) router.replace("/cart");
-  }, [mounted, items.length, router]);
+    if (mounted && items.length === 0 && !placing) router.replace("/cart");
+  }, [mounted, items.length, router, placing]);
 
   useEffect(() => {
     if (!session?.user.email) return;
@@ -478,6 +488,17 @@ export default function CheckoutPage() {
                   PKR {total.toLocaleString()}
                 </span>
               </div>
+              {referralCode && (
+                <div className="mb-8 border border-outline-variant border-l-4 border-l-tertiary-fixed-dim bg-surface-container-low p-4">
+                  <p className="font-label-sm text-label-sm uppercase tracking-widest text-marketplace-bronze">
+                    Referred by {referralCode}
+                  </p>
+                  <p className="mt-1 font-body-md text-body-md text-on-surface-variant">
+                    This order will be credited to the partner who sent you. It doesn&apos;t change
+                    what you pay.
+                  </p>
+                </div>
+              )}
               <form className="relative" onSubmit={handleApplyPromo}>
                 <label htmlFor="checkout-promo-code" className="sr-only">
                   Promo code

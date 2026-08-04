@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
+import { OrderManager } from "@/components/dashboard/OrderManager";
 import { DEMO_STATS, DEMO_VENDORS } from "@/lib/auth/demoData";
 import { listItems } from "@/lib/local/catalog";
 
@@ -75,47 +76,7 @@ export function AdminView() {
       </div>
 
       <div className="mt-10">
-        <h2 className="font-display text-headline-sm">Recent Orders</h2>
-        <div className="mt-4 overflow-x-auto border border-border-subtle">
-          <table className="w-full text-left text-body-md">
-            <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
-              <tr>
-                <th className="px-4 py-3">Order</th>
-                <th className="px-4 py-3">Customer</th>
-                <th className="px-4 py-3">Items</th>
-                <th className="px-4 py-3">Total</th>
-                <th className="px-4 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle">
-              {!data && (
-                <tr>
-                  <td className="px-4 py-6 text-text-muted" colSpan={5}>
-                    Loading…
-                  </td>
-                </tr>
-              )}
-              {data?.recentOrders.length === 0 && (
-                <tr>
-                  <td className="px-4 py-6 text-text-muted" colSpan={5}>
-                    No orders placed yet.
-                  </td>
-                </tr>
-              )}
-              {data?.recentOrders.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-4 py-3">#{order.id.slice(-8).toUpperCase()}</td>
-                  <td className="px-4 py-3">{order.customer}</td>
-                  <td className="px-4 py-3">{order.itemCount}</td>
-                  <td className="px-4 py-3">PKR {order.total.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span className="text-label-sm uppercase text-text-muted">{order.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <OrderManager />
       </div>
 
       <div className="mt-10">

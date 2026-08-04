@@ -20,6 +20,15 @@ import {
   removeLink,
   type AffiliateLink,
 } from "@/lib/local/affiliate";
+import {
+  MIN_PAYOUT_PKR,
+  PayoutValidationError,
+  availableToRequest,
+  listRequests,
+  requestPayout,
+  validatePayout,
+  type PayoutRequest,
+} from "@/lib/local/payouts";
 import { products } from "@/data/products";
 
 type Section = "OVERVIEW" | "LINKS" | "EARNINGS";
@@ -46,6 +55,11 @@ export function VendorView() {
   const [query, setQuery] = useState("");
   const [origin, setOrigin] = useState("");
 
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[] | null>(null);
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutError, setPayoutError] = useState<string | null>(null);
+  const [showPayoutForm, setShowPayoutForm] = useState(false);
+
   const email = session?.user.email ?? "";
   const referralCode = useMemo(() => (email ? referralCodeFor(email) : ""), [email]);
 
@@ -59,11 +73,47 @@ export function VendorView() {
   const performance = useMemo(() => DEMO_VENDORS.find((v) => v.email === email), [email]);
 
   const refresh = useCallback(() => {
-    if (email) setLinks(listLinks(email));
+    if (!email) return;
+    setLinks(listLinks(email));
+    setPayoutRequests(listRequests(email));
   }, [email]);
 
   useEffect(refresh, [refresh]);
   useEffect(() => setOrigin(window.location.origin), []);
+
+  // What's left after any request the vendor has already raised.
+  const pendingBalance = performance?.pendingPayout ?? 0;
+  const available =
+    email && payoutRequests ? availableToRequest(email, pendingBalance) : pendingBalance;
+
+  function handleRequestPayout(e: React.FormEvent) {
+    e.preventDefault();
+    const amount = Number(payoutAmount);
+
+    const problem = validatePayout(amount, available);
+    if (problem) {
+      setPayoutError(problem);
+      return;
+    }
+
+    try {
+      requestPayout(email, amount, available);
+    } catch (err) {
+      setPayoutError(
+        err instanceof PayoutValidationError ? err.message : "Couldn't raise that request."
+      );
+      return;
+    }
+
+    setPayoutError(null);
+    setPayoutAmount("");
+    setShowPayoutForm(false);
+    refresh();
+    toast(
+      `Payout of ${PKR(Math.round(amount))} requested. Approval needs the backend — nothing has moved yet.`,
+      "success"
+    );
+  }
 
   async function copy(text: string, successMessage: string) {
     try {
@@ -339,7 +389,7 @@ export function VendorView() {
 
       {section === "EARNINGS" && (
         <div className="mt-8">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div className="border border-border-subtle p-6">
               <p className="text-label-sm uppercase text-text-muted">Earned To Date</p>
               <p className="mt-2 font-display text-headline-sm">
@@ -353,6 +403,10 @@ export function VendorView() {
               </p>
             </div>
             <div className="border border-border-subtle p-6">
+              <p className="text-label-sm uppercase text-text-muted">Available To Withdraw</p>
+              <p className="mt-2 font-display text-headline-sm">{PKR(available)}</p>
+            </div>
+            <div className="border border-border-subtle p-6">
               <p className="text-label-sm uppercase text-text-muted">Your Rate</p>
               <p className="mt-2 font-display text-headline-sm">
                 {formatCommissionRate(commission)}
@@ -360,7 +414,110 @@ export function VendorView() {
             </div>
           </div>
 
+          <div className="mt-8 border border-border-subtle p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-display text-headline-sm">Withdraw Your Balance</h2>
+                <p className="mt-1 max-w-prose text-body-md text-text-muted">
+                  Minimum withdrawal is {PKR(MIN_PAYOUT_PKR)}. Requests are reviewed by FUJRS before
+                  payment — raising one here records it only, since there&apos;s no payout provider
+                  connected yet.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowPayoutForm((v) => !v);
+                  setPayoutError(null);
+                }}
+              >
+                {showPayoutForm ? "Close" : "Request Payout"}
+              </Button>
+            </div>
+
+            {showPayoutForm && (
+              <form onSubmit={handleRequestPayout} className="mt-6 max-w-sm">
+                <label
+                  htmlFor="payout-amount"
+                  className="text-label-sm uppercase tracking-widest text-text-muted"
+                >
+                  Amount (PKR)
+                </label>
+                <input
+                  id="payout-amount"
+                  type="number"
+                  inputMode="numeric"
+                  min={MIN_PAYOUT_PKR}
+                  max={available}
+                  value={payoutAmount}
+                  onChange={(e) => {
+                    setPayoutAmount(e.target.value);
+                    setPayoutError(null);
+                  }}
+                  placeholder={String(available)}
+                  className="mt-2 w-full border border-outline-variant bg-transparent px-4 py-3 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
+                />
+                {payoutError && <p className="mt-2 text-label-sm text-error">{payoutError}</p>}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button type="submit" variant="primary">
+                    Raise Request
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setPayoutAmount(String(available))}
+                  >
+                    Withdraw All
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          <h2 className="mt-10 font-display text-headline-sm">Your Requests</h2>
+          <div className="mt-4 overflow-x-auto border border-border-subtle">
+            <table className="w-full text-left text-body-md">
+              <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Requested</th>
+                  <th className="px-4 py-3 font-medium">Amount</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-subtle">
+                {!payoutRequests && (
+                  <tr>
+                    <td className="px-4 py-6 text-text-muted" colSpan={3}>
+                      Loading…
+                    </td>
+                  </tr>
+                )}
+                {payoutRequests?.length === 0 && (
+                  <tr>
+                    <td className="px-4 py-6 text-text-muted" colSpan={3}>
+                      You haven&apos;t requested a payout yet.
+                    </td>
+                  </tr>
+                )}
+                {payoutRequests?.map((request) => (
+                  <tr key={request.id}>
+                    <td className="px-4 py-3">{request.requestedAt.slice(0, 10)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{PKR(request.amount)}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-label-sm uppercase text-text-muted">
+                        {request.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           <h2 className="mt-10 font-display text-headline-sm">Payout History</h2>
+          <p className="mt-1 text-label-sm text-marketplace-bronze">
+            Sample history — real payments appear here once FUJRS starts settling them.
+          </p>
           <div className="mt-4 overflow-x-auto border border-border-subtle">
             <table className="w-full text-left text-body-md">
               <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">

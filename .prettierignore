@@ -3,3 +3,7 @@ node_modules
 out
 *.md
 package-lock.json
+
+# Supabase CLI local state and generated SQL
+supabase/.temp
+supabase/.branches

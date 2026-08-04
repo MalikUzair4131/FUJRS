@@ -172,6 +172,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 {order.paymentMethod === "cod" ? "Cash on Delivery" : "Card"}
               </span>
             </div>
+            {order.referralCode && (
+              <div className="mt-4 flex items-center justify-between border-t border-outline-variant pt-4">
+                <span className="font-label-sm text-label-sm uppercase text-on-surface-variant">
+                  Referred By
+                </span>
+                <span className="font-label-md text-label-md uppercase tracking-widest text-marketplace-bronze">
+                  {order.referralCode}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
