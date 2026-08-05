@@ -5,21 +5,33 @@ import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendCha
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
 import { OrderManager } from "@/components/dashboard/OrderManager";
-import { DEMO_STATS, DEMO_VENDORS } from "@/lib/auth/demoData";
-import { catalog } from "@/lib/data";
+import { catalog, stats as statsStore, users as userStore } from "@/lib/data";
+import type { DashboardStats } from "@/lib/data";
 
 export function AdminView() {
-  // Everything here reads fixtures — there is no backend to query yet, and
-  // actions update local state only.
-  const [data, setData] = useState<typeof DEMO_STATS | null>(null);
+  const [data, setData] = useState<DashboardStats | null>(null);
   const [productCount, setProductCount] = useState<number | null>(null);
+  const [vendorCount, setVendorCount] = useState<number | null>(null);
 
   useEffect(() => {
-    setData(DEMO_STATS);
     let active = true;
-    catalog.list().then((items) => {
-      if (active) setProductCount(items.length);
-    });
+
+    void (async () => {
+      const [overview, products] = await Promise.all([statsStore.overview(), catalog.list()]);
+      if (!active) return;
+      setData(overview);
+      setProductCount(products.length);
+    })();
+
+    // Listing users is Super-Admin-only, so an Admin gets nothing back. An em
+    // dash is the honest answer there — better than a count they can't see.
+    void userStore
+      .list()
+      .then((all) => {
+        if (active) setVendorCount(all.filter((u) => u.role === "VENDOR").length);
+      })
+      .catch(() => {});
+
     return () => {
       active = false;
     };
@@ -29,15 +41,11 @@ export function AdminView() {
     { label: "Total Orders", value: data ? data.totalOrders.toLocaleString() : "—" },
     { label: "Total Revenue", value: data ? `PKR ${data.totalRevenue.toLocaleString()}` : "—" },
     { label: "Catalogue Products", value: productCount === null ? "—" : String(productCount) },
-    { label: "Active Vendors", value: String(DEMO_VENDORS.length) },
+    { label: "Active Vendors", value: vendorCount === null ? "—" : String(vendorCount) },
   ];
 
   return (
     <div>
-      <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Revenue and order-status charts are sample data. Orders and the catalogue below are real.
-      </p>
-
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.label} className="border border-border-subtle p-6">

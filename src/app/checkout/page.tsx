@@ -65,7 +65,7 @@ export default function CheckoutPage() {
     setEmail((prev) => prev || session.user.email);
 
     let active = true;
-    void profiles.getAddress(session.user.email).then((saved) => {
+    void profiles.getAddress().then((saved) => {
       if (!active || !saved) return;
       setStreet((prev) => prev || saved.street);
       setCity((prev) => prev || saved.city);

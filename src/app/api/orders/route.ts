@@ -8,7 +8,8 @@
 // SECURITY — what is NOT trusted from the request body:
 //
 //   * prices. Every catalogue line is re-priced from the `products` table, so
-//     a posted `price: 1` buys nothing cheaply.
+//     a posted `price: 1` buys nothing cheaply. The bespoke line is re-priced
+//     from the customer's own stored draft.
 //   * totals. Recomputed from the re-priced lines with the same pure helper
 //     the bag uses (`@/lib/pricing`), then compared to what was posted.
 //   * the referral code. Re-derived server-side; a browser can name any
@@ -18,11 +19,18 @@
 // The client-side validation in checkout is UX. This is the boundary.
 
 import { NextResponse } from "next/server";
+import {
+  DEFAULT_COMMISSION,
+  calculateCommission,
+  validateCommission,
+  type CommissionRate,
+} from "@/lib/commission";
 import { INITIAL_ORDER_STATUS } from "@/lib/orderStatus";
 import { generateOrderNumber } from "@/lib/orderNumber";
 import { orderTotals } from "@/lib/pricing";
-import { isValidReferralCode } from "@/lib/referral";
-import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
+import { REFERRAL_COOKIE, isValidReferralCode } from "@/lib/referral";
+import { STITCHING_STATUSES, stitchingStatusToKey } from "@/lib/stitchingStatus";
+import { bespokePrice } from "@/lib/tailoringOptions";
 import { createAdminSupabase, createServerSupabase } from "@/lib/data/supabase/server";
 import type { Order, PaymentMethod } from "@/lib/data/types";
 
@@ -31,19 +39,24 @@ const toPaisa = (pkr: number) => Math.round(pkr * 100);
 const toPkr = (paisa: number) => paisa / 100;
 
 /**
- * The bespoke line the tailoring flow adds to the bag. It has no product row,
- * so its price cannot be checked against the catalogue.
+ * The bespoke line the tailoring flow adds to the bag.
  *
- * KNOWN GAP: its price is accepted as posted. Closing it means persisting the
- * stitching request (base + neckline + sleeve + hemline) and re-pricing from
- * that — which is the `stitching_requests` adapter, not yet written. Until
- * then this is the one line a client can price itself, and it is capped at a
- * single unit so it cannot be multiplied.
+ * It has no product row, so it cannot be priced from the catalogue. It is
+ * priced from the customer's own `stitching_requests` draft instead — the
+ * garment type and the three style choices, run back through the same pure
+ * `bespokePrice()` the configurator used. The posted figure is ignored
+ * entirely, so there is no line left in this route that a client can price.
  */
 const BESPOKE_SLUG = "bespoke-stitching-project";
 
 /** Cash on Delivery is the only method that completes an order today. */
 const SUPPORTED_PAYMENT_METHODS: PaymentMethod[] = ["cod"];
+
+/**
+ * Where a request lands once it is ordered. Measurements were captured during
+ * configuration, so it is not "Awaiting Measurements" any more — it is work.
+ */
+const STITCHING_STATUS_ON_ORDER = stitchingStatusToKey("In Progress");
 
 const MAX_LINES = 50;
 const MAX_QTY_PER_LINE = 20;
@@ -65,6 +78,19 @@ const text = (value: unknown, max = 200) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
+
+/**
+ * The code out of the referral cookie, which holds `code|slug|capturedAt`.
+ *
+ * The value is percent-encoded on the way out, so the separator arrives as
+ * %7C — splitting before decoding silently returns the whole blob, which then
+ * fails validation and quietly credits nobody.
+ */
+function readReferralCookieCode(cookieHeader: string): string {
+  const raw = new RegExp(`(?:^|;\\s*)${REFERRAL_COOKIE}=([^;]+)`).exec(cookieHeader)?.[1];
+  if (!raw) return "";
+  return decodeURIComponent(raw).split("|")[0] ?? "";
+}
 
 export async function POST(request: Request) {
   const supabase = await createServerSupabase();
@@ -129,6 +155,20 @@ export async function POST(request: Request) {
 
   const bySlug = new Map((productRows ?? []).map((row) => [row.slug, row]));
 
+  // The caller's open bespoke draft, if they have one. This is what makes the
+  // bespoke line pricable server-side: the choices are already stored, so the
+  // price can be recomputed rather than taken on trust.
+  const { data: draft } = user
+    ? await admin
+        .from("stitching_requests")
+        .select("id, garment_type, neckline, sleeve, hemline")
+        .eq("user_id", user.id)
+        .is("order_item_id", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
   const priced: {
     product_id: string | null;
     title: string;
@@ -138,6 +178,8 @@ export async function POST(request: Request) {
     stitching_label: string | null;
     stitching_addon_paisa: number | null;
     stitcherSlug: string | null;
+    /** Set on the bespoke line, so the draft can be linked once ids exist. */
+    stitchingRequestId?: string;
   }[] = [];
 
   for (const line of incoming) {
@@ -149,17 +191,37 @@ export async function POST(request: Request) {
     }
 
     if (slug === BESPOKE_SLUG) {
-      const price = Number(line.price);
-      if (!Number.isFinite(price) || price <= 0) return bad("That bespoke order isn't priced.");
+      // A bespoke line is only real if the customer actually configured one.
+      // Without a stored draft there is nothing to price it from, and the
+      // posted figure is exactly what must not be trusted.
+      if (!draft) {
+        return bad("We couldn't find your measurements. Please configure the piece again.");
+      }
+
+      const price = bespokePrice({
+        garmentType: draft.garment_type,
+        neckline: draft.neckline ?? "",
+        sleeve: draft.sleeve ?? "",
+        hemline: draft.hemline ?? "",
+      });
+
+      if (price <= 0) {
+        return bad("That garment can no longer be priced. Please configure it again.");
+      }
+
       priced.push({
         product_id: null,
         title: text(line.title, 200) || "Bespoke Stitching",
         image_url: text(line.image, 500) || null,
         unit_price_paisa: toPaisa(price),
-        quantity: 1, // see BESPOKE_SLUG
-        stitching_label: text(line.stitchingLabel, 200) || null,
+        // One per order: a bespoke garment is cut to one person's measurements,
+        // so a quantity of three would be three identical garments with no way
+        // to say so. The configurator offers no quantity either.
+        quantity: 1,
+        stitching_label: [draft.neckline, draft.sleeve, draft.hemline].filter(Boolean).join(", "),
         stitching_addon_paisa: 0,
         stitcherSlug: text(line.stitcherSlug, 80) || null,
+        stitchingRequestId: draft.id,
       });
       continue;
     }
@@ -206,18 +268,32 @@ export async function POST(request: Request) {
 
   // --- Referral --------------------------------------------------------------
 
-  // Shape-checked, then confirmed against a real vendor. An unknown code is
-  // dropped rather than rejected: the order is still a good order.
-  const claimedCode = text(body.referralCode, 20).toUpperCase();
+  // Read from the COOKIE the click route set, not from the payload. The body
+  // is a fallback for the browser build's localStorage-held code; a client can
+  // name any vendor it likes, and this is somebody's commission.
+  const cookieCode = readReferralCookieCode(request.headers.get("cookie") ?? "");
+  const claimedCode = (cookieCode || text(body.referralCode, 20)).toUpperCase();
+
   let referralCode: string | null = null;
+  let vendor: {
+    id: string;
+    commission_type: string | null;
+    commission_value: number | null;
+  } | null = null;
+
   if (claimedCode && isValidReferralCode(claimedCode)) {
-    const { data: vendor } = await admin
+    const { data } = await admin
       .from("users")
-      .select("id")
+      .select("id, commission_type, commission_value")
       .eq("referral_code", claimedCode)
       .eq("role", "VENDOR")
       .maybeSingle();
-    if (vendor) referralCode = claimedCode;
+
+    // An unknown code is dropped rather than rejected: the order is still good.
+    if (data) {
+      vendor = data;
+      referralCode = claimedCode;
+    }
   }
 
   // --- Write -----------------------------------------------------------------
@@ -285,6 +361,57 @@ export async function POST(request: Request) {
     // (items cascade) rather than leave one that was never stocked.
     await admin.from("orders").delete().eq("id", orderRow.id);
     return bad("Someone just took the last of one of these. Please review your bag.", 409);
+  }
+
+  // Attach the bespoke draft to the line it was ordered as. This is what turns
+  // a saved configuration into work: `order_item_id` going non-null is what
+  // separates a draft somebody is still fiddling with from a garment the
+  // atelier has to cut, and it is how the Tailor queue tells them apart.
+  //
+  // Done after the stock reservation so a rejected order leaves the draft
+  // untouched — the customer's measurements survive to be ordered again.
+  const bespokeIndex = priced.findIndex((line) => line.stitchingRequestId);
+  const bespokeItemId = bespokeIndex >= 0 ? itemRows?.[bespokeIndex]?.id : undefined;
+
+  if (bespokeItemId) {
+    await admin
+      .from("stitching_requests")
+      .update({
+        order_item_id: bespokeItemId,
+        // Measurements were captured before checkout, so the piece is ready to
+        // be worked on rather than waiting on the customer.
+        status: STITCHING_STATUS_ON_ORDER,
+      })
+      .eq("id", priced[bespokeIndex].stitchingRequestId!);
+  }
+
+  // Commission, if a vendor brought this sale. Written here rather than by a
+  // trigger because the RATE IS COPIED, not looked up: changing a vendor's
+  // rate later must never rewrite what they already earned.
+  //
+  // PENDING, not CREDITED — the dashboard promises a sale counts once the
+  // return window has closed, and a refund reverses it (the affiliate
+  // migration's clawback trigger). Only the fabric total earns commission;
+  // shipping is not a sale.
+  if (vendor && referralCode) {
+    const rate: CommissionRate = {
+      type: (vendor.commission_type as CommissionRate["type"]) ?? DEFAULT_COMMISSION.type,
+      value: Number(vendor.commission_value ?? DEFAULT_COMMISSION.value),
+    };
+
+    const saleValue = totals.fabricTotal + totals.stitchingTotal;
+
+    // A bad rate must not block the order — the sale happened either way.
+    if (!validateCommission(rate)) {
+      await admin.from("commissions").insert({
+        vendor_id: vendor.id,
+        order_id: orderRow.id,
+        rate_type: rate.type,
+        rate_value: rate.value,
+        sale_paisa: toPaisa(saleValue),
+        amount_paisa: toPaisa(calculateCommission(saleValue, rate)),
+      });
+    }
   }
 
   const order: Order = {

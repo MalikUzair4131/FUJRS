@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { STITCHING_STATUSES, type StitchingStatus } from "@/lib/stitchingStatus";
 import { MEASUREMENT_FIELDS, MEASUREMENT_UNIT, missingMeasurements } from "@/lib/measurements";
-import { DEMO_TAILOR_QUEUE, type DemoQueueItem } from "@/lib/auth/demoData";
+import { formatOrderNumber } from "@/lib/orderNumber";
+import { stitching } from "@/lib/data";
+import type { StitchingJob } from "@/lib/data";
+import { useToast } from "@/components/ui/Toast";
 import { Loading } from "@/components/ui/Loading";
 
-function orderRef(orderId: string) {
-  return `#${orderId.slice(-8).toUpperCase()}`;
-}
-
 /** The spec sheet a tailor actually cuts from — every measurement, in order. */
-function SpecSheet({ item }: { item: DemoQueueItem }) {
+function SpecSheet({ item }: { item: StitchingJob }) {
   const missing = missingMeasurements(item.measurements);
 
   return (
@@ -63,34 +63,65 @@ function SpecSheet({ item }: { item: DemoQueueItem }) {
         {item.notes ?? <span className="text-text-muted">None left for this piece.</span>}
       </p>
 
-      <p className="mt-6 text-label-sm text-marketplace-bronze">
-        Reference photos from the customer arrive with the backend — upload isn&apos;t built yet.
+      <p className="mt-6 text-label-sm uppercase tracking-widest text-text-muted">
+        Reference Photos
       </p>
+      {item.references.length === 0 ? (
+        <p className="mt-2 text-body-md text-text-muted">None supplied for this piece.</p>
+      ) : (
+        <ul className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {item.references.map((reference) => (
+            <li key={reference.id}>
+              {/* Signed and short-lived — the bucket is private because these
+                  are the customer's own photos. Opens full size in a new tab
+                  for the detail a thumbnail loses. */}
+              <a
+                href={reference.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block relative aspect-[4/5] overflow-hidden border border-outline-variant bg-surface-container transition-opacity hover:opacity-90"
+              >
+                <Image src={reference.url} alt="" fill unoptimized className="object-cover" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
 export function TailorView() {
-  // Fixture queue — status changes update local state only, since there is
-  // no backend to persist them to yet.
-  const [queue, setQueue] = useState<DemoQueueItem[] | null>(null);
+  const { toast } = useToast();
+  const [queue, setQueue] = useState<StitchingJob[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  useEffect(() => {
-    setQueue(DEMO_TAILOR_QUEUE);
+  const refresh = useCallback(async () => {
+    setQueue(await stitching.queue());
   }, []);
 
-  function updateStatus(itemId: string, status: string) {
-    setQueue(
-      (prev) => prev?.map((item) => (item.id === itemId ? { ...item, status } : item)) ?? null
-    );
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  async function updateStatus(job: StitchingJob, status: StitchingStatus) {
+    const updated = await stitching.updateStatus(job.id, status);
+
+    // Null means the database refused — most likely another tailor claimed the
+    // piece first. Re-reading is the honest response: the queue they are
+    // looking at is out of date, not the move they made.
+    if (!updated) {
+      toast("That piece was picked up by someone else. Refreshing the queue.", "info");
+      await refresh();
+      return;
+    }
+
+    await refresh();
+    toast(`${formatOrderNumber(job.orderNumber)} is now ${status.toLowerCase()}.`, "success");
   }
 
   return (
     <div>
-      <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Sample data — this queue isn&apos;t connected to a database yet.
-      </p>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {STITCHING_STATUSES.slice(0, 4).map((status) => (
           <div key={status} className="border border-border-subtle p-6">
@@ -111,8 +142,8 @@ export function TailorView() {
       )}
       {queue?.length === 0 && (
         <p className="mt-4 text-text-muted">
-          No bespoke orders assigned to you yet — they&apos;ll appear here as customers place custom
-          stitching orders.
+          Nothing in the queue — bespoke pieces appear here as customers order them, and any piece
+          nobody has claimed is yours to pick up.
         </p>
       )}
 
@@ -126,10 +157,16 @@ export function TailorView() {
               <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-body-md text-on-surface">
-                    {orderRef(item.orderId)} — {item.customer}
+                    {formatOrderNumber(item.orderNumber)} — {item.customer}
+                    {!item.claimed && (
+                      <span className="ml-2 border border-marketplace-bronze px-2 py-0.5 text-label-sm uppercase tracking-widest text-marketplace-bronze">
+                        Unclaimed
+                      </span>
+                    )}
                   </p>
                   <p className="text-label-sm text-text-muted">
-                    {item.garment} · {item.stitchingLabel}
+                    {item.garment} ·{" "}
+                    {[item.neckline, item.sleeve, item.hemline].filter(Boolean).join(", ")}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -143,8 +180,8 @@ export function TailorView() {
                   </button>
                   <select
                     value={item.status}
-                    aria-label={`Stitching status for order ${orderRef(item.orderId)}`}
-                    onChange={(e) => updateStatus(item.id, e.target.value)}
+                    aria-label={`Stitching status for order ${formatOrderNumber(item.orderNumber)}`}
+                    onChange={(e) => void updateStatus(item, e.target.value as StitchingStatus)}
                     className="border border-outline-variant bg-transparent px-4 py-2 text-body-md focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
                   >
                     {STITCHING_STATUSES.map((s) => (

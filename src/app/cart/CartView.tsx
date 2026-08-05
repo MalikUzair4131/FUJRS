@@ -263,52 +263,57 @@ export function CartView({ products }: { products: CatalogItem[] }) {
         </aside>
       </div>
 
-      {/* Complete the Look */}
-      <section className="mt-32">
-        <div className="flex justify-between items-end mb-12">
-          <div>
-            <span className="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">
-              Curated for You
-            </span>
-            <h2 className="font-display-lg text-display-lg-mobile md:text-headline-md mt-2">
-              Complete the Look
-            </h2>
-          </div>
-          <Link
-            href="/new-arrivals"
-            className="font-label-md text-label-md uppercase border-b border-black"
-          >
-            View All
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-gutter">
-          {completeTheLook.map((product) => (
-            <div key={product.id} className="group">
-              <Link href={`/products/${product.slug}`} className="block">
-                <div className="relative aspect-[4/5] bg-surface-container overflow-hidden mb-4">
-                  <ProductImage
-                    src={product.images[0]}
-                    alt={product.title}
-                    fill
-                    sizes="(min-width: 768px) 25vw, 50vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
-                  <div className="absolute bottom-0 left-0 w-full bg-primary text-on-primary font-label-sm py-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 uppercase tracking-widest text-center">
-                    <AddToBagButton product={product} label="Quick Add" />
-                  </div>
-                </div>
-              </Link>
-              <div className="space-y-1">
-                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
-                  FUJRS
-                </p>
-                <h4 className="font-body-md text-body-md">{product.title}</h4>
-                <p className="font-label-md text-label-md">PKR {product.price.toLocaleString()}</p>
-              </div>
+      {/* Complete the Look — hidden entirely when none of those accessories
+          are in the catalogue, rather than a heading over an empty grid. */}
+      {completeTheLook.length > 0 && (
+        <section className="mt-32">
+          <div className="flex justify-between items-end mb-12">
+            <div>
+              <span className="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">
+                Curated for You
+              </span>
+              <h2 className="font-display-lg text-display-lg-mobile md:text-headline-md mt-2">
+                Complete the Look
+              </h2>
             </div>
-          ))}
-        </div>
-      </section>
+            <Link
+              href="/new-arrivals"
+              className="font-label-md text-label-md uppercase border-b border-black"
+            >
+              View All
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-gutter">
+            {completeTheLook.map((product) => (
+              <div key={product.id} className="group">
+                <Link href={`/products/${product.slug}`} className="block">
+                  <div className="relative aspect-[4/5] bg-surface-container overflow-hidden mb-4">
+                    <ProductImage
+                      src={product.images[0]}
+                      alt={product.title}
+                      fill
+                      sizes="(min-width: 768px) 25vw, 50vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                    <div className="absolute bottom-0 left-0 w-full bg-primary text-on-primary font-label-sm py-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300 uppercase tracking-widest text-center">
+                      <AddToBagButton product={product} label="Quick Add" />
+                    </div>
+                  </div>
+                </Link>
+                <div className="space-y-1">
+                  <p className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+                    FUJRS
+                  </p>
+                  <h4 className="font-body-md text-body-md">{product.title}</h4>
+                  <p className="font-label-md text-label-md">
+                    PKR {product.price.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

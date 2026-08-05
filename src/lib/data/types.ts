@@ -226,6 +226,160 @@ export interface TailoringConfig {
   stitcherSlug: string;
 }
 
+/**
+ * A photo the customer supplied with a bespoke request.
+ *
+ * `url` is SIGNED and short-lived: the bucket is private because these are
+ * pictures of a customer, and a permanent link that leaks would stay valid
+ * forever. Re-read the list to refresh them rather than caching the URL.
+ */
+export interface ReferenceImage {
+  id: string;
+  url: string;
+}
+
+// --- Enquiries --------------------------------------------------------------
+
+export interface ContactMessage {
+  name: string;
+  email: string;
+  phone: string | null;
+  subject: string | null;
+  message: string;
+}
+
+// --- Reviews ----------------------------------------------------------------
+
+export const MIN_REVIEW_RATING = 1;
+export const MAX_REVIEW_RATING = 5;
+
+export interface Review {
+  id: string;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  authorName: string;
+  createdAt: string;
+  /** True when the reviewer's account has an order containing this product. */
+  verifiedPurchase: boolean;
+  /** True when this is the signed-in reader's own review, so it can be edited. */
+  mine: boolean;
+}
+
+export interface NewReview {
+  rating: number;
+  title: string | null;
+  body: string | null;
+}
+
+// --- Stitching queue --------------------------------------------------------
+
+/** A bespoke garment as the tailor who has to cut it sees it. */
+export interface StitchingJob {
+  id: string;
+  /** The order it belongs to, for quoting back to the customer. */
+  orderNumber: string;
+  customer: string;
+  garment: string;
+  neckline: string;
+  sleeve: string;
+  hemline: string;
+  notes: string | null;
+  measurements: MeasurementSet;
+  status: StitchingStatus;
+  /** False while the job is still in the pool, waiting to be claimed. */
+  claimed: boolean;
+  /** What the customer sent to show what they mean. Signed URLs. */
+  references: ReferenceImage[];
+}
+
+// --- Vendor performance -----------------------------------------------------
+
+/** What a vendor's referral links have actually done. */
+export interface VendorPerformance {
+  clicks: number;
+  sales: number;
+  /** Commission credited or paid, in PKR — what they can draw against. */
+  earned: number;
+  /** Commission on sales still inside the return window. */
+  pending: number;
+  /**
+   * The rate a Super Admin set for them. Read here rather than assumed, so the
+   * figure a vendor is quoted is the one their commission is calculated from.
+   */
+  commission: CommissionRate;
+  /**
+   * The code their links carry — ISSUED and stored, never derived.
+   *
+   * The browser build hashes the vendor's email to get one, which works only
+   * because nothing else checks it. The order route matches on
+   * `users.referral_code`, so a derived code would build links that credit
+   * nobody. Null when no code has been issued yet.
+   */
+  referralCode: string | null;
+}
+
+/** A sale credited to a vendor's links. */
+export interface ReferredSale {
+  id: string;
+  orderNumber: string;
+  product: string;
+  salePrice: number;
+  date: string;
+  /** Commission on this sale, as it was calculated at the time. */
+  commission: number;
+}
+
+// --- Dashboard statistics ---------------------------------------------------
+
+export interface DashboardStats {
+  totalOrders: number;
+  totalRevenue: number;
+  revenueByDay: { date: string; revenue: number }[];
+  ordersByStatus: { status: OrderStatus; count: number }[];
+  recentOrders: {
+    id: string;
+    orderNumber: string;
+    customer: string;
+    total: number;
+    status: OrderStatus;
+    itemCount: number;
+  }[];
+}
+
+// --- Access control ---------------------------------------------------------
+
+/**
+ * The areas access is granted over. Matches the `access_category` enum, in
+ * SCREAMING_SNAKE for the same reason the status enums are: the database
+ * stores keys, and the wording on screen can change without a migration.
+ */
+export const ACCESS_CATEGORIES = ["PRODUCTS", "ORDERS", "STITCHING", "VENDORS", "REPORTS"] as const;
+export type AccessCategory = (typeof ACCESS_CATEGORIES)[number];
+
+export const ACCESS_CATEGORY_LABELS: Record<AccessCategory, string> = {
+  PRODUCTS: "Products",
+  ORDERS: "Orders",
+  STITCHING: "Stitching",
+  VENDORS: "Vendors",
+  REPORTS: "Reports",
+};
+
+/**
+ * What a role may do in one area.
+ *
+ * Two flags rather than one, because the table has two and collapsing them
+ * would mean the screen couldn't express "can see orders, can't refund them" —
+ * which is the main thing a permission grid is for.
+ */
+export interface AccessGrant {
+  canView: boolean;
+  canEdit: boolean;
+}
+
+/** Every role's grants. SUPER_ADMIN is absent: it bypasses the grid entirely. */
+export type AccessGrid = Partial<Record<AppRole, Record<AccessCategory, AccessGrant>>>;
+
 // --- Staff administration ---------------------------------------------------
 
 /** A dashboard user as the Super Admin manages them. */

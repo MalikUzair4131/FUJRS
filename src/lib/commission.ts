@@ -18,6 +18,25 @@ export const COMMISSION_TYPE_LABELS: Record<CommissionType, string> = {
 
 export const DEFAULT_COMMISSION: CommissionRate = { type: "PERCENT", value: 10 };
 
+/**
+ * How long after DELIVERY before commission is the vendor's to draw.
+ *
+ * Commission is written PENDING and only counts toward a balance once it is
+ * CREDITED, because a refund reverses it — paying out on a sale that can still
+ * come back is how an affiliate programme loses money.
+ *
+ * This is the returns window, not an independent number: /returns-exchanges
+ * promises "items must be returned within 14 days of delivery", so the hold has
+ * to be at least that long or the promise and the payout disagree. Counted from
+ * delivery for the same reason — an order placed on the 1st and delivered on
+ * the 10th is returnable until the 24th.
+ *
+ * Changing it means changing three things together: this constant, the
+ * `credit_due_commissions` function in the hold_from_delivery migration, and
+ * the copy on the returns page.
+ */
+export const COMMISSION_HOLD_DAYS = 14;
+
 /** Bounds for the Super Admin's rate input. */
 export const MAX_COMMISSION_PERCENT = 100;
 export const MAX_COMMISSION_FLAT = 1_000_000;

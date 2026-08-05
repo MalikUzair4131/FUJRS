@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CatalogItem } from "@/lib/data";
+import { EmptyCatalogue } from "@/components/ui/EmptyCatalogue";
 import { Reveal } from "@/components/ui/Reveal";
 import { MenProductTile } from "@/components/product/MenProductTile";
 import { LinkButton } from "@/components/ui/Button";
@@ -107,7 +108,11 @@ export function MenCollection({ products }: { products: CatalogItem[] }) {
           </p>
         </div>
 
-        {filtered.length === 0 ? (
+        {menProducts.length === 0 ? (
+          // An empty catalogue is not a filter problem — telling someone to
+          // change a filter they never set is how a site reads as broken.
+          <EmptyCatalogue what="fabrics" />
+        ) : filtered.length === 0 ? (
           <p className="text-center py-24 text-secondary font-body-md">
             No fabrics match this filter yet.
           </p>

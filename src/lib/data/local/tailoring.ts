@@ -6,10 +6,11 @@
 // draft state is.
 
 import type { TailoringStore } from "../ports";
-import type { TailoringConfig } from "../types";
-import { readJSON, writeJSON } from "./storage";
+import type { ReferenceImage, TailoringConfig } from "../types";
+import { makeId, readJSON, writeJSON } from "./storage";
 
 const KEY = "fujrs-tailoring-config";
+const REFERENCES_KEY = "fujrs-tailoring-references";
 
 export const localTailoring: TailoringStore = {
   async read() {
@@ -18,5 +19,26 @@ export const localTailoring: TailoringStore = {
 
   async write(config) {
     writeJSON(KEY, config);
+  },
+
+  // Reference photos are data URLs here. That is what makes them work with no
+  // object storage, and also why the gallery is capped — several phone photos
+  // as base64 will hit the ~5MB localStorage quota on their own.
+  async listReferences() {
+    return readJSON<ReferenceImage[]>(REFERENCES_KEY, []);
+  },
+
+  async addReferences(images) {
+    const existing = readJSON<ReferenceImage[]>(REFERENCES_KEY, []);
+    const next = [...existing, ...images.map((image) => ({ id: makeId(), url: image.dataUrl }))];
+    writeJSON(REFERENCES_KEY, next);
+    return next;
+  },
+
+  async removeReference(id) {
+    writeJSON(
+      REFERENCES_KEY,
+      readJSON<ReferenceImage[]>(REFERENCES_KEY, []).filter((image) => image.id !== id)
+    );
   },
 };

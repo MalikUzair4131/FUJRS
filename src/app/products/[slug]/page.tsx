@@ -4,6 +4,7 @@ import { EditorialGallery } from "@/components/product/EditorialGallery";
 import { PurchasePanel } from "@/components/product/PurchasePanel";
 import { SpecsAccordion } from "@/components/product/SpecsAccordion";
 import { CompleteTheLook } from "@/components/product/CompleteTheLook";
+import { ProductReviews } from "@/components/product/ProductReviews";
 import { catalogRead } from "@/lib/data/server";
 import type { ProductGender } from "@/lib/data";
 
@@ -72,6 +73,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <SpecsAccordion product={product} />
         </div>
       </div>
+
+      <ProductReviews productSlug={product.slug} />
 
       <CompleteTheLook items={completeTheLook} />
     </div>

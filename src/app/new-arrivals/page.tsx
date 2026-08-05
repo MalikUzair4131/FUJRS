@@ -1,6 +1,7 @@
 import { ProductFilterGrid } from "@/components/ui/ProductFilterGrid";
 import { LinkButton } from "@/components/ui/Button";
 import { catalogRead } from "@/lib/data/server";
+import { EmptyCatalogue } from "@/components/ui/EmptyCatalogue";
 import { ProductImage } from "@/components/ui/ProductImage";
 
 export default async function NewArrivalsPage() {
@@ -13,6 +14,12 @@ export default async function NewArrivalsPage() {
         <p className="label-caps text-gold">Just Landed</p>
         <h1 className="mt-2 font-display text-headline-md">New Arrivals</h1>
       </div>
+
+      {newArrivals.length === 0 && (
+        <div className="container-luxe mt-10">
+          <EmptyCatalogue what="new arrivals" />
+        </div>
+      )}
 
       {spotlight && (
         <div className="container-luxe mt-10 grid grid-cols-1 gap-gutter lg:grid-cols-2">
@@ -45,7 +52,7 @@ export default async function NewArrivalsPage() {
 
       <div className="container-luxe mt-16">
         <h2 className="font-display text-headline-sm mb-8">More New In</h2>
-        <ProductFilterGrid products={rest} />
+        {rest.length > 0 && <ProductFilterGrid products={rest} />}
       </div>
     </div>
   );

@@ -11,6 +11,19 @@ const REFERRAL_CODE_LENGTH = 6;
 export const REFERRAL_PARAM = "ref";
 
 /**
+ * Cookie holding the credited code, as `code|productSlug|capturedAt`.
+ *
+ * A cookie rather than localStorage because the SERVER has to read it: the
+ * order route re-derives the referral instead of trusting what the browser
+ * posts. Deliberately script-readable — the sitewide bar shows it, and a
+ * public vendor code is not a secret.
+ */
+export const REFERRAL_COOKIE = "fujrs_ref";
+
+/** Anonymous per-visitor identifier for deduplicating clicks. Not a user id. */
+export const VISITOR_COOKIE = "fujrs_vid";
+
+/**
  * How long a referral stays credited to the vendor after the click.
  * Placeholder until the programme terms are agreed — REQUIREMENTS.md §8.
  */

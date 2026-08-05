@@ -52,8 +52,11 @@ const items: CatalogItem[] = products
       dupattaInfo: dupattaInfo ?? null,
       heritageStory: heritageStory ?? null,
       images: product.images,
-      rating: product.rating,
-      reviewCount: product.reviewCount,
+      // No rating until somebody reviews it. The static array used to carry
+      // figures invented by the design tool, which contradicted the reviews
+      // section on the very same page.
+      rating: null,
+      reviewCount: 0,
       addedByEmail: "",
       addedByName: "FUJRS",
       createdAt: new Date(0).toISOString(),

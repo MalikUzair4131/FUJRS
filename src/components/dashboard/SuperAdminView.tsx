@@ -7,9 +7,20 @@ import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
 import { useToast } from "@/components/ui/Toast";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { DEMO_STATS, DEMO_VENDORS } from "@/lib/auth/demoData";
-import { users as userStore } from "@/lib/data";
-import type { ManagedUser } from "@/lib/data";
+
+import {
+  permissions as permissionStore,
+  stats as statsStore,
+  users as userStore,
+} from "@/lib/data";
+import {
+  ACCESS_CATEGORIES,
+  ACCESS_CATEGORY_LABELS,
+  type AccessCategory,
+  type AccessGrid,
+  type DashboardStats,
+  type ManagedUser,
+} from "@/lib/data";
 import {
   COMMISSION_TYPES,
   DEFAULT_COMMISSION,
@@ -33,15 +44,7 @@ const SECTIONS: { id: Section; label: string }[] = [
 
 const ASSIGNABLE_ROLES: AppRole[] = ["CUSTOMER", "ADMIN", "VENDOR", "TAILOR", "SUPER_ADMIN"];
 
-const ACCESS_CATEGORIES = ["Products", "Orders", "Stitching", "Vendors", "Reports"] as const;
 const ACCESS_ROLES: AppRole[] = ["ADMIN", "VENDOR", "TAILOR"];
-
-interface StatsResponse {
-  totalOrders: number;
-  totalRevenue: number;
-  revenueByDay: { date: string; revenue: number }[];
-  ordersByStatus: { status: string; count: number }[];
-}
 
 interface UserRow {
   id: string;
@@ -56,11 +59,9 @@ interface UsersResponse {
 }
 
 export function SuperAdminView() {
-  // Fixture data throughout — user creation and access toggles update local
-  // state only, since there is no backend to persist them to yet.
   const { toast } = useToast();
   const [section, setSection] = useState<Section>("OVERVIEW");
-  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [managed, setManaged] = useState<ManagedUser[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -70,21 +71,18 @@ export function SuperAdminView() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("CUSTOMER");
 
-  const [access, setAccess] = useState<Record<AppRole, Record<string, boolean>>>(() => {
-    const initial: Record<string, Record<string, boolean>> = {};
-    for (const r of ACCESS_ROLES) {
-      initial[r] = Object.fromEntries(ACCESS_CATEGORIES.map((c) => [c, true]));
-    }
-    return initial as Record<AppRole, Record<string, boolean>>;
-  });
+  // Loaded, not assumed. The grid used to initialise every role to true for
+  // every category, which is the opposite of what the seed grants.
+  const [access, setAccess] = useState<AccessGrid | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   const refreshUsers = useCallback(async () => {
     setManaged(await userStore.list());
   }, []);
 
   useEffect(() => {
-    // Revenue and order charts are still fixtures — no orders adapter yet.
-    setStats(DEMO_STATS);
+    void statsStore.overview().then(setStats);
+    void permissionStore.read().then(setAccess);
     void refreshUsers();
   }, [refreshUsers]);
 
@@ -130,7 +128,8 @@ export function SuperAdminView() {
 
   /**
    * Commission is the Super Admin's alone to set — vendors only ever read it.
-   * Validation runs here so a bad rate never reaches the (future) API.
+   * Validation runs here for the user's benefit; the API re-validates, because
+   * a client check is not the boundary.
    */
   async function updateCommission(id: string, patch: { type?: CommissionType; value?: number }) {
     const vendor = (managed ?? []).find((v) => v.id === id);
@@ -154,19 +153,23 @@ export function SuperAdminView() {
     }
   }
 
-  function toggleAccess(r: AppRole, category: string) {
-    setAccess((prev) => ({
-      ...prev,
-      [r]: { ...prev[r], [category]: !prev[r][category] },
-    }));
+  async function toggleAccess(r: AppRole, category: AccessCategory, field: "canView" | "canEdit") {
+    const current = access?.[r]?.[category] ?? { canView: false, canEdit: false };
+    const next = { ...current, [field]: !current[field] };
+
+    try {
+      setAccessError(null);
+      setAccess(await permissionStore.set(r, category, next));
+    } catch (err) {
+      // The database refuses a non-Super-Admin. Surface that rather than
+      // leaving a checkbox that appears to have worked.
+      setAccessError(err instanceof Error ? err.message : "Couldn't save that change.");
+      setAccess(await permissionStore.read());
+    }
   }
 
   return (
     <div>
-      <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest">
-        Revenue charts are sample data. Users, catalogue and commission rates below are real.
-      </p>
-
       <div className="mt-4 flex gap-2 border border-outline-variant p-1 w-fit">
         {SECTIONS.map((s) => (
           <button
@@ -274,10 +277,6 @@ export function SuperAdminView() {
               <tbody className="divide-y divide-border-subtle">
                 {vendors.map((vendor) => {
                   const rate = vendor.commission ?? DEFAULT_COMMISSION;
-                  // Click/sale/earning figures need server-side attribution,
-                  // which doesn't exist yet — fixtures where we have them,
-                  // an em dash where we don't, never an invented number.
-                  const perf = DEMO_VENDORS.find((v) => v.email === vendor.email);
                   return (
                     <tr key={vendor.id} className="align-middle">
                       <td className="px-4 py-3">
@@ -324,15 +323,14 @@ export function SuperAdminView() {
                           {formatCommissionRate(rate)} per sale
                         </p>
                       </td>
-                      <td className="px-4 py-3 text-text-muted">
-                        {perf ? perf.clicks.toLocaleString() : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-text-muted">
-                        {perf ? perf.sales.toLocaleString() : "—"}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {perf ? `PKR ${perf.earned.toLocaleString()}` : "—"}
-                      </td>
+                      {/* Clicks, sales and earnings are each vendor's OWN rows:
+                          RLS scopes `commissions` and `referral_clicks` to the
+                          vendor, so reading them across vendors needs a server
+                          route that doesn't exist yet. An em dash until it
+                          does — never an invented number. */}
+                      <td className="px-4 py-3 text-text-muted">—</td>
+                      <td className="px-4 py-3 text-text-muted">—</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-text-muted">—</td>
                     </tr>
                   );
                 })}
@@ -439,10 +437,21 @@ export function SuperAdminView() {
 
       {section === "ACCESS" && (
         <div className="mt-8">
-          <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-            Preview only — these toggles are not yet read by any API. Enforcement lands once
-            Permission/UserPermission tables exist (REQUIREMENTS.md §4.2).
+          <p className="mb-4 max-w-prose text-label-sm text-marketplace-bronze">
+            Saved to the database and enforced there. Super Admin isn&apos;t listed because it
+            bypasses this grid entirely — access it can&apos;t lose is access nobody can
+            accidentally remove.
           </p>
+
+          {accessError && (
+            <p
+              role="alert"
+              className="mb-4 border border-outline-variant border-l-4 border-l-error p-3 text-label-sm text-error"
+            >
+              {accessError}
+            </p>
+          )}
+
           <div className="overflow-x-auto border border-border-subtle">
             <table className="w-full text-left text-body-md">
               <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
@@ -450,30 +459,59 @@ export function SuperAdminView() {
                   <th className="px-4 py-3">Role</th>
                   {ACCESS_CATEGORIES.map((c) => (
                     <th key={c} className="px-4 py-3">
-                      {c}
+                      {ACCESS_CATEGORY_LABELS[c]}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {ACCESS_ROLES.map((r) => (
-                  <tr key={r}>
-                    <td className="px-4 py-3 text-label-sm uppercase text-text-muted">
-                      {ROLE_LABELS[r]}
-                    </td>
-                    {ACCESS_CATEGORIES.map((c) => (
-                      <td key={c} className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={access[r][c]}
-                          onChange={() => toggleAccess(r, c)}
-                          aria-label={`${ROLE_LABELS[r]} access to ${c}`}
-                          className="h-4 w-4 accent-marketplace-bronze"
-                        />
+                {!access && <LoadingRow colSpan={ACCESS_CATEGORIES.length + 1} />}
+
+                {access &&
+                  ACCESS_ROLES.map((r) => (
+                    <tr key={r}>
+                      <td className="px-4 py-3 text-label-sm uppercase text-text-muted">
+                        {ROLE_LABELS[r]}
                       </td>
-                    ))}
-                  </tr>
-                ))}
+                      {ACCESS_CATEGORIES.map((c) => {
+                        const grant = access[r]?.[c] ?? { canView: false, canEdit: false };
+                        return (
+                          <td key={c} className="px-4 py-3">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="flex cursor-pointer items-center gap-2 text-label-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={grant.canView}
+                                  onChange={() => void toggleAccess(r, c, "canView")}
+                                  aria-label={`${ROLE_LABELS[r]} can view ${ACCESS_CATEGORY_LABELS[c]}`}
+                                  className="h-4 w-4 accent-marketplace-bronze"
+                                />
+                                View
+                              </label>
+                              {/* Editing something you can't see isn't a
+                                  coherent grant, so it's disabled rather than
+                                  silently ignored. */}
+                              <label
+                                className={`flex items-center gap-2 text-label-sm ${
+                                  grant.canView ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={grant.canEdit}
+                                  disabled={!grant.canView}
+                                  onChange={() => void toggleAccess(r, c, "canEdit")}
+                                  aria-label={`${ROLE_LABELS[r]} can edit ${ACCESS_CATEGORY_LABELS[c]}`}
+                                  className="h-4 w-4 accent-marketplace-bronze"
+                                />
+                                Edit
+                              </label>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>

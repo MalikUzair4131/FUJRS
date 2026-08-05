@@ -13,8 +13,13 @@
 import type { AppRole } from "@/lib/auth/roles";
 import type { CommissionRate } from "@/lib/commission";
 import type { OrderStatus } from "@/lib/orderStatus";
+import type { StitchingStatus } from "@/lib/stitchingStatus";
 import type { StoredUser } from "@/lib/auth/session";
+import type { UploadedImage } from "@/lib/downscaleImage";
 import type {
+  AccessCategory,
+  AccessGrant,
+  AccessGrid,
   ManagedUser,
   Account,
   AffiliateLink,
@@ -22,12 +27,20 @@ import type {
   CapturedReferral,
   CartLine,
   CatalogItem,
+  ContactMessage,
+  DashboardStats,
   NewCatalogItem,
   NewOrderInput,
   Order,
   PayoutRequest,
+  ReferredSale,
   SavedAddress,
+  ReferenceImage,
+  Review,
+  NewReview,
+  StitchingJob,
   TailoringConfig,
+  VendorPerformance,
 } from "./types";
 
 export interface AuthResult {
@@ -79,15 +92,25 @@ export interface OrderStore {
   updateStatus(id: string, status: OrderStatus): Promise<Order | null>;
 }
 
+/**
+ * The signed-in user's own profile.
+ *
+ * The methods below take no identity argument on purpose. Who "me" is comes
+ * from the verified session inside the adapter — an email passed in from a
+ * component is a value a client controls, and an adapter that trusted one
+ * could be asked for somebody else's address. `find`/`create` are the
+ * exception: they exist for the local adapter's sign-in, which has no session
+ * yet at the point it calls them.
+ */
 export interface ProfileStore {
   find(email: string): Promise<Account | null>;
   /** `role` is only honoured when a Super Admin creates the account. */
   create(input: { name: string; email: string; role?: AppRole }): Promise<Account>;
-  updateName(email: string, name: string): Promise<Account>;
-  getAvatar(email: string): Promise<string | null>;
-  updateAvatar(email: string, avatar: string | null): Promise<Account>;
-  getAddress(email: string): Promise<SavedAddress | null>;
-  updateAddress(email: string, address: SavedAddress): Promise<Account>;
+  updateName(name: string): Promise<Account>;
+  getAvatar(): Promise<string | null>;
+  updateAvatar(avatar: string | null): Promise<Account>;
+  getAddress(): Promise<SavedAddress | null>;
+  updateAddress(address: SavedAddress): Promise<Account>;
 }
 
 /**
@@ -108,15 +131,83 @@ export interface CatalogStore extends CatalogReadStore {
   remove(id: string): Promise<void>;
 }
 
+/** The signed-in vendor's own links — see the note on ProfileStore. */
 export interface AffiliateStore {
   /** Newest first. */
-  listLinks(email: string): Promise<AffiliateLink[]>;
+  listLinks(): Promise<AffiliateLink[]>;
   /** Taking the same link twice refreshes it rather than duplicating. */
-  addLink(
-    email: string,
-    product: { slug: string; title: string; price: number }
-  ): Promise<AffiliateLink>;
-  removeLink(email: string, id: string): Promise<void>;
+  addLink(product: { slug: string; title: string; price: number }): Promise<AffiliateLink>;
+  removeLink(id: string): Promise<void>;
+  /**
+   * Clicks, sales and commission for the signed-in vendor.
+   *
+   * On `local` these are dashboard fixtures — a browser cannot see traffic. On
+   * `supabase` they are counted from `referral_clicks` and `commissions`.
+   */
+  performance(): Promise<VendorPerformance>;
+  /** Sales credited to this vendor's links, newest first. */
+  referredSales(): Promise<ReferredSale[]>;
+}
+
+/**
+ * The bespoke stitching queue.
+ *
+ * Unassigned ordered work sits in a pool any tailor can claim; claiming is
+ * what `assigned_tailor_id` records. Staff can read the queue but not move a
+ * garment through it — that is the tailor's call, and the audit trail should
+ * say who actually did the work.
+ */
+export interface StitchingStore {
+  /** Jobs assigned to the caller, plus anything unclaimed. Newest first. */
+  queue(): Promise<StitchingJob[]>;
+  /** Claims the job if it is unassigned, then sets the status. Null on refusal. */
+  updateStatus(id: string, status: StitchingStatus): Promise<StitchingJob | null>;
+}
+
+/**
+ * Product reviews.
+ *
+ * Reading is public. Writing needs a durable account — a guest can browse, buy
+ * and check out, but a review nobody can be held to is a review anyone can
+ * write in a loop (BACKEND_SETUP.md §7).
+ */
+export interface ReviewStore {
+  /** Newest first. */
+  listForProduct(productSlug: string): Promise<Review[]>;
+  /** Creates or replaces the caller's own review of that product. */
+  submit(productSlug: string, review: NewReview): Promise<Review[]>;
+  remove(id: string): Promise<void>;
+}
+
+/**
+ * Contact enquiries and newsletter signups.
+ *
+ * Write-only from the customer's side. Both used to render a success state
+ * without storing anything, which is the one thing the "coming soon"
+ * convention exists to prevent (CLAUDE.md).
+ */
+export interface MessageStore {
+  sendContact(message: ContactMessage): Promise<void>;
+  subscribe(email: string): Promise<void>;
+}
+
+/** Aggregates behind the Admin and Super Admin dashboards. */
+export interface StatsStore {
+  overview(): Promise<DashboardStats>;
+}
+
+/**
+ * The role × category access grid.
+ *
+ * Role-level, not per-user: REQUIREMENTS.md §4.2 asks for per-user
+ * permissions, and SCHEMA.md §9 recommends against it for a five-role app.
+ * If per-user is ever needed the migration is additive — a `user_permissions`
+ * table overriding this one — and this port doesn't change.
+ */
+export interface PermissionStore {
+  read(): Promise<AccessGrid>;
+  /** Super Admin only; the database refuses anyone else. */
+  set(role: AppRole, category: AccessCategory, grant: AccessGrant): Promise<AccessGrid>;
 }
 
 export interface ReferralStore {
@@ -127,13 +218,20 @@ export interface ReferralStore {
   clear(): Promise<void>;
 }
 
+/** The signed-in vendor's own payouts — see the note on ProfileStore. */
 export interface PayoutStore {
   /** Newest first. */
-  list(email: string): Promise<PayoutRequest[]>;
-  /** Balance minus anything already sitting in an open request. */
-  availableToRequest(email: string, pendingBalance: number): Promise<number>;
+  list(): Promise<PayoutRequest[]>;
+  /**
+   * Balance minus anything already sitting in an open request.
+   *
+   * `pendingBalance` is what the vendor has earned. On `supabase` that is
+   * derived from credited commission and the argument is ignored; on `local`
+   * it comes from the dashboard fixtures, which have no commission behind them.
+   */
+  availableToRequest(pendingBalance: number): Promise<number>;
   /** Throws PayoutValidationError when the amount isn't requestable. */
-  request(email: string, amount: number, available: number): Promise<PayoutRequest>;
+  request(amount: number, available: number): Promise<PayoutRequest>;
 }
 
 export interface CartStore {
@@ -150,4 +248,8 @@ export interface WishlistStore {
 export interface TailoringStore {
   read(): Promise<TailoringConfig | null>;
   write(config: TailoringConfig): Promise<void>;
+  /** Reference photos on the caller's open draft. Signed, short-lived URLs. */
+  listReferences(): Promise<ReferenceImage[]>;
+  addReferences(images: UploadedImage[]): Promise<ReferenceImage[]>;
+  removeReference(id: string): Promise<void>;
 }

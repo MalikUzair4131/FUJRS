@@ -69,7 +69,7 @@ for (const p of products) {
   ${p.stitchingAddOn != null ? "true" : "false"},
   ${paisa(p.stitchingAddOn)},
   ${q(p.badge)}, ${q(p.heritageStory)}, ${q(p.embroidery)}, ${q(p.dupattaInfo)}, ${q(p.meters)},
-  ${n(p.rating)}, ${n(p.reviewCount ?? 0)}
+  NULL, 0
 )
 on conflict (id) do update set
   title = excluded.title,
@@ -84,8 +84,6 @@ on conflict (id) do update set
   is_new_arrival = excluded.is_new_arrival,
   stitching_eligible = excluded.stitching_eligible,
   stitching_addon_paisa = excluded.stitching_addon_paisa,
-  rating = excluded.rating,
-  review_count = excluded.review_count,
   updated_at = now();
 `
   );

@@ -68,7 +68,7 @@ export const localAuth: AuthStore = {
     const stored = readSession();
     if (!stored) return { error: "Not signed in." };
 
-    await localProfiles.updateName(stored.email, name);
+    await localProfiles.updateName(name);
     const user = { ...stored, name: name.trim() };
     persistSession(user);
     return { user };

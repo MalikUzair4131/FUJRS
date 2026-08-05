@@ -11,15 +11,9 @@ import {
 import { formatOrderNumber } from "@/lib/orderNumber";
 import { orders as orderStore } from "@/lib/data";
 import type { Order } from "@/lib/data";
-import { DEMO_STATS } from "@/lib/auth/demoData";
 import { LoadingRow } from "@/components/ui/Loading";
 
 const PKR = (amount: number) => `PKR ${amount.toLocaleString()}`;
-
-/** Fixture rows carry no order_number — only the demo ids do this. */
-function demoOrderRef(id: string) {
-  return `#${id.slice(-8).toUpperCase()}`;
-}
 
 /** What each move means to the person clicking it. */
 const ACTION_LABELS: Record<OrderStatus, string> = {
@@ -150,9 +144,9 @@ function OrderDetail({
 }
 
 /**
- * Order management for Admin and Super Admin. Real orders placed in this
- * browser are actionable; the sample rows below them are not, because there is
- * nothing behind them to update.
+ * Order management for Admin and Super Admin. Legal moves come from
+ * `nextStatuses()`, so the UI cannot offer an illegal transition — and the
+ * database trigger refuses one regardless of what the UI offers.
  */
 export function OrderManager() {
   const { toast } = useToast();
@@ -187,8 +181,8 @@ export function OrderManager() {
     <section>
       <h2 className="font-display text-headline-sm">Orders</h2>
       <p className="mt-1 text-label-sm text-marketplace-bronze">
-        Real orders can be progressed, cancelled or refunded. The sample rows further down are
-        fixtures and aren&apos;t actionable.
+        Cancelling is only offered before delivery; afterwards the money comes back as a refund,
+        which is final.
       </p>
 
       <div className="mt-4 overflow-x-auto border border-border-subtle">
@@ -239,7 +233,7 @@ export function OrderManager() {
             {orders?.length === 0 && (
               <tr>
                 <td className="px-4 py-6 text-text-muted" colSpan={7}>
-                  No orders yet — the sample rows below show what this table looks like in use.
+                  No orders yet.
                 </td>
               </tr>
             )}
@@ -272,37 +266,10 @@ export function OrderManager() {
           </div>
         ))}
 
-      <h3 className="mt-10 font-display text-headline-sm">Sample Orders</h3>
-      <p className="mt-1 text-label-sm text-marketplace-bronze">
-        Fixtures that make the dashboard look lived-in. They have no order behind them, so they
-        can&apos;t be actioned.
-      </p>
-      <div className="mt-4 overflow-x-auto border border-border-subtle">
-        <table className="w-full text-left text-body-md">
-          <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">Order</th>
-              <th className="px-4 py-3 font-medium">Customer</th>
-              <th className="px-4 py-3 font-medium">Items</th>
-              <th className="px-4 py-3 font-medium">Total</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-subtle">
-            {DEMO_STATS.recentOrders.map((order) => (
-              <tr key={order.id}>
-                <td className="px-4 py-3">{demoOrderRef(order.id)}</td>
-                <td className="px-4 py-3">{order.customer}</td>
-                <td className="px-4 py-3">{order.itemCount}</td>
-                <td className="px-4 py-3 whitespace-nowrap">{PKR(order.total)}</td>
-                <td className="px-4 py-3 text-label-sm uppercase text-text-muted">
-                  {order.status}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* A "Sample Orders" fixture table used to sit here, to make the
+          dashboard look lived-in. Orders are real now, so it was two tables
+          where one of them had to be invented — and a fixture beside real data
+          is the kind of thing someone eventually reads as fact. */}
     </section>
   );
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { FormSection, ReadOnlyField, TextField } from "@/components/ui/Field";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { useToast } from "@/components/ui/Toast";
-import { profiles } from "@/lib/data";
+import { auth, profiles } from "@/lib/data";
 import { Loading } from "@/components/ui/Loading";
 import { LoadingScreen } from "@/components/ui/Loading";
 
@@ -24,7 +24,7 @@ function ProfileSection({ email, name }: { email: string; name: string }) {
 
   useEffect(() => {
     let active = true;
-    profiles.getAvatar(email).then((saved) => {
+    profiles.getAvatar().then((saved) => {
       if (active) setAvatar(saved);
     });
     return () => {
@@ -35,11 +35,11 @@ function ProfileSection({ email, name }: { email: string; name: string }) {
   async function handleAvatarChange(next: string | null) {
     setAvatar(next);
     try {
-      await profiles.updateAvatar(email, next);
+      await profiles.updateAvatar(next);
       toast(next ? "Profile photo updated." : "Profile photo removed.", "success");
     } catch {
       // Roll the preview back so the UI doesn't claim a save that didn't happen.
-      setAvatar(await profiles.getAvatar(email));
+      setAvatar(await profiles.getAvatar());
       toast("Couldn't save that photo — try a smaller image.", "info");
     }
   }
@@ -103,9 +103,9 @@ function PasswordSection() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
+  const [saving, setSaving] = useState(false);
 
-  // Validation is real; the save isn't — passwords need a backend to live in.
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const next: typeof errors = {};
     if (password.length < MIN_PASSWORD_LENGTH) {
@@ -115,14 +115,25 @@ function PasswordSection() {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
+    setSaving(true);
+    // The length check above is UX; the auth provider enforces its own policy
+    // and is the one that actually decides.
+    const result = await auth.updatePassword(password);
+    setSaving(false);
+
+    if (result.error) {
+      setErrors({ password: result.error });
+      return;
+    }
+
     setPassword("");
     setConfirmPassword("");
-    toast("Password changes aren't available yet — coming with the live backend.", "soon");
+    toast("Your password has been changed.", "success");
   }
 
   return (
     <FormSection title="Password" description="Choose something you don't use anywhere else.">
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-5">
         <TextField
           label="New Password"
           type="password"
@@ -143,8 +154,8 @@ function PasswordSection() {
           }}
           error={errors.confirm}
         />
-        <Button type="submit" variant="secondary">
-          Update Password
+        <Button type="submit" variant="secondary" disabled={saving}>
+          {saving ? "Saving…" : "Update Password"}
         </Button>
       </form>
     </FormSection>
@@ -162,7 +173,7 @@ function AddressSection({ email }: { email: string }) {
   useEffect(() => {
     let active = true;
     profiles
-      .getAddress(email)
+      .getAddress()
       .then((saved) => {
         if (!active || !saved) return;
         setStreet(saved.street);
@@ -187,7 +198,7 @@ function AddressSection({ email }: { email: string }) {
     if (Object.keys(next).length > 0) return;
 
     try {
-      await profiles.updateAddress(email, { street, city, postalCode });
+      await profiles.updateAddress({ street, city, postalCode });
       toast("Address saved.", "success");
     } catch {
       toast("Couldn't save your address. Please try again.", "info");

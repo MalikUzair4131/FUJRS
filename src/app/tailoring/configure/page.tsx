@@ -17,6 +17,7 @@ import {
 } from "@/lib/measurements";
 import { getStitcherBySlug, stitchers } from "@/data/stitchers";
 import { Button } from "@/components/ui/Button";
+import { ReferencePhotos } from "@/components/tailoring/ReferencePhotos";
 
 const measurementGuides: Record<string, string> = {
   Chest:
@@ -181,6 +182,8 @@ export default function ConfigurePage() {
               })}
             </div>
           </div>
+
+          <ReferencePhotos />
         </div>
 
         {/* Right: Style Selections & Summary */}

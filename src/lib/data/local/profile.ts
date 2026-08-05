@@ -2,6 +2,7 @@
 // there is nothing to authenticate against, so sign-in only checks that an
 // account with that email was registered on this device.
 
+import { readSession } from "@/lib/auth/session";
 import type { ProfileStore } from "../ports";
 import type { Account } from "../types";
 import { normaliseEmail, readJSON, writeJSON } from "./storage";
@@ -32,6 +33,17 @@ function upsert(email: string, patch: Partial<Account>): Account {
 
   writeJSON(KEY, [...all.filter((a) => a.email !== target), next]);
   return next;
+}
+
+/**
+ * Whose profile is being edited. The port takes no email argument, so "me"
+ * comes from the session here exactly as it comes from the verified session in
+ * the Supabase adapter.
+ */
+function currentEmail(): string {
+  const stored = readSession();
+  if (!stored) throw new Error("Not signed in.");
+  return normaliseEmail(stored.email);
 }
 
 export const localProfiles: ProfileStore = {
@@ -68,23 +80,23 @@ export const localProfiles: ProfileStore = {
   // key for every other local store, and changing it isn't a customer-side
   // action. Once Supabase is wired in the key becomes users.id instead.
 
-  async updateName(email, name) {
-    return upsert(email, { name: name.trim() });
+  async updateName(name) {
+    return upsert(currentEmail(), { name: name.trim() });
   },
 
-  async getAvatar(email) {
-    return find(email)?.avatar ?? null;
+  async getAvatar() {
+    return find(currentEmail())?.avatar ?? null;
   },
 
-  async updateAvatar(email, avatar) {
-    return upsert(email, { avatar });
+  async updateAvatar(avatar) {
+    return upsert(currentEmail(), { avatar });
   },
 
-  async getAddress(email) {
-    return find(email)?.address ?? null;
+  async getAddress() {
+    return find(currentEmail())?.address ?? null;
   },
 
-  async updateAddress(email, address) {
-    return upsert(email, { address });
+  async updateAddress(address) {
+    return upsert(currentEmail(), { address });
   },
 };

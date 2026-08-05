@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ProductCard } from "./ProductCard";
 import type { CatalogItem } from "@/lib/data";
+import { EmptyCatalogue } from "@/components/ui/EmptyCatalogue";
 
 type SortOption = "featured" | "price-asc" | "price-desc";
 
@@ -181,7 +182,10 @@ export function ProductFilterGrid({ products }: { products: CatalogItem[] }) {
           </label>
         </div>
 
-        {filtered.length === 0 ? (
+        {products.length === 0 ? (
+          // Nothing to filter, so offering "clear filters" would be nonsense.
+          <EmptyCatalogue />
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <span className="material-symbols-outlined text-4xl text-text-muted">
               filter_alt_off

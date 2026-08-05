@@ -4,10 +4,15 @@ How to stand up the database, wire it to the finished UI, and keep it
 swappable. Tables and column rationale live in [SCHEMA.md](./SCHEMA.md); this
 doc is the mechanics.
 
-**Status:** schema is live. `supabase init` and `link` are done, and all 10
-migrations are applied to the linked project. **The app is not connected to it
-yet** — it still runs entirely on `localStorage` and will keep working that way
-until the adapters in §1 exist and `NEXT_PUBLIC_DATA_BACKEND` is flipped.
+**Status: connected.** Every migration is applied to the linked project, all
+thirteen stores have Supabase adapters, and `NEXT_PUBLIC_DATA_BACKEND=supabase`
+is live. The `local` adapter is kept working on purpose — it is what lets the
+app be demoed with no database, and the fallback if Supabase is unreachable
+during development.
+
+What is deliberately NOT built: card payments (Cash on Delivery is the only
+method that completes an order) and promo codes. Both show a "coming soon"
+state rather than a dead control.
 
 ---
 
@@ -46,8 +51,10 @@ src/lib/
     ports.ts         the interfaces — the contract
     local/           localStorage adapter — DONE
       storage.ts     the only localStorage in the app
-    supabase/        Supabase adapter — TO WRITE
+    static/          the shipped catalogue, mapped to CatalogItem
+    supabase/        Supabase adapter — DONE
     index.ts         picks one, exports it
+    server.ts        the server-component entry point
 ```
 
 A port is an ordinary TypeScript interface:
@@ -107,7 +114,7 @@ working without a database, which is worth preserving.
 
 ### Status: done
 
-All nine stores now sit behind ports in `src/lib/data/`, every method is
+All thirteen stores now sit behind ports in `src/lib/data/`, every method is
 `async`, and `src/lib/data/local/storage.ts` is the only file in the app that
 touches `localStorage`. The three providers that held storage inline
 (Cart, Wishlist, Tailoring) keep their exact public API — only the storage
@@ -119,8 +126,8 @@ withdrawal and validation, with no I/O. `src/lib/useAsync.ts` handles the
 load/cancel boilerplate, including ignoring a slow first request that would
 otherwise overwrite a newer one.
 
-**What remains is writing `src/lib/data/supabase/` against the same
-interfaces.** No component changes.
+Both adapter sets are complete. Adding a custom REST backend later means
+writing `data/http/` against these same interfaces — no component changes.
 
 ---
 
@@ -384,9 +391,8 @@ index. Adapters must key on id, not email.
 3. ~~Create the project, link it, fill `.env.local`~~ — done
 4. ~~`db reset` until migrations 1–10 apply cleanly, then `db push`~~ — done
 5. ~~Write RLS policies and verify with the anon key~~ — written; verify
-6. Build Supabase adapters against the existing ports — **auth, users,
-   catalogue and orders done.** Remaining: profiles, affiliate, referrals,
-   payouts, cart, wishlist, tailoring
+6. ~~Build Supabase adapters against the existing ports~~ — **done. All
+   eleven stores have both implementations** (§"The stores", below)
 7. Flip `NEXT_PUBLIC_DATA_BACKEND=supabase` in one environment and test
 8. Re-validate every payload server-side
 
@@ -429,14 +435,32 @@ actually happens. That route does not trust:
 
 | From the browser | What the server does instead |
 |---|---|
-| line prices | re-reads `products.price_paisa` by slug |
+| line prices | re-reads `products.price_paisa` by slug; the bespoke line is re-priced from the caller's own `stitching_requests` draft via `bespokePrice()` |
 | the stitching charge | uses `products.stitching_addon_paisa`, and refuses it on a product that isn't `stitching_eligible` |
 | the totals | recomputes with `@/lib/pricing` — the same helper the bag uses — and rejects the order if the posted total has drifted |
 | the referral code | shape-checks it, then confirms a VENDOR actually owns it; an unknown code is dropped, not credited |
 | who the caller is | reads the verified session, never the payload |
 
 Verified against the live project: posting `price: 1` for a PKR 45,000 suit
-stores 45,000, and `FJ-ZZZZZZ` is dropped rather than credited.
+stores 45,000, and `FJ-ZZZZZZ` is dropped rather than credited. A bespoke line
+posted as `price: 500, qty: 5` stored PKR 22,500 × 1 — the figure recomputed
+from the customer's stored garment and style choices.
+
+#### Bespoke lines
+
+The style options and their prices live in `src/lib/tailoringOptions.ts`, which
+is pure. They used to sit in `TailoringContext`, and a `"use client"` module
+cannot be imported by a route handler — which is precisely why the bespoke line
+was the one item in the bag the server had to price on trust. Moving them out
+closed that: `bespokePrice()` is now the single definition, used by the
+configurator to show a total and by the route to charge one.
+
+Ordering a bespoke piece also stamps `stitching_requests.order_item_id` and
+moves the request to IN_PROGRESS. That column going non-null is what separates
+a draft somebody is still editing from a garment the atelier has to cut, and it
+is what gives the Tailor dashboard something real to read. The link happens
+after the stock reservation, so a rejected order leaves the draft intact and
+the customer's measurements survive.
 
 Two things this created:
 
@@ -477,6 +501,171 @@ order rows, and cancel-then-refund returned the stock exactly once.
 
 The function is `security definer` and revoked from `anon`/`authenticated` —
 stock is not something a browser may move.
+
+### The stores
+
+| Store | Tables | Notes |
+|---|---|---|
+| `auth` | `auth.users` + `users` | role read from `public.users`, never the JWT |
+| `users` | `users` | Super Admin only, via `/api/admin/users` |
+| `catalog` | `products`, `product_images`, `product_variants` | plus a server read path (above) |
+| `orders` | `orders`, `order_items` | writes via `/api/orders` |
+| `profiles` | `users`, `addresses`, `avatars` bucket | one default address, replaced not accumulated |
+| `cart` | `cart_items` | prices joined live, never stored |
+| `wishlist` | `wishlist_items` | slugs in, product ids stored |
+| `tailoring` | `stitching_requests` | one open draft per user, `order_item_id is null` |
+| `affiliate` | `affiliate_links` | `unique (vendor_id, product_id)` makes "refresh, don't duplicate" a database fact |
+| `referrals` | `referral_clicks` + a cookie | writes via `/api/referrals/click` |
+| `payouts` | `payout_requests`, `commissions` | balance derived, never stored |
+| `stitching` | `stitching_requests` | the tailor queue: pool + claim |
+| `stats` | `orders` | Admin/Super Admin overview, aggregated client-side |
+| `permissions` | `role_permissions` | role × category grid, read by all, written by Super Admin |
+| `reviews` | `reviews` | public read, durable accounts only to write |
+| `messages` | `contact_messages`, `newsletter_subscribers` | insert-only from the client, staff read |
+
+#### Reviews
+
+Sketched in SCHEMA.md §8 and deliberately not built while nothing rendered
+them. The PDP renders them now.
+
+`products.rating` and `review_count` were always documented as counters
+"recomputed from reviews when that table exists, never maintained by hand".
+A trigger does that recomputation — recomputed from the rows rather than
+incremented, because an incremental counter drifts the first time a delete is
+missed and then every product card is quietly wrong.
+
+Writing needs a **durable** account. `is_anonymous_user()` is the check §7
+reserves for exactly this: a guest browses, buys and checks out, but a review
+nobody can be held to is a review anyone can write in a loop. Verified live —
+an anonymous session got `new row violates row-level security policy`.
+
+**The seeded ratings were fiction and are gone.** 17 products carried figures
+invented by the design tool (4.8 from 132 reviews, and so on) with no reviews
+behind them. Once the PDP showed a real reviews section those numbers
+contradicted it on the same page, so they were cleared from the live database,
+from `src/data/products.ts`, and from the seed generator.
+
+#### Commission becomes payable on a hold period
+
+`credit_due_commissions()` moves PENDING → CREDITED once an order is more than
+`COMMISSION_HOLD_DAYS` old and has not been cancelled or refunded. Without it
+every vendor balance read zero: only CREDITED counts, and nothing promoted
+anything.
+
+**14 days is the returns window, not an independent number.**
+/returns-exchanges promises "items must be returned within 14 days of
+delivery", so the hold has to be at least that long or the promise and the
+payout disagree.
+
+It is counted **from delivery**, not from placement — the first version counted
+from `placed_at`, so an order placed on the 1st and delivered on the 10th
+credited on the 15th while the customer could still return it until the 24th.
+Delivery time comes from `order_status_events`, which the transition trigger
+already writes; no new column, because the audit trail is already the record of
+when things happened.
+
+Changing the number means changing three things together: `COMMISSION_HOLD_DAYS`,
+the `hold_from_delivery` migration, and the copy on the returns page.
+
+It runs daily under `pg_cron` at 02:17, scheduled inside a guard so a project
+without the extension still gets the function and a notice rather than a failed
+migration. Verified live: a 20-day-old confirmed order credited, a 3-day-old
+one stayed PENDING, a 30-day-old **cancelled** one stayed PENDING, and a second
+run credited nothing — it is idempotent.
+
+#### The access grid is real
+
+The Access tab wrote to component state and said so on screen. It now reads and
+writes `role_permissions`, which is seeded **least-privilege** — the UI used to
+initialise every role to `true` for every category, the opposite of what the
+seed grants.
+
+It shows View and Edit separately, because the table has both and collapsing
+them would mean the screen could not express "can see orders, can't refund
+them" — which is most of what a permission grid is for. Edit is disabled unless
+View is on: editing something you cannot see is not a coherent grant, and the
+adapters enforce that too rather than trusting the checkbox.
+
+SUPER_ADMIN has no rows on purpose. It bypasses the grid entirely, so it cannot
+lose access by someone editing a row.
+
+#### Reference photos
+
+Customers can attach photos to a bespoke request at `/tailoring/configure`, and
+the assigned tailor sees them on the spec sheet. The bucket is **private** —
+these are pictures of a customer — so URLs are signed with a 5-minute expiry
+and re-signed on every read. The whole queue is signed in one call rather than
+one call per garment.
+
+The path convention `<user_id>/<request_id>/<uuid>.<ext>` is load-bearing: the
+storage policies read those first two segments to decide that a customer sees
+their own photos and a tailor sees only the request assigned to them.
+
+#### The dashboards read real tables
+
+All four used to render `demoData`. They now query, and `demoData` survives
+only as the `local` backend's fixtures — which is what it was always for.
+
+**The tailor queue needed a workflow, not just a query.** RLS let a tailor read
+only work assigned to them, and nothing assigned anyone, so every queue was
+empty. Unassigned ordered work is now a **pool**: any tailor sees it, claiming
+it is an ordinary update, and the `WITH CHECK` on the claim policy stops one
+tailor claiming for another or taking a job already held. Verified live — two
+tailors both saw an unclaimed job; after the first claimed it the second saw
+none and could not steal it.
+
+**A vendor can now count their own clicks.** `referral_clicks` was
+Super-Admin-read-only. That reasoning holds for an unscoped policy but not one
+filtered to the caller, and without it the dashboard reported zero clicks
+forever — a number that is always wrong teaches people to ignore the screen.
+Writes stay server-only, which is the policy that actually matters.
+
+**Two things the Super Admin still shows as `—`**: per-vendor clicks and
+earnings across all vendors. Those rows are RLS-scoped to each vendor, so
+reading them centrally needs a server route. An em dash until it exists, never
+an invented number.
+
+**Fixed while wiring this:** the vendor dashboard derived its referral code
+from a hash of the vendor's email, while the order route credits a sale by
+matching `users.referral_code`. Those do not agree, so every link a vendor
+copied would have credited nobody. The issued code is now carried through
+`performance()`, and a vendor with no code issued sees a warning rather than a
+broken link.
+
+#### Identity
+
+Every one of these resolves "me" from `getUser()`, which verifies the token
+with the auth server — never from an argument. That is why `ProfileStore`,
+`AffiliateStore` and `PayoutStore` no longer take an email: a component-supplied
+email is a value the client controls, and an adapter that trusted one could be
+asked for somebody else's address. `src/lib/data/supabase/identity.ts` holds
+the three helpers, including `ensureUserId()`, which signs a guest in
+anonymously so their bag, wishlist and bespoke draft belong to a real uuid.
+
+#### Attribution is now real
+
+`POST /api/referrals/click` records a `referral_clicks` row with the service
+role — the table has no client policy at all, because a browser that could
+insert here could fabricate traffic. It validates the code against a real
+VENDOR, hashes the IP (salted; a raw address is personal data and only
+deduplication needs it), and sets the cookie the order route reads.
+
+**The order route takes the referral from that cookie, not from the payload.**
+Verified live: with a cookie for `FJ-TEST01` and a body claiming `FJ-ZZZZZZ`,
+the order credited `FJ-TEST01`.
+
+Placing a referred order writes a `commissions` row at status PENDING, with the
+rate COPIED rather than looked up — changing a vendor's rate must never rewrite
+what they already earned. Refunding reverses it via the existing clawback
+trigger. Verified live: a PKR 45,000 sale at 10% wrote PENDING / PKR 4,500, and
+refunding moved it to REVERSED.
+
+`availableToRequest()` counts only CREDITED and PAID commission. PENDING is
+excluded on purpose: the dashboard promises a sale counts once the return
+window has closed, and paying out on a sale that can still come back is how the
+programme loses money. **Nothing yet moves PENDING → CREDITED** — that needs
+the return window defined (REQUIREMENTS.md §8), so vendor balances read zero
+until it exists.
 
 ### Seeding the catalogue
 

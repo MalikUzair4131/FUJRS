@@ -27,8 +27,6 @@ export interface Product {
   isNewArrival: boolean;
   description: string;
   sizes: string[];
-  rating: number;
-  reviewCount: number;
   meters?: string;
   badge?: string;
   sku?: string;
@@ -116,8 +114,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "An unstitched three-piece suit in emerald green raw silk with heavy gold tilla work on the neckline and sleeves, paired with a diaphanous scalloped-edge organza dupatta.",
-    rating: 4.8,
-    reviewCount: 132,
     sizes: ["Unstitched"],
   },
   {
@@ -133,8 +129,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "A midnight blue velvet shirt piece with heavy silver zardozi embroidery, matching silk trouser piece, and a net dupatta with silver sparkle motifs.",
-    rating: 4.9,
-    reviewCount: 47,
     sizes: ["Unstitched"],
   },
   {
@@ -150,8 +144,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "Soft blush-colored organza with delicate 3D floral appliqués and pearl beadwork, sheer and light with graceful movement.",
-    rating: 4.7,
-    reviewCount: 63,
     sizes: ["Unstitched"],
   },
   {
@@ -167,8 +159,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "Classic off-white karandi fabric with a subtle geometric self-weave, presented with premium obsidian buttons for a modern, architectural finish.",
-    rating: 4.5,
-    reviewCount: 28,
     sizes: ["Unstitched"],
   },
 
@@ -188,8 +178,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Premium Egyptian Giza 87 cotton with a subtle, elegant sheen and a fine weave — our signature white, 4.5 meters.",
-    rating: 4.8,
-    reviewCount: 54,
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
     badge: "Sold by FUJRS",
@@ -207,8 +195,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Deep navy Latha fabric, folded and finished for a modern, masculine wardrobe staple.",
-    rating: 4.5,
-    reviewCount: 22,
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
     badge: "Sold by FUJRS",
@@ -225,8 +211,6 @@ export const products: Product[] = [
     images: [src.winterKarandi],
     isNewArrival: false,
     description: "Textured slub-weave karandi in slate gray, cut for winter formalwear.",
-    rating: 4.6,
-    reviewCount: 31,
     sizes: ["Unstitched"],
     meters: "4.0 Meters",
   },
@@ -243,8 +227,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Wrinkle-resistant microfiber with a liquid-like drape, off-white, for effortless formal wear.",
-    rating: 4.4,
-    reviewCount: 17,
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
   },
@@ -261,8 +243,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Deep emerald cotton with a subtle self-print pattern, for a refined everyday look.",
-    rating: 4.3,
-    reviewCount: 14,
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
   },
@@ -288,8 +268,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Ivory embroidered silk with metallic tilla embroidery and pearl embellishments, draped over a minimalist boutique display.",
-    rating: 4.9,
-    reviewCount: 124,
     sizes: ["Unstitched"],
     badge: "Sold by FUJRS",
     sku: "FJ-UNS-AG882",
@@ -312,8 +290,6 @@ export const products: Product[] = [
     images: [src.noirEleganceLawn],
     isNewArrival: false,
     description: "Black embroidered lawn with crisp white threadwork across the neckline.",
-    rating: 4.7,
-    reviewCount: 61,
     sizes: ["Unstitched"],
     badge: "Best Seller",
   },
@@ -330,8 +306,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Pastel blue chiffon with a shimmering beaded floral vine pattern in silver thread.",
-    rating: 4.6,
-    reviewCount: 29,
     sizes: ["Unstitched"],
     badge: "Official Store",
   },
@@ -348,8 +322,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Olive green fabric with heavy golden border embroidery, for a warm-toned festive look.",
-    rating: 4.7,
-    reviewCount: 25,
     sizes: ["Unstitched"],
     badge: "Premium Collection",
   },
@@ -366,8 +338,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "White-on-white embroidered net with a relief-like threadwork texture, sheer and delicate.",
-    rating: 4.8,
-    reviewCount: 12,
     sizes: ["Unstitched"],
     badge: "Limited Edition",
   },
@@ -386,8 +356,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Handcrafted gold Khussa shoes with intricate Zardozi embroidery, complementing a luxury silk suit.",
-    rating: 4.6,
-    reviewCount: 19,
     sizes: ["36", "37", "38", "39", "40"],
   },
   {
@@ -403,8 +371,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Oversized gold Chandbali earrings with pearl drops, perfect for a bridal or formal look.",
-    rating: 4.8,
-    reviewCount: 33,
     sizes: ["One Size"],
   },
   {
@@ -419,8 +385,6 @@ export const products: Product[] = [
     images: [src.clutch],
     isNewArrival: false,
     description: "A structured gold silk clutch bag with a traditional jewel-encrusted clasp.",
-    rating: 4.5,
-    reviewCount: 11,
     sizes: ["One Size"],
   },
   {
@@ -436,8 +400,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "A fine Pashmina shawl in muted cream with intricate gold needlework at the borders.",
-    rating: 4.7,
-    reviewCount: 8,
     sizes: ["One Size"],
   },
 ];

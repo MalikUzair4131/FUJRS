@@ -9,6 +9,10 @@ const HOMEPAGE_SLOTS = 4;
 export async function NewArrivalsGrid() {
   const items = (await catalogRead.list()).filter((p) => p.isNewArrival).slice(0, HOMEPAGE_SLOTS);
 
+  // A homepage band headed "New Arrivals" with nothing under it reads as a
+  // broken page. With no arrivals to show, the section simply isn't there.
+  if (items.length === 0) return null;
+
   return (
     <section className="py-margin-desktop bg-surface-container-low">
       <div className="max-w-container-max mx-auto px-gutter">

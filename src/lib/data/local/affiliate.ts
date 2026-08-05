@@ -4,6 +4,10 @@
 // referral needs a server that sees the traffic. The dashboard says so on
 // screen rather than showing invented numbers.
 
+import { readSession } from "@/lib/auth/session";
+import { referralCodeFor } from "@/lib/referral";
+import { DEMO_REFERRED_SALES, DEMO_VENDORS } from "@/lib/auth/demoData";
+import { DEFAULT_COMMISSION, calculateCommission } from "@/lib/commission";
 import type { AffiliateStore } from "../ports";
 import type { AffiliateLink } from "../types";
 import { makeId, normaliseEmail, readJSON, writeJSON } from "./storage";
@@ -14,14 +18,21 @@ type LinksByVendor = Record<string, AffiliateLink[]>;
 
 const readAll = (): LinksByVendor => readJSON<LinksByVendor>(KEY, {});
 
+/** Whose links these are. The port carries no email — see ports.ts. */
+function currentEmail(): string {
+  const stored = readSession();
+  if (!stored) throw new Error("Not signed in.");
+  return normaliseEmail(stored.email);
+}
+
 export const localAffiliate: AffiliateStore = {
-  async listLinks(email) {
-    const mine = readAll()[normaliseEmail(email)] ?? [];
+  async listLinks() {
+    const mine = readAll()[currentEmail()] ?? [];
     return [...mine].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
-  async addLink(email, product) {
-    const key = normaliseEmail(email);
+  async addLink(product) {
+    const key = currentEmail();
     const all = readAll();
     const existing = (all[key] ?? []).find((link) => link.productSlug === product.slug);
 
@@ -39,9 +50,55 @@ export const localAffiliate: AffiliateStore = {
     return link;
   },
 
-  async removeLink(email, id) {
-    const key = normaliseEmail(email);
+  async removeLink(id) {
+    const key = currentEmail();
     const all = readAll();
     writeJSON(KEY, { ...all, [key]: (all[key] ?? []).filter((link) => link.id !== id) });
+  },
+
+  /**
+   * Fixtures, because a browser cannot see traffic. Attributing a click or a
+   * sale is a fact about what the SERVER observed; anything counted here would
+   * be a guess presented as a number, which is exactly what the dashboard's
+   * on-screen caveat exists to avoid.
+   */
+  async performance() {
+    const vendor = DEMO_VENDORS.find((v) => v.email === currentEmail());
+    if (!vendor) {
+      return {
+        clicks: 0,
+        sales: 0,
+        earned: 0,
+        pending: 0,
+        commission: DEFAULT_COMMISSION,
+        referralCode: referralCodeFor(currentEmail()),
+      };
+    }
+
+    return {
+      clicks: vendor.clicks,
+      sales: vendor.sales,
+      earned: vendor.earned,
+      pending: vendor.pendingPayout,
+      commission: vendor.commission,
+      // Derived from the email on this backend — there is no issuing server.
+      referralCode: vendor.referralCode,
+    };
+  },
+
+  async referredSales() {
+    return DEMO_REFERRED_SALES.map((sale) => ({
+      id: sale.id,
+      orderNumber: sale.orderId.slice(-8).toUpperCase(),
+      product: sale.product,
+      salePrice: sale.salePrice,
+      date: sale.date,
+      // Derived at render on this backend — there is no commission record to
+      // read back, so the current rate is the only figure available.
+      commission: calculateCommission(
+        sale.salePrice,
+        DEMO_VENDORS.find((v) => v.email === currentEmail())?.commission ?? DEFAULT_COMMISSION
+      ),
+    }));
   },
 };

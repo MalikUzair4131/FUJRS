@@ -5,17 +5,23 @@ import Image from "next/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { DEMO_PAYOUTS, DEMO_REFERRED_SALES, DEMO_VENDORS } from "@/lib/auth/demoData";
 import {
   DEFAULT_COMMISSION,
   calculateCommission,
   formatCommissionRate,
   type CommissionRate,
 } from "@/lib/commission";
-import { buildReferralUrl, referralCodeFor } from "@/lib/referral";
+import { buildReferralUrl } from "@/lib/referral";
+import { formatOrderNumber } from "@/lib/orderNumber";
 import { MIN_PAYOUT_PKR, PayoutValidationError, validatePayout } from "@/lib/payouts";
 import { affiliate, catalog, payouts } from "@/lib/data";
-import type { AffiliateLink, CatalogItem, PayoutRequest } from "@/lib/data";
+import type {
+  AffiliateLink,
+  CatalogItem,
+  PayoutRequest,
+  ReferredSale,
+  VendorPerformance,
+} from "@/lib/data";
 import { LoadingRow } from "@/components/ui/Loading";
 
 type Section = "OVERVIEW" | "LINKS" | "EARNINGS";
@@ -48,36 +54,45 @@ export function VendorView() {
   const [showPayoutForm, setShowPayoutForm] = useState(false);
 
   const email = session?.user.email ?? "";
-  const referralCode = useMemo(() => (email ? referralCodeFor(email) : ""), [email]);
 
-  // The rate is the Super Admin's to set; a vendor without a fixture falls back
-  // to the programme default rather than showing nothing.
-  const commission: CommissionRate = useMemo(
-    () => DEMO_VENDORS.find((v) => v.email === email)?.commission ?? DEFAULT_COMMISSION,
-    [email]
-  );
+  const [performance, setPerformance] = useState<VendorPerformance | null>(null);
+  const [sales, setSales] = useState<ReferredSale[] | null>(null);
 
-  const performance = useMemo(() => DEMO_VENDORS.find((v) => v.email === email), [email]);
+  // The ISSUED code, not one derived from the email. The order route credits a
+  // sale by matching `users.referral_code`, so a derived code would build links
+  // that quietly credit nobody.
+  const referralCode = performance?.referralCode ?? "";
+
+  // The rate the Super Admin set, read from the vendor's own record rather
+  // than assumed — the figure quoted on screen has to be the one their
+  // commission is actually calculated from.
+  const commission: CommissionRate = performance?.commission ?? DEFAULT_COMMISSION;
 
   // What's left after any request the vendor has already raised.
-  const pendingBalance = performance?.pendingPayout ?? 0;
-  const [available, setAvailable] = useState(pendingBalance);
+  const [available, setAvailable] = useState(0);
   const [products, setProducts] = useState<CatalogItem[]>([]);
 
   const refresh = useCallback(async () => {
     if (!email) return;
-    const [nextLinks, nextRequests, nextAvailable, nextProducts] = await Promise.all([
-      affiliate.listLinks(email),
-      payouts.list(email),
-      payouts.availableToRequest(email, pendingBalance),
+    const [nextLinks, nextRequests, nextPerformance, nextSales, nextProducts] = await Promise.all([
+      affiliate.listLinks(),
+      payouts.list(),
+      affiliate.performance(),
+      affiliate.referredSales(),
       // The live catalogue, so a piece published today is promotable today.
       catalog.list(),
     ]);
+
     setLinks(nextLinks);
     setPayoutRequests(nextRequests);
-    setAvailable(nextAvailable);
+    setPerformance(nextPerformance);
+    setSales(nextSales);
     setProducts(nextProducts);
-  }, [email, pendingBalance]);
+
+    // Derived last: it depends on the balance that was just read, and asking
+    // for it with a stale figure is how a vendor gets told the wrong number.
+    setAvailable(await payouts.availableToRequest(nextPerformance.pending));
+  }, [email]);
 
   useEffect(() => {
     void refresh();
@@ -96,7 +111,7 @@ export function VendorView() {
     }
 
     try {
-      await payouts.request(email, amount, available);
+      await payouts.request(amount, available);
     } catch (err) {
       setPayoutError(
         err instanceof PayoutValidationError ? err.message : "Couldn't raise that request."
@@ -130,7 +145,7 @@ export function VendorView() {
       buildReferralUrl(origin, product.slug, referralCode),
       `Link for “${product.title}” copied.`
     );
-    await affiliate.addLink(email, product);
+    await affiliate.addLink(product);
     await refresh();
   }
 
@@ -145,12 +160,12 @@ export function VendorView() {
     ].join("\n");
 
     await copy(details, `Details for “${product.title}” copied.`);
-    await affiliate.addLink(email, product);
+    await affiliate.addLink(product);
     await refresh();
   }
 
   async function handleRemoveLink(link: AffiliateLink) {
-    await affiliate.removeLink(email, link.id);
+    await affiliate.removeLink(link.id);
     await refresh();
     toast(`Removed “${link.productTitle}” from your links.`, "info");
   }
@@ -175,9 +190,12 @@ export function VendorView() {
 
   return (
     <div>
-      <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest">
-        Sample data — clicks, sales and payouts need a backend before they&apos;re real.
-      </p>
+      {!referralCode && performance && (
+        <p className="border border-outline-variant border-l-4 border-l-error p-3 text-label-sm text-error">
+          No referral code has been issued to this account yet, so your links can&apos;t be
+          credited. Ask a Super Admin to set one up.
+        </p>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2 border border-outline-variant p-1 w-fit">
         {SECTIONS.map((s) => (
@@ -235,16 +253,28 @@ export function VendorView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {DEMO_REFERRED_SALES.map((sale) => (
+                {!sales && <LoadingRow colSpan={5} />}
+                {sales?.length === 0 && (
+                  <tr>
+                    <td className="px-4 py-6 text-text-muted" colSpan={5}>
+                      No referred sales yet — they appear here when someone buys through one of your
+                      links.
+                    </td>
+                  </tr>
+                )}
+                {sales?.map((sale) => (
                   <tr key={sale.id}>
                     <td className="px-4 py-3">{sale.product}</td>
                     <td className="px-4 py-3 text-text-muted">
-                      #{sale.orderId.slice(-8).toUpperCase()}
+                      {formatOrderNumber(sale.orderNumber)}
                     </td>
                     <td className="px-4 py-3 text-text-muted">{sale.date}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{PKR(sale.salePrice)}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-marketplace-bronze">
-                      {PKR(calculateCommission(sale.salePrice, commission))}
+                      {/* Read back from the commission record, not recalculated:
+                          the rate was copied when the sale happened, so a later
+                          rate change must not rewrite what they earned. */}
+                      {PKR(sale.commission)}
                     </td>
                   </tr>
                 ))}
@@ -395,7 +425,7 @@ export function VendorView() {
             <div className="border border-border-subtle p-6">
               <p className="text-label-sm uppercase text-text-muted">Pending Payout</p>
               <p className="mt-2 font-display text-headline-sm">
-                {performance ? PKR(performance.pendingPayout) : "—"}
+                {performance ? PKR(performance.pending) : "—"}
               </p>
             </div>
             <div className="border border-border-subtle p-6">
@@ -504,34 +534,10 @@ export function VendorView() {
             </table>
           </div>
 
-          <h2 className="mt-10 font-display text-headline-sm">Payout History</h2>
-          <p className="mt-1 text-label-sm text-marketplace-bronze">
-            Sample history — real payments appear here once FUJRS starts settling them.
-          </p>
-          <div className="mt-4 overflow-x-auto border border-border-subtle">
-            <table className="w-full text-left text-body-md">
-              <thead className="bg-surface-container-low text-label-sm uppercase text-text-muted">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Amount</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {DEMO_PAYOUTS.map((payout) => (
-                  <tr key={payout.id}>
-                    <td className="px-4 py-3">{payout.date}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{PKR(payout.amount)}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-label-sm uppercase text-text-muted">
-                        {payout.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* There was a second "Payout History" table of sample settlements
+              here. It is gone: a request that reaches Paid IS the history, so
+              the table above already shows it. Two tables meant one of them
+              had to be invented. */}
 
           <div className="mt-6 border border-border-subtle p-6">
             <h3 className="font-display text-headline-sm">How your commission works</h3>
