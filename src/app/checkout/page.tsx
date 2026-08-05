@@ -8,9 +8,8 @@ import { useCart, cartTotals } from "@/components/cart/CartContext";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { createOrder } from "@/lib/local/orders";
-import { getAddress } from "@/lib/local/profile";
-import { activeReferralCode } from "@/lib/local/referral";
+import { orders as orderStore, profiles, referrals } from "@/lib/data";
+import { LoadingScreen } from "@/components/ui/Loading";
 
 type Step = 1 | 2 | 3;
 
@@ -38,10 +37,18 @@ export default function CheckoutPage() {
   const [promoCode, setPromoCode] = useState("");
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
 
-  // Read after mount — the referral lives in the browser, and reading it during
+  // Read after mount — the referral is client-side state, and reading it during
   // render would not match the server-rendered HTML.
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  useEffect(() => setReferralCode(activeReferralCode()), []);
+  useEffect(() => {
+    let active = true;
+    referrals.get().then((referral) => {
+      if (active) setReferralCode(referral?.code ?? null);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const { fabricTotal, stitchingTotal, shipping, total } = cartTotals(items);
 
@@ -57,18 +64,22 @@ export default function CheckoutPage() {
     if (!session?.user.email) return;
     setEmail((prev) => prev || session.user.email);
 
-    const saved = getAddress(session.user.email);
-    if (saved) {
+    let active = true;
+    void profiles.getAddress(session.user.email).then((saved) => {
+      if (!active || !saved) return;
       setStreet((prev) => prev || saved.street);
       setCity((prev) => prev || saved.city);
       setPostalCode((prev) => prev || saved.postalCode);
-    }
+    });
+    return () => {
+      active = false;
+    };
   }, [session]);
 
   if (!mounted || items.length === 0) {
     return (
-      <main className="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-[60vh] flex items-center justify-center">
-        <p className="font-body-md text-on-surface-variant">Loading checkout…</p>
+      <main className="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+        <LoadingScreen label="Loading checkout" />
       </main>
     );
   }
@@ -98,7 +109,7 @@ export default function CheckoutPage() {
     setStep(3);
   }
 
-  function placeOrder() {
+  async function placeOrder() {
     if (paymentMethod === "card") {
       toast("Card payments aren't available yet — choose Cash on Delivery.", "soon");
       return;
@@ -107,31 +118,40 @@ export default function CheckoutPage() {
     setPlacing(true);
     setError(null);
 
-    const order = createOrder({
-      items: items.map((item) => ({
-        productSlug: item.slug,
-        title: item.title,
-        image: item.image,
-        price: item.price,
-        qty: item.qty,
-        stitchingLabel: item.stitching?.label,
-        stitchingAddOn: item.stitching?.addOn,
-        stitcherSlug: item.stitcherSlug,
-      })),
-      fabricTotal,
-      stitchingTotal,
-      shipping,
-      total,
-      firstName,
-      lastName,
-      street,
-      city,
-      postalCode,
-      paymentMethod,
-    });
+    try {
+      const order = await orderStore.create({
+        items: items.map((item) => ({
+          productSlug: item.slug,
+          title: item.title,
+          image: item.image,
+          price: item.price,
+          qty: item.qty,
+          stitchingLabel: item.stitching?.label,
+          stitchingAddOn: item.stitching?.addOn,
+          stitcherSlug: item.stitcherSlug,
+        })),
+        fabricTotal,
+        stitchingTotal,
+        shipping,
+        total,
+        firstName,
+        lastName,
+        street,
+        city,
+        postalCode,
+        paymentMethod,
+      });
 
-    clear();
-    router.push(`/checkout/confirmation?orderId=${order.id}`);
+      // Only clear the bag once the order is safely written. Clearing first
+      // would lose it if the write failed.
+      clear();
+      router.push(`/checkout/confirmation?orderId=${order.id}`);
+    } catch {
+      // Reset `placing` so the button re-enables and the empty-bag guard works
+      // again — otherwise a failed order leaves the page permanently stuck.
+      setPlacing(false);
+      setError("We couldn't place your order. Please try again.");
+    }
   }
 
   const steps: { n: Step; label: string }[] = [
@@ -444,7 +464,7 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     variant="primary"
-                    onClick={placeOrder}
+                    onClick={() => void placeOrder()}
                     disabled={placing}
                     className="flex-grow !py-5 active:scale-95"
                   >

@@ -3,15 +3,16 @@
 import { LinkButton } from "@/components/ui/Button";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { useWishlist } from "@/components/wishlist/WishlistContext";
-import { products } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
+import { LoadingScreen } from "@/components/ui/Loading";
 
-export default function WishlistPage() {
+export function WishlistGrid({ products }: { products: CatalogItem[] }) {
   const { slugs, mounted } = useWishlist();
 
   if (!mounted) {
     return (
       <div className="container-luxe flex min-h-[50vh] items-center justify-center py-24">
-        <p className="text-body-md text-text-muted">Loading your wishlist…</p>
+        <LoadingScreen label="Loading your wishlist" />
       </div>
     );
   }

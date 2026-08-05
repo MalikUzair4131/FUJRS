@@ -8,13 +8,16 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { LinkButton } from "@/components/ui/Button";
 import { StatusScreen } from "@/components/ui/StatusScreen";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
-import { getOrder, type LocalOrder } from "@/lib/local/orders";
+import { formatOrderNumber } from "@/lib/orderNumber";
+import { orders as orderStore } from "@/lib/data";
+import type { Order } from "@/lib/data";
+import { LoadingScreen } from "@/components/ui/Loading";
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { status } = useAuth();
   const router = useRouter();
-  const [order, setOrder] = useState<LocalOrder | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -23,12 +26,22 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    setOrder(getOrder(id));
-    setLoaded(true);
+    let active = true;
+    orderStore
+      .get(id)
+      .then((found) => {
+        if (active) setOrder(found);
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
   }, [status, id]);
 
   if (!loaded) {
-    return <StatusScreen pulse icon="receipt_long" title="Loading order…" />;
+    return <LoadingScreen label="Loading order" />;
   }
 
   if (!order) {
@@ -58,7 +71,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-body text-label-sm uppercase tracking-widest text-marketplace-bronze">
-            Order #{order.id.slice(-8).toUpperCase()}
+            Order {formatOrderNumber(order.orderNumber)}
           </p>
           <h1 className="mt-2 font-display text-headline-md">
             Placed{" "}

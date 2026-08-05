@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 import { MEASUREMENT_FIELDS, MEASUREMENT_UNIT, missingMeasurements } from "@/lib/measurements";
 import { DEMO_TAILOR_QUEUE, type DemoQueueItem } from "@/lib/auth/demoData";
+import { Loading } from "@/components/ui/Loading";
 
 function orderRef(orderId: string) {
   return `#${orderId.slice(-8).toUpperCase()}`;
@@ -103,7 +104,11 @@ export function TailorView() {
 
       <h2 className="mt-10 font-display text-headline-sm">Active Measurement Queue</h2>
 
-      {!queue && <p className="mt-4 text-text-muted">Loading…</p>}
+      {!queue && (
+        <div className="mt-6">
+          <Loading />
+        </div>
+      )}
       {queue?.length === 0 && (
         <p className="mt-4 text-text-muted">
           No bespoke orders assigned to you yet — they&apos;ll appear here as customers place custom

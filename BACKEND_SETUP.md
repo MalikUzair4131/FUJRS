@@ -11,27 +11,23 @@ until the adapters in §1 exist and `NEXT_PUBLIC_DATA_BACKEND` is flipped.
 
 ---
 
-## The one decision that matters most
-
-Everything else in this doc is routine. This isn't:
+## The one decision that mattered most — already taken
 
 > **Make the data layer `async` before connecting Supabase, not during.**
 
-Today's stores are synchronous — `listOrders()` returns `LocalOrder[]`
-immediately. Supabase returns promises. If you swap storage and change the
-call signature in the same step, every component that reads data changes
-**twice**: once to await, once to handle loading and error states you can't
-have today.
+The stores used to be synchronous: `listOrders()` returned an array
+immediately. Supabase returns promises. Swapping storage and changing the call
+signature in the same step would have changed every reading component
+**twice** — once to await, once to handle loading and error states.
 
-Do it in two passes instead:
+So it was done in two passes:
 
-1. **Pass 1 (no Supabase yet).** Make every store method `async`, still backed
-   by `localStorage`. Components change once. Nothing else changes — the app
-   behaves identically, and you can ship it.
-2. **Pass 2.** Swap the adapter. **Zero component changes.**
+1. **Done.** Every store method is `async`, still backed by `localStorage`.
+   Components changed once; the app behaves identically.
+2. **Next.** Swap the adapter. **Zero component changes.**
 
-Pass 1 is boring and safe. Skipping it is how a backend migration turns into a
-frontend rewrite.
+Keep it that way: a new store method is async from the start, even if the
+local implementation returns instantly.
 
 ---
 
@@ -43,13 +39,14 @@ The requirement is that moving off Supabase later is cheap. That means
 
 ```
 src/lib/
-  domain/            pure rules, no I/O — already exists in spirit:
-                     orderStatus.ts, commission.ts, measurements.ts
+  *.ts               pure rules, no I/O: orderStatus, commission,
+                     measurements, referral, payouts
   data/
-    types.ts         domain shapes (Order, Product, StitchingRequest…)
+    types.ts         domain shapes (Order, CartLine, CatalogItem…)
     ports.ts         the interfaces — the contract
-    local/           localStorage adapter (today's src/lib/local/)
-    supabase/        Supabase adapter
+    local/           localStorage adapter — DONE
+      storage.ts     the only localStorage in the app
+    supabase/        Supabase adapter — TO WRITE
     index.ts         picks one, exports it
 ```
 
@@ -108,16 +105,22 @@ working without a database, which is worth preserving.
 4. **Domain rules stay pure.** `canTransition`, `calculateCommission`,
    `validatePayout` do no I/O and must not start.
 
-### Three stores to extract first
+### Status: done
 
-Six stores already follow the pattern. Three hold `localStorage` inline in
-React context and need extracting before any of this works:
+All nine stores now sit behind ports in `src/lib/data/`, every method is
+`async`, and `src/lib/data/local/storage.ts` is the only file in the app that
+touches `localStorage`. The three providers that held storage inline
+(Cart, Wishlist, Tailoring) keep their exact public API — only the storage
+moved out.
 
-- [CartContext.tsx:66-76](src/components/cart/CartContext.tsx#L66-L76)
-- [WishlistContext.tsx:23-33](src/components/wishlist/WishlistContext.tsx#L23-L33)
-- [TailoringContext.tsx:73-84](src/components/tailoring/TailoringContext.tsx#L73-L84)
+Pure rules were split out at the same time: `src/lib/referral.ts` and
+`src/lib/payouts.ts` hold the code format, attribution window, minimum
+withdrawal and validation, with no I/O. `src/lib/useAsync.ts` handles the
+load/cancel boilerplate, including ignoring a slow first request that would
+otherwise overwrite a newer one.
 
-The providers keep their exact public API — only the storage calls move out.
+**What remains is writing `src/lib/data/supabase/` against the same
+interfaces.** No component changes.
 
 ---
 
@@ -376,14 +379,118 @@ index. Adapters must key on id, not email.
 
 ## 8. Order of work
 
-1. Extract the three contexts into the data layer (§1)
-2. Make every store `async`, still on `localStorage` — **ship this**
-3. Create the project, link it, fill `.env.local`
-4. `db reset` until migrations 1–10 apply cleanly, then `db push`
-5. Write RLS policies and verify with the anon key
-6. Build Supabase adapters against the existing ports
+1. ~~Extract the three contexts into the data layer~~ — done (§1)
+2. ~~Make every store `async`, still on `localStorage`~~ — done
+3. ~~Create the project, link it, fill `.env.local`~~ — done
+4. ~~`db reset` until migrations 1–10 apply cleanly, then `db push`~~ — done
+5. ~~Write RLS policies and verify with the anon key~~ — written; verify
+6. Build Supabase adapters against the existing ports — **auth, users,
+   catalogue and orders done.** Remaining: profiles, affiliate, referrals,
+   payouts, cart, wishlist, tailoring
 7. Flip `NEXT_PUBLIC_DATA_BACKEND=supabase` in one environment and test
 8. Re-validate every payload server-side
+
+### The catalogue read path (step 6, done)
+
+The storefront reads products through the data layer, not the static array.
+That needs two entry points, for one reason:
+
+```
+@/lib/data          browser — dashboard, cart, vendor links
+@/lib/data/server   server components — /women, /men, /new-arrivals,
+                    /search, /cart, /wishlist, /products/[slug]
+```
+
+`local` is `localStorage`, which does not exist on the server, so
+`@/lib/data/server` picks between the `products` table and
+`src/lib/data/static/catalog.ts` — the static array mapped to `CatalogItem`
+at the boundary, exactly like a database row. The pages are identical either
+way and still never learn which backend is running.
+
+Two consequences worth knowing:
+
+- **A piece published from the dashboard appears in the shop immediately** on
+  `supabase`. On `local` it stays in the browser that added it — the server
+  cannot see a visitor's `localStorage`, which is what makes `local` the demo
+  mode rather than a backend.
+- **Catalogue reads use `createPublicSupabase()`**, which carries no cookies.
+  Reading `cookies()` opts a route out of static rendering, so
+  `/products/[slug]` would be re-rendered per request for content identical
+  to every visitor. `products_public_read` is what makes that safe; never use
+  that client for a user's own orders, addresses or earnings.
+
+### Orders (step 6, done)
+
+Reads go straight to Postgres — `orders_own_read` / `orders_staff_read` decide
+whether you see your own or everyone's. **Writes do not.** There is
+deliberately no client insert policy on `orders`, so `create` posts to
+`POST /api/orders`, which is the first place in this build where step 8
+actually happens. That route does not trust:
+
+| From the browser | What the server does instead |
+|---|---|
+| line prices | re-reads `products.price_paisa` by slug |
+| the stitching charge | uses `products.stitching_addon_paisa`, and refuses it on a product that isn't `stitching_eligible` |
+| the totals | recomputes with `@/lib/pricing` — the same helper the bag uses — and rejects the order if the posted total has drifted |
+| the referral code | shape-checks it, then confirms a VENDOR actually owns it; an unknown code is dropped, not credited |
+| who the caller is | reads the verified session, never the payload |
+
+Verified against the live project: posting `price: 1` for a PKR 45,000 suit
+stores 45,000, and `FJ-ZZZZZZ` is dropped rather than credited.
+
+Two things this created:
+
+- **`orders.order_number`** is now the reference shown everywhere. The UI used
+  to slice the last 8 characters off the id; that id is a uuid, which is not
+  something a customer can read back to you over the phone.
+- **Anonymous sign-in is now required for guest checkout.** Every read policy
+  on `orders` matches `user_id = auth.uid()`, so an order written with a null
+  `user_id` would be invisible to the person who placed it — including on the
+  confirmation screen. The adapter signs a signed-out shopper in anonymously
+  first (§7). **Enable Authentication → Providers → Anonymous sign-ins**, or
+  guest checkout fails loudly rather than writing an unreachable order.
+
+### Stock movement
+
+`reserve_order_stock(uuid)` in the `stock` migration takes the inventory. The
+route's earlier `stock >= qty` read is advisory only — it can go stale between
+reading it and writing the order. The function is what decides:
+
+```sql
+update products set stock = stock - qty
+ where id = ... and stock >= qty;      -- 0 rows => reject the order
+```
+
+Postgres locks the row for that statement, so a second shopper evaluates the
+condition against the first one's result. A function body is one transaction,
+so a failure on line three rolls back lines one and two — an order never
+half-reserves. Lines are processed in `product_id` order, or two concurrent
+orders holding the same two products could deadlock on each other's locks.
+
+Cancelling or refunding puts the stock back, inside the existing status
+trigger rather than a second one, so it can't be skipped by writing the status
+some other way. `CANCELLED -> REFUNDED` deliberately does not restock twice.
+
+Verified against the live project: five simultaneous orders for one remaining
+item produced **one sale and four rejections**, the four rolled back leaving no
+order rows, and cancel-then-refund returned the stock exactly once.
+
+The function is `security definer` and revoked from `anon`/`authenticated` —
+stock is not something a browser may move.
+
+### Seeding the catalogue
+
+The 18 static products are not in the database until you put them there:
+
+```bash
+node --experimental-strip-types scripts/generate-seed.mjs   # → supabase/seed.sql
+psql "$SUPABASE_DB_URL" -f supabase/seed.sql                # remote
+# or, locally: supabase db reset (seed.sql runs automatically)
+```
+
+It is idempotent — ids are derived from the slug, so re-running updates rows
+rather than duplicating them. Until it runs, the shop shows only what has
+been published from the dashboard.
 
 Step 8 is not optional. Every check in the UI today — commission bounds, payout
 minimums, status transitions, measurement completeness — is UX. A client can

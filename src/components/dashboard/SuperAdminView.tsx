@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
 import { useToast } from "@/components/ui/Toast";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { DEMO_STATS, DEMO_USERS, DEMO_VENDORS, type DemoVendor } from "@/lib/auth/demoData";
+import { DEMO_STATS, DEMO_VENDORS } from "@/lib/auth/demoData";
+import { users as userStore } from "@/lib/data";
+import type { ManagedUser } from "@/lib/data";
 import {
   COMMISSION_TYPES,
+  DEFAULT_COMMISSION,
   COMMISSION_TYPE_LABELS,
   formatCommissionRate,
   validateCommission,
   type CommissionType,
 } from "@/lib/commission";
 import type { AppRole } from "@/lib/auth/roles";
+import { LoadingRow } from "@/components/ui/Loading";
 
 type Section = "OVERVIEW" | "CATALOGUE" | "VENDORS" | "USERS" | "ACCESS";
 
@@ -57,8 +61,9 @@ export function SuperAdminView() {
   const { toast } = useToast();
   const [section, setSection] = useState<Section>("OVERVIEW");
   const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [usersData, setUsersData] = useState<UsersResponse | null>(null);
-  const [vendors, setVendors] = useState<DemoVendor[]>(DEMO_VENDORS);
+  const [managed, setManaged] = useState<ManagedUser[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -73,53 +78,80 @@ export function SuperAdminView() {
     return initial as Record<AppRole, Record<string, boolean>>;
   });
 
-  useEffect(() => {
-    setStats(DEMO_STATS);
-    setUsersData(DEMO_USERS);
+  const refreshUsers = useCallback(async () => {
+    setManaged(await userStore.list());
   }, []);
 
-  function handleCreateUser(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    // Revenue and order charts are still fixtures — no orders adapter yet.
+    setStats(DEMO_STATS);
+    void refreshUsers();
+  }, [refreshUsers]);
 
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name,
-      email: email.toLowerCase(),
-      role,
-    };
-    setUsersData((prev) => {
-      const users = [...(prev?.users ?? []), newUser];
-      const roleCounts = Object.entries(
-        users.reduce<Record<string, number>>((acc, u) => {
-          acc[u.role] = (acc[u.role] ?? 0) + 1;
-          return acc;
-        }, {})
-      ).map(([r, count]) => ({ role: r as AppRole, count }));
-      return { users, roleCounts };
-    });
+  // Derived, so a created user updates the counts without a second source of
+  // truth to keep in step.
+  const usersData: UsersResponse | null = managed && {
+    users: managed,
+    roleCounts: Object.entries(
+      managed.reduce<Record<string, number>>((acc, u) => {
+        acc[u.role] = (acc[u.role] ?? 0) + 1;
+        return acc;
+      }, {})
+    ).map(([r, count]) => ({ role: r as AppRole, count })),
+  };
+
+  const vendors = (managed ?? []).filter((u) => u.role === "VENDOR");
+
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError(null);
+
+    if (password.length < 8) {
+      setCreateError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setCreating(true);
+    const result = await userStore.create({ name, email, password, role });
+    setCreating(false);
+
+    if (result.error) {
+      setCreateError(result.error);
+      return;
+    }
+
+    await refreshUsers();
     setName("");
     setEmail("");
     setPassword("");
     setRole("CUSTOMER");
+    toast(`${ROLE_LABELS[role]} account created for ${email.toLowerCase()}.`, "success");
   }
 
   /**
    * Commission is the Super Admin's alone to set — vendors only ever read it.
    * Validation runs here so a bad rate never reaches the (future) API.
    */
-  function updateCommission(id: string, patch: { type?: CommissionType; value?: number }) {
-    setVendors((prev) =>
-      prev.map((vendor) => {
-        if (vendor.id !== id) return vendor;
-        const commission = { ...vendor.commission, ...patch };
-        const problem = validateCommission(commission);
-        if (problem) {
-          toast(problem, "info");
-          return vendor;
-        }
-        return { ...vendor, commission };
-      })
-    );
+  async function updateCommission(id: string, patch: { type?: CommissionType; value?: number }) {
+    const vendor = (managed ?? []).find((v) => v.id === id);
+    if (!vendor) return;
+
+    const commission = { ...(vendor.commission ?? DEFAULT_COMMISSION), ...patch };
+    const problem = validateCommission(commission);
+    if (problem) {
+      toast(problem, "info");
+      return;
+    }
+
+    // Optimistic: the input should respond immediately, and a rejected rate is
+    // reverted by the refresh below.
+    setManaged((prev) => prev?.map((u) => (u.id === id ? { ...u, commission } : u)) ?? prev);
+
+    const result = await userStore.setCommission(id, commission);
+    if (result.error) {
+      toast(result.error, "info");
+      await refreshUsers();
+    }
   }
 
   function toggleAccess(r: AppRole, category: string) {
@@ -132,7 +164,7 @@ export function SuperAdminView() {
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest">
-        Sample data — this dashboard isn&apos;t connected to a database yet.
+        Revenue charts are sample data. Users, catalogue and commission rates below are real.
       </p>
 
       <div className="mt-4 flex gap-2 border border-outline-variant p-1 w-fit">
@@ -192,7 +224,7 @@ export function SuperAdminView() {
                     value: d.revenue,
                   }))}
                   valueFormatter={(v) => `PKR ${v.toLocaleString()}`}
-                  emptyMessage={stats ? "No revenue in this window yet." : "Loading…"}
+                  emptyMessage="No revenue in this window yet."
                 />
               </div>
             </div>
@@ -204,7 +236,7 @@ export function SuperAdminView() {
                     label: ROLE_LABELS[rc.role],
                     value: rc.count,
                   }))}
-                  emptyMessage={usersData ? "No users yet." : "Loading…"}
+                  emptyMessage="No users yet."
                 />
               </div>
             </div>
@@ -240,59 +272,70 @@ export function SuperAdminView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {vendors.map((vendor) => (
-                  <tr key={vendor.id} className="align-middle">
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{vendor.name}</p>
-                      <p className="text-label-sm text-text-muted">{vendor.email}</p>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap tracking-widest text-text-muted">
-                      {vendor.referralCode}
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={vendor.commission.type}
-                        onChange={(e) =>
-                          updateCommission(vendor.id, { type: e.target.value as CommissionType })
-                        }
-                        aria-label={`Commission type for ${vendor.name}`}
-                        className="border border-outline-variant bg-white px-3 py-2 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
-                      >
-                        {COMMISSION_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {COMMISSION_TYPE_LABELS[type]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step={vendor.commission.type === "PERCENT" ? 0.5 : 100}
-                          value={vendor.commission.value}
+                {vendors.map((vendor) => {
+                  const rate = vendor.commission ?? DEFAULT_COMMISSION;
+                  // Click/sale/earning figures need server-side attribution,
+                  // which doesn't exist yet — fixtures where we have them,
+                  // an em dash where we don't, never an invented number.
+                  const perf = DEMO_VENDORS.find((v) => v.email === vendor.email);
+                  return (
+                    <tr key={vendor.id} className="align-middle">
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{vendor.name}</p>
+                        <p className="text-label-sm text-text-muted">{vendor.email}</p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap tracking-widest text-text-muted">
+                        {vendor.referralCode}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={rate.type}
                           onChange={(e) =>
-                            updateCommission(vendor.id, { value: Number(e.target.value) })
+                            updateCommission(vendor.id, { type: e.target.value as CommissionType })
                           }
-                          aria-label={`Commission rate for ${vendor.name}`}
-                          className="w-24 border border-outline-variant bg-transparent px-3 py-2 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
-                        />
-                        <span className="text-label-sm text-text-muted">
-                          {vendor.commission.type === "PERCENT" ? "%" : "PKR"}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-label-sm text-marketplace-bronze">
-                        {formatCommissionRate(vendor.commission)} per sale
-                      </p>
-                    </td>
-                    <td className="px-4 py-3 text-text-muted">{vendor.clicks.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-text-muted">{vendor.sales.toLocaleString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      PKR {vendor.earned.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                          aria-label={`Commission type for ${vendor.name}`}
+                          className="border border-outline-variant bg-white px-3 py-2 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
+                        >
+                          {COMMISSION_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {COMMISSION_TYPE_LABELS[type]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            step={rate.type === "PERCENT" ? 0.5 : 100}
+                            value={rate.value}
+                            onChange={(e) =>
+                              updateCommission(vendor.id, { value: Number(e.target.value) })
+                            }
+                            aria-label={`Commission rate for ${vendor.name}`}
+                            className="w-24 border border-outline-variant bg-transparent px-3 py-2 font-body text-body-md focus:border-marketplace-bronze focus:outline-none"
+                          />
+                          <span className="text-label-sm text-text-muted">
+                            {rate.type === "PERCENT" ? "%" : "PKR"}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-label-sm text-marketplace-bronze">
+                          {formatCommissionRate(rate)} per sale
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {perf ? perf.clicks.toLocaleString() : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {perf ? perf.sales.toLocaleString() : "—"}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {perf ? `PKR ${perf.earned.toLocaleString()}` : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -312,7 +355,7 @@ export function SuperAdminView() {
             Adds a user to this screen only — not saved anywhere yet.
           </p>
           <form
-            onSubmit={handleCreateUser}
+            onSubmit={(e) => void handleCreateUser(e)}
             className="mt-4 grid gap-4 border border-border-subtle p-6 sm:grid-cols-2 lg:grid-cols-5"
           >
             <input
@@ -350,10 +393,16 @@ export function SuperAdminView() {
                 </option>
               ))}
             </select>
-            <Button type="submit" variant="primary">
-              Create
+            <Button type="submit" variant="primary" disabled={creating}>
+              {creating ? "Creating…" : "Create"}
             </Button>
           </form>
+
+          {createError && (
+            <p className="mt-3 max-w-prose text-label-sm text-error" role="alert">
+              {createError}
+            </p>
+          )}
 
           <h2 className="mt-10 font-display text-headline-sm">All Users</h2>
           <div className="mt-4 overflow-x-auto border border-border-subtle">
@@ -366,13 +415,7 @@ export function SuperAdminView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {!usersData && (
-                  <tr>
-                    <td className="px-4 py-6 text-text-muted" colSpan={3}>
-                      Loading…
-                    </td>
-                  </tr>
-                )}
+                {!usersData && <LoadingRow colSpan={3} />}
                 {usersData?.users.map((u) => (
                   <tr key={u.id}>
                     <td className="px-4 py-3">{u.name}</td>

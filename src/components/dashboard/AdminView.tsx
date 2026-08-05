@@ -6,7 +6,7 @@ import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
 import { OrderManager } from "@/components/dashboard/OrderManager";
 import { DEMO_STATS, DEMO_VENDORS } from "@/lib/auth/demoData";
-import { listItems } from "@/lib/local/catalog";
+import { catalog } from "@/lib/data";
 
 export function AdminView() {
   // Everything here reads fixtures — there is no backend to query yet, and
@@ -16,7 +16,13 @@ export function AdminView() {
 
   useEffect(() => {
     setData(DEMO_STATS);
-    setProductCount(listItems().length);
+    let active = true;
+    catalog.list().then((items) => {
+      if (active) setProductCount(items.length);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const stats = [
@@ -29,7 +35,7 @@ export function AdminView() {
   return (
     <div>
       <p className="text-label-sm text-marketplace-bronze uppercase tracking-widest mb-4">
-        Sample data — this dashboard isn&apos;t connected to a database yet.
+        Revenue and order-status charts are sample data. Orders and the catalogue below are real.
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -56,7 +62,7 @@ export function AdminView() {
                   value: d.revenue,
                 }))}
                 valueFormatter={(v) => `PKR ${v.toLocaleString()}`}
-                emptyMessage={data ? "No revenue in this window yet." : "Loading…"}
+                emptyMessage="No revenue in this window yet."
               />
             </div>
           </div>
@@ -68,7 +74,7 @@ export function AdminView() {
                   label: s.status,
                   value: s.count,
                 }))}
-                emptyMessage={data ? "No orders placed yet." : "Loading…"}
+                emptyMessage="No orders placed yet."
               />
             </div>
           </div>

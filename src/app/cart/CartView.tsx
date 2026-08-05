@@ -1,23 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useCart, cartTotals } from "@/components/cart/CartContext";
-import { products } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
 import { AddToBagButton } from "@/components/product/AddToBagButton";
 import { LinkButton } from "@/components/ui/Button";
+import { LoadingScreen } from "@/components/ui/Loading";
+import { ProductImage } from "@/components/ui/ProductImage";
 
-const completeTheLook = products.filter((p) =>
-  [
-    "antique-gold-zardozi-khussa",
-    "mughal-pearl-chandbalis",
-    "gilded-silk-frame-clutch",
-    "cream-needlework-pashmina",
-  ].includes(p.slug)
-);
+/** Accessories offered alongside the bag, by slug. */
+const COMPLETE_THE_LOOK_SLUGS = [
+  "antique-gold-zardozi-khussa",
+  "mughal-pearl-chandbalis",
+  "gilded-silk-frame-clutch",
+  "cream-needlework-pashmina",
+];
 
-export default function CartPage() {
+export function CartView({ products }: { products: CatalogItem[] }) {
+  const completeTheLook = products.filter((p) => COMPLETE_THE_LOOK_SLUGS.includes(p.slug));
   const { items, removeItem, updateQty, mounted } = useCart();
   const [promoCode, setPromoCode] = useState("");
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function CartPage() {
   if (!mounted) {
     return (
       <main className="pt-32 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto min-h-[60vh] flex items-center justify-center">
-        <p className="font-body-md text-on-surface-variant">Loading your bag…</p>
+        <LoadingScreen label="Loading your bag" />
       </main>
     );
   }
@@ -100,7 +101,7 @@ export default function CartPage() {
                 }
                 className="w-full md:w-40 aspect-[4/5] bg-surface-container overflow-hidden relative shrink-0"
               >
-                <Image
+                <ProductImage
                   src={item.image}
                   alt={item.title}
                   fill
@@ -285,7 +286,7 @@ export default function CartPage() {
             <div key={product.id} className="group">
               <Link href={`/products/${product.slug}`} className="block">
                 <div className="relative aspect-[4/5] bg-surface-container overflow-hidden mb-4">
-                  <Image
+                  <ProductImage
                     src={product.images[0]}
                     alt={product.title}
                     fill

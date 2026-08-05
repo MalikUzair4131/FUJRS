@@ -28,8 +28,12 @@ the Section 8 decisions, which are the real blocker on writing the schema.
 - [ ] Filters by size/color/fabric across the full catalog — each collection
       page filters by fabric only. `Product` already carries `color` and
       `sizes`, so the data is there; the unified filter UI is not built.
-- Note: the catalog is a static file (`src/data/products.ts`) plus a
-  browser-local overlay (`src/lib/local/catalog.ts`) for admin-added pieces.
+- Note: the catalogue now comes through the data layer. On `supabase` the
+  storefront reads the `products` table, so a piece published from the
+  dashboard is in the shop immediately. On `local` it reads
+  `src/data/products.ts` mapped to `CatalogItem`, and dashboard-added pieces
+  stay in the browser that added them. `Product` is retired — `CatalogItem`
+  from `@/lib/data` is the one product shape.
 
 ## 3.2 Custom Stitching Service — done
 
@@ -60,8 +64,12 @@ the Section 8 decisions, which are the real blocker on writing the schema.
       terminal. Orders placed in this browser are actionable; the sample rows
       are labelled as fixtures and aren't.
 - [x] **Product management** — `CatalogManager` / `ProductForm` /
-      `CatalogTable`, backed by `src/lib/local/catalog.ts`. Add and remove
-      publish immediately; there is no review queue.
+      `CatalogTable`, backed by `src/lib/data/`. Add and remove publish
+      immediately; there is no review queue. The form now captures every
+      column the storefront renders — colour, sizes, stock, SKU, was-price,
+      stitching eligibility and charge, badge, meters, embroidery, dupatta and
+      heritage story — and image uploads carry their measured dimensions, so
+      `product_images.width`/`.height` are real rather than assumed.
 - [x] Stitching queue: view + update status (Tailor role)
 - [x] **Super Admin user management** — create users, list all users, set
       per-vendor commission rates (`SuperAdminView.tsx`)

@@ -8,12 +8,16 @@ import {
   nextStatuses,
   type OrderStatus,
 } from "@/lib/orderStatus";
-import { listOrders, updateOrderStatus, type LocalOrder } from "@/lib/local/orders";
+import { formatOrderNumber } from "@/lib/orderNumber";
+import { orders as orderStore } from "@/lib/data";
+import type { Order } from "@/lib/data";
 import { DEMO_STATS } from "@/lib/auth/demoData";
+import { LoadingRow } from "@/components/ui/Loading";
 
 const PKR = (amount: number) => `PKR ${amount.toLocaleString()}`;
 
-function orderRef(id: string) {
+/** Fixture rows carry no order_number — only the demo ids do this. */
+function demoOrderRef(id: string) {
   return `#${id.slice(-8).toUpperCase()}`;
 }
 
@@ -33,7 +37,7 @@ function OrderDetail({
   order,
   onStatusChange,
 }: {
-  order: LocalOrder;
+  order: Order;
   onStatusChange: (status: OrderStatus) => void;
 }) {
   const moves = nextStatuses(order.status);
@@ -152,14 +156,19 @@ function OrderDetail({
  */
 export function OrderManager() {
   const { toast } = useToast();
-  const [orders, setOrders] = useState<LocalOrder[] | null>(null);
+  const [orders, setOrders] = useState<Order[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const refresh = useCallback(() => setOrders(listOrders()), []);
-  useEffect(refresh, [refresh]);
+  const refresh = useCallback(async () => {
+    setOrders(await orderStore.list());
+  }, []);
 
-  function handleStatusChange(order: LocalOrder, status: OrderStatus) {
-    const updated = updateOrderStatus(order.id, status);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  async function handleStatusChange(order: Order, status: OrderStatus) {
+    const updated = await orderStore.updateStatus(order.id, status);
     if (!updated) {
       toast(
         `An order that's ${ORDER_STATUS_LABELS[order.status].toLowerCase()} can't move to ${ORDER_STATUS_LABELS[status].toLowerCase()}.`,
@@ -167,16 +176,19 @@ export function OrderManager() {
       );
       return;
     }
-    refresh();
-    toast(`${orderRef(order.id)} is now ${ORDER_STATUS_LABELS[status].toLowerCase()}.`, "success");
+    await refresh();
+    toast(
+      `${formatOrderNumber(order.orderNumber)} is now ${ORDER_STATUS_LABELS[status].toLowerCase()}.`,
+      "success"
+    );
   }
 
   return (
     <section>
       <h2 className="font-display text-headline-sm">Orders</h2>
       <p className="mt-1 text-label-sm text-marketplace-bronze">
-        Orders placed in this browser can be progressed, cancelled or refunded. Changes are saved on
-        this device only.
+        Real orders can be progressed, cancelled or refunded. The sample rows further down are
+        fixtures and aren&apos;t actionable.
       </p>
 
       <div className="mt-4 overflow-x-auto border border-border-subtle">
@@ -193,19 +205,13 @@ export function OrderManager() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
-            {!orders && (
-              <tr>
-                <td className="px-4 py-6 text-text-muted" colSpan={7}>
-                  Loading…
-                </td>
-              </tr>
-            )}
+            {!orders && <LoadingRow colSpan={7} />}
 
             {orders?.map((order) => {
               const open = openId === order.id;
               return (
                 <tr key={order.id}>
-                  <td className="px-4 py-3">{orderRef(order.id)}</td>
+                  <td className="px-4 py-3">{formatOrderNumber(order.orderNumber)}</td>
                   <td className="px-4 py-3">
                     {order.firstName} {order.lastName}
                   </td>
@@ -233,8 +239,7 @@ export function OrderManager() {
             {orders?.length === 0 && (
               <tr>
                 <td className="px-4 py-6 text-text-muted" colSpan={7}>
-                  No real orders on this device yet — the sample rows below show what this table
-                  looks like in use.
+                  No orders yet — the sample rows below show what this table looks like in use.
                 </td>
               </tr>
             )}
@@ -249,7 +254,9 @@ export function OrderManager() {
           <div key={order.id} className="mt-4 border border-border-subtle">
             <div className="flex flex-wrap items-center justify-between gap-3 p-5">
               <div>
-                <p className="font-display text-headline-sm">{orderRef(order.id)}</p>
+                <p className="font-display text-headline-sm">
+                  {formatOrderNumber(order.orderNumber)}
+                </p>
                 <p className="text-label-sm text-text-muted">
                   {order.firstName} {order.lastName} · {ORDER_STATUS_LABELS[order.status]}
                 </p>
@@ -261,7 +268,7 @@ export function OrderManager() {
                 Close
               </button>
             </div>
-            <OrderDetail order={order} onStatusChange={(s) => handleStatusChange(order, s)} />
+            <OrderDetail order={order} onStatusChange={(s) => void handleStatusChange(order, s)} />
           </div>
         ))}
 
@@ -284,7 +291,7 @@ export function OrderManager() {
           <tbody className="divide-y divide-border-subtle">
             {DEMO_STATS.recentOrders.map((order) => (
               <tr key={order.id}>
-                <td className="px-4 py-3">{orderRef(order.id)}</td>
+                <td className="px-4 py-3">{demoOrderRef(order.id)}</td>
                 <td className="px-4 py-3">{order.customer}</td>
                 <td className="px-4 py-3">{order.itemCount}</td>
                 <td className="px-4 py-3 whitespace-nowrap">{PKR(order.total)}</td>

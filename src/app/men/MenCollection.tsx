@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { products } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
 import { Reveal } from "@/components/ui/Reveal";
 import { MenProductTile } from "@/components/product/MenProductTile";
 import { LinkButton } from "@/components/ui/Button";
@@ -25,10 +25,10 @@ const fabricGuide = [
   },
 ];
 
-export default function MenPage() {
+export function MenCollection({ products }: { products: CatalogItem[] }) {
   const [activeTab, setActiveTab] = useState("All Fabrics");
   const tabIndicator = useSlidingUnderline(activeTab);
-  const menProducts = useMemo(() => products.filter((p) => p.gender === "Men"), []);
+  const menProducts = useMemo(() => products.filter((p) => p.gender === "Men"), [products]);
 
   const filtered = useMemo(() => {
     if (activeTab === "All Fabrics") return menProducts;

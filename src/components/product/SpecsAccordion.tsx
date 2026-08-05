@@ -1,6 +1,6 @@
-import type { Product } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
 
-export function SpecsAccordion({ product }: { product: Product }) {
+export function SpecsAccordion({ product }: { product: CatalogItem }) {
   return (
     <div className="border-t border-border-subtle mt-4">
       <details className="group border-b border-border-subtle" open>

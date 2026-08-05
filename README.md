@@ -33,35 +33,51 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-### Demo sign-in
+### Getting a staff account
 
-Any password works. The account list is also shown on `/login`.
+There are no demo logins. How you get one depends on the backend:
 
-| Email | Role |
-|---|---|
-| `user@gmail.com` | Customer |
-| `admin@gmail.com` | Admin |
-| `vendor@gmail.com` | Vendor |
-| `tailor@gmail.com` | Tailor |
-| `superadmin@gmail.com` | Super Admin |
+**On browser storage (`NEXT_PUBLIC_DATA_BACKEND=local`)** — register at
+`/register`. **The first account on a fresh browser becomes Super Admin**, and
+from there you create Admin, Vendor and Tailor accounts in the dashboard. Any
+password works; passwords are deliberately never stored, because there is
+nothing to authenticate against. Clearing site data resets it.
 
-Registering on `/register` creates a browser-local customer account.
-Passwords are deliberately never stored — there's nothing to authenticate
-against yet.
+**On Supabase** — register at `/register`, then promote yourself once in the
+SQL editor with [supabase/promote-staff.sql](./supabase/promote-staff.sql).
+That step is deliberately manual: sign-up hard-codes `CUSTOMER` and never reads
+a role from the client, so a self-assigned Super Admin isn't possible. Every
+account after the first is created from the dashboard.
 
 ## Where the data lives
 
-Everything is in `localStorage`, behind small modules so there's exactly one
-place to swap when the real backend arrives:
+Everything is in `localStorage`, behind a single data layer. Components import
+from `@/lib/data` and never learn which backend is running, so connecting
+Supabase means writing adapters — not touching components.
 
-| Data | Module | Key |
+```
+src/lib/data/
+  types.ts     domain shapes
+  ports.ts     async interfaces every backend implements
+  local/       localStorage adapter (all of it, via local/storage.ts)
+  index.ts     picks the adapter
+```
+
+| Store | Import | Key |
 |---|---|---|
+| Orders | `orders` | `fujrs-orders` |
+| Accounts + saved address | `profiles` | `fujrs-accounts` |
+| Catalogue additions | `catalog` | `fujrs-catalog` |
+| Bag | `cart` | `fujrs-cart` |
+| Wishlist | `wishlist` | `fujrs-wishlist` |
+| Measurements | `tailoring` | `fujrs-tailoring-config` |
+| Affiliate links | `affiliate` | `fujrs-affiliate-links` |
+| Captured referral | `referrals` | `fujrs-referral` |
+| Payout requests | `payouts` | `fujrs-payout-requests` |
 | Session | `src/lib/auth/session.ts` | `fujrs-session` |
-| Accounts + saved address | `src/lib/local/profile.ts` | `fujrs-accounts` |
-| Orders | `src/lib/local/orders.ts` | `fujrs-orders` |
-| Bag | `src/components/cart/CartContext.tsx` | `fujrs-cart` |
-| Wishlist | `src/components/wishlist/WishlistContext.tsx` | `fujrs-wishlist` |
-| Measurements | `src/components/tailoring/TailoringContext.tsx` | `fujrs-tailoring-config` |
+
+Every method is `async` even on browser storage — deliberately, so components
+handle awaiting once rather than changing again when the network arrives.
 
 The four role dashboards render fixtures from `src/lib/auth/demoData.ts` and
 say so on screen. Their actions (approve draft, change stitching status,

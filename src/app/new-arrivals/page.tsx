@@ -1,10 +1,10 @@
-import Image from "next/image";
 import { ProductFilterGrid } from "@/components/ui/ProductFilterGrid";
 import { LinkButton } from "@/components/ui/Button";
-import { products } from "@/data/products";
+import { catalogRead } from "@/lib/data/server";
+import { ProductImage } from "@/components/ui/ProductImage";
 
-export default function NewArrivalsPage() {
-  const newArrivals = products.filter((p) => p.isNewArrival);
+export default async function NewArrivalsPage() {
+  const newArrivals = (await catalogRead.list()).filter((p) => p.isNewArrival);
   const [spotlight, ...rest] = newArrivals;
 
   return (
@@ -17,7 +17,7 @@ export default function NewArrivalsPage() {
       {spotlight && (
         <div className="container-luxe mt-10 grid grid-cols-1 gap-gutter lg:grid-cols-2">
           <div className="relative aspect-[4/5] overflow-hidden bg-surface-container lg:aspect-auto">
-            <Image
+            <ProductImage
               src={spotlight.images[0]}
               alt={spotlight.title}
               fill

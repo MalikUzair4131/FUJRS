@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ProductCard } from "./ProductCard";
-import type { Product } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
 
 type SortOption = "featured" | "price-asc" | "price-desc";
 
@@ -47,7 +47,7 @@ function FilterGroup({
   );
 }
 
-export function ProductFilterGrid({ products }: { products: Product[] }) {
+export function ProductFilterGrid({ products }: { products: CatalogItem[] }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [fabrics, setFabrics] = useState<string[]>([]);

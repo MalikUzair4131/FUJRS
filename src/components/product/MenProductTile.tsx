@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { Reveal } from "@/components/ui/Reveal";
 import { AddToBagButton } from "@/components/product/AddToBagButton";
-import type { Product } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
+import { ProductImage } from "@/components/ui/ProductImage";
 
 export function MenProductTile({
   product,
   size = "small",
   delay = 0,
 }: {
-  product: Product;
+  product: CatalogItem;
   size?: "large" | "small";
   delay?: number;
 }) {
@@ -24,7 +24,7 @@ export function MenProductTile({
           href={`/products/${product.slug}`}
           className={`block ${aspect} overflow-hidden relative`}
         >
-          <Image
+          <ProductImage
             src={product.images[0]}
             alt={product.title}
             fill

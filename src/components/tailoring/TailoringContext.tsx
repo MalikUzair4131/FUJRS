@@ -1,20 +1,13 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import type { MeasurementSet } from "@/lib/measurements";
+import { tailoring } from "@/lib/data";
+import type { TailoringConfig } from "@/lib/data";
+import { DEFAULT_STITCHER_SLUG } from "@/data/stitchers";
 
-export interface TailoringConfig {
-  measurements: MeasurementSet;
-  neckline: string;
-  necklinePrice: number;
-  sleeve: string;
-  sleevePrice: number;
-  hemline: string;
-  hemlinePrice: number;
-  garmentType: string;
-  basePrice: number;
-  stitcherSlug: string;
-}
+// Re-exported so existing importers keep working; the shape lives in the data
+// layer, where it maps onto a `stitching_requests` row.
+export type { TailoringConfig };
 
 export const NECKLINES = [
   { label: "Boat Neck", icon: "horizontal_rule", price: 0 },
@@ -50,7 +43,7 @@ const defaultConfig: TailoringConfig = {
   hemlinePrice: HEMLINES[0].price,
   garmentType: "3-Piece Luxury Suit",
   basePrice: GARMENT_PRICES["3-Piece Luxury Suit"],
-  stitcherSlug: "khyber-artisans",
+  stitcherSlug: DEFAULT_STITCHER_SLUG,
 };
 
 interface TailoringContextValue {
@@ -61,28 +54,30 @@ interface TailoringContextValue {
 }
 
 const TailoringContext = createContext<TailoringContextValue | null>(null);
-const STORAGE_KEY = "fujrs-tailoring-config";
 
 export function TailoringProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfigState] = useState<TailoringConfig>(defaultConfig);
   const [mounted, setMounted] = useState(false);
 
-  // Measurements live in the browser — there is no backend to sync them to yet.
+  // Storage lives in the data layer; this provider holds React state only.
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-      if (stored) setConfigState(stored);
-    } catch {
-      /* ignore */
-    }
-    setMounted(true);
+    let active = true;
+    tailoring
+      .read()
+      .then((stored) => {
+        if (active && stored) setConfigState(stored);
+      })
+      .finally(() => {
+        if (active) setMounted(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   function setConfig(c: TailoringConfig) {
     setConfigState(c);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(c));
-    }
+    void tailoring.write(c);
   }
 
   const total = config.basePrice + config.necklinePrice + config.sleevePrice + config.hemlinePrice;

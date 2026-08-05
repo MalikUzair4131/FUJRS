@@ -1,3 +1,16 @@
+// The hand-authored catalogue FUJRS shipped with.
+//
+// NOT the app's product type any more. Components read `CatalogItem` from
+// `@/lib/data`; this array reaches them two ways, and only two:
+//
+//   * `src/lib/data/static/catalog.ts` maps it to CatalogItem for the `local`
+//     backend, the same way an adapter maps a database row
+//   * `scripts/generate-seed.mjs` turns it into supabase/seed.sql
+//
+// Nothing else may import it — a component reaching in here is a component
+// that would stop seeing products the moment the catalogue moved to the
+// database.
+
 export type Gender = "Men" | "Women";
 
 export interface Product {
@@ -22,7 +35,11 @@ export interface Product {
   heritageStory?: string;
   embroidery?: string;
   dupattaInfo?: string;
-  stitcher?: { name: string; slug: string; rating: number; reviewCount: number };
+  /**
+   * Present when the piece can be sent for bespoke stitching, and the charge
+   * for it. Which Master Stitcher takes the job is an operational assignment
+   * made later, never a column on the product.
+   */
   stitchingAddOn?: number;
 }
 
@@ -281,16 +298,6 @@ export const products: Product[] = [
     meters: "4.5 Meters (Standard Suit)",
     heritageStory:
       "The 'Aurelian' weave draws inspiration from the royal courts of the 17th-century Mughal era. Hand-woven on traditional looms in Banaras, this raw silk base undergoes a unique gold-dipping process before being meticulously embroidered by fourth-generation artisans. Every stitch tells a story of perseverance and refined luxury.",
-    // Source credited an external marketplace seller ("Khyber Artisans")
-    // with a "View Store" link — adapted into an internal FUJRS master
-    // tailor credit per your marketplace exclusion, linking to the
-    // internal team profile (built in Phase 4).
-    stitcher: {
-      name: "Khyber Artisans — FUJRS Atelier",
-      slug: "khyber-artisans",
-      rating: 4.9,
-      reviewCount: 124,
-    },
     stitchingAddOn: 12500,
   },
   {

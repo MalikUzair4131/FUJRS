@@ -1,9 +1,8 @@
 // Sample data for the role dashboards. This build has no backend, so these
 // fixtures are what every dashboard renders.
-import type { AppRole } from "@/lib/auth/roles";
 import type { CommissionRate } from "@/lib/commission";
-import { referralCodeFor } from "@/lib/local/affiliate";
-import type { PayoutStatus } from "@/lib/local/payouts";
+import { referralCodeFor } from "@/lib/referral";
+import type { PayoutStatus } from "@/lib/payouts";
 import type { MeasurementSet } from "@/lib/measurements";
 import { STITCHING_STATUSES } from "@/lib/stitchingStatus";
 
@@ -69,31 +68,6 @@ export const DEMO_STATS = {
       status: "CONFIRMED",
       itemCount: 2,
     },
-  ],
-};
-
-export const DEMO_USERS: {
-  users: { id: string; name: string; email: string; role: AppRole }[];
-  roleCounts: { role: AppRole; count: number }[];
-} = {
-  users: [
-    { id: "demo-customer", name: "Demo Customer", email: "user@gmail.com", role: "CUSTOMER" },
-    { id: "demo-admin", name: "Demo Admin", email: "admin@gmail.com", role: "ADMIN" },
-    { id: "demo-vendor", name: "Demo Vendor", email: "vendor@gmail.com", role: "VENDOR" },
-    { id: "demo-tailor", name: "Demo Tailor", email: "tailor@gmail.com", role: "TAILOR" },
-    {
-      id: "demo-super-admin",
-      name: "Demo Super Admin",
-      email: "superadmin@gmail.com",
-      role: "SUPER_ADMIN",
-    },
-  ],
-  roleCounts: [
-    { role: "CUSTOMER", count: 1 },
-    { role: "ADMIN", count: 1 },
-    { role: "VENDOR", count: 1 },
-    { role: "TAILOR", count: 1 },
-    { role: "SUPER_ADMIN", count: 1 },
   ],
 };
 

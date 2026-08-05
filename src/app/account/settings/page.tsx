@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/Button";
 import { FormSection, ReadOnlyField, TextField } from "@/components/ui/Field";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { useToast } from "@/components/ui/Toast";
-import { getAddress, getAvatar, updateAddress, updateAvatar } from "@/lib/local/profile";
+import { profiles } from "@/lib/data";
+import { Loading } from "@/components/ui/Loading";
+import { LoadingScreen } from "@/components/ui/Loading";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -21,13 +23,25 @@ function ProfileSection({ email, name }: { email: string; name: string }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setAvatar(getAvatar(email));
+    let active = true;
+    profiles.getAvatar(email).then((saved) => {
+      if (active) setAvatar(saved);
+    });
+    return () => {
+      active = false;
+    };
   }, [email]);
 
-  function handleAvatarChange(next: string | null) {
+  async function handleAvatarChange(next: string | null) {
     setAvatar(next);
-    updateAvatar(email, next);
-    toast(next ? "Profile photo updated." : "Profile photo removed.", "success");
+    try {
+      await profiles.updateAvatar(email, next);
+      toast(next ? "Profile photo updated." : "Profile photo removed.", "success");
+    } catch {
+      // Roll the preview back so the UI doesn't claim a save that didn't happen.
+      setAvatar(await profiles.getAvatar(email));
+      toast("Couldn't save that photo — try a smaller image.", "info");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,7 +67,7 @@ function ProfileSection({ email, name }: { email: string; name: string }) {
       <ImageUpload
         label="Profile Photo"
         value={avatar}
-        onChange={handleAvatarChange}
+        onChange={(next) => void handleAvatarChange(next)}
         shape="circle"
         alt={`${name}'s profile photo`}
         hint="Square images work best. Saved as soon as you choose one."
@@ -146,16 +160,24 @@ function AddressSection({ email }: { email: string }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = getAddress(email);
-    if (saved) {
-      setStreet(saved.street);
-      setCity(saved.city);
-      setPostalCode(saved.postalCode);
-    }
-    setLoaded(true);
+    let active = true;
+    profiles
+      .getAddress(email)
+      .then((saved) => {
+        if (!active || !saved) return;
+        setStreet(saved.street);
+        setCity(saved.city);
+        setPostalCode(saved.postalCode);
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
   }, [email]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const next: typeof errors = {};
     if (!street.trim()) next.street = "Enter a street address.";
@@ -164,8 +186,12 @@ function AddressSection({ email }: { email: string }) {
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    updateAddress(email, { street, city, postalCode });
-    toast("Address saved.", "success");
+    try {
+      await profiles.updateAddress(email, { street, city, postalCode });
+      toast("Address saved.", "success");
+    } catch {
+      toast("Couldn't save your address. Please try again.", "info");
+    }
   }
 
   return (
@@ -174,9 +200,9 @@ function AddressSection({ email }: { email: string }) {
       description="Used to prefill your shipping details at checkout."
     >
       {!loaded ? (
-        <p className="font-body text-body-md text-on-surface-variant">Loading…</p>
+        <Loading />
       ) : (
-        <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <form onSubmit={(e) => void handleSubmit(e)} noValidate className="space-y-5">
           <TextField
             label="Street Address"
             value={street}
@@ -225,11 +251,7 @@ export default function AccountSettingsPage() {
   }, [status, router]);
 
   if (status === "loading" || !session) {
-    return (
-      <div className="max-w-container-max mx-auto px-margin-mobile py-16 text-center text-on-surface-variant">
-        Loading…
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

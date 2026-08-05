@@ -2,13 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { REFERRAL_PARAM } from "@/lib/local/affiliate";
-import {
-  ATTRIBUTION_WINDOW_DAYS,
-  captureReferral,
-  getReferral,
-  type CapturedReferral,
-} from "@/lib/local/referral";
+import { ATTRIBUTION_WINDOW_DAYS, REFERRAL_PARAM } from "@/lib/referral";
+import { referrals } from "@/lib/data";
+import type { CapturedReferral } from "@/lib/data";
 
 /**
  * Catches the `?ref=` on a vendor's link anywhere on the site and tells the
@@ -28,9 +24,18 @@ export function ReferralBar() {
       ? (window.location.pathname.split("/")[2] ?? null)
       : null;
 
-    const captured = code ? captureReferral(code, landingSlug) : null;
-    setReferral(captured ?? getReferral());
-    if (captured) setDismissed(false);
+    let active = true;
+    void (async () => {
+      const captured = code ? await referrals.capture(code, landingSlug) : null;
+      const current = captured ?? (await referrals.get());
+      if (!active) return;
+      setReferral(current);
+      if (captured) setDismissed(false);
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [code]);
 
   if (!referral || dismissed) return null;

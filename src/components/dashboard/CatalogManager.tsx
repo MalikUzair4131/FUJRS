@@ -6,14 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ProductForm } from "@/components/dashboard/ProductForm";
 import { CatalogTable } from "@/components/dashboard/CatalogTable";
-import {
-  CatalogStorageError,
-  createItem,
-  listItems,
-  removeItem,
-  type CatalogItem,
-  type NewCatalogItem,
-} from "@/lib/local/catalog";
+import { catalog, StoreWriteError } from "@/lib/data";
+import type { CatalogItem, NewCatalogItem } from "@/lib/data";
 
 /**
  * Catalogue management for the roles that can publish — shared by the Admin
@@ -26,19 +20,24 @@ export function CatalogManager() {
   const [items, setItems] = useState<CatalogItem[] | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const refresh = useCallback(() => setItems(listItems()), []);
-  useEffect(refresh, [refresh]);
+  const refresh = useCallback(async () => {
+    setItems(await catalog.list());
+  }, []);
 
-  function handleAdd(input: NewCatalogItem) {
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  async function handleAdd(input: NewCatalogItem) {
     if (!session) return;
     try {
-      createItem(input, { email: session.user.email, name: session.user.name });
+      await catalog.create(input, { email: session.user.email, name: session.user.name });
       setShowForm(false);
-      refresh();
+      await refresh();
       toast("Product published to the catalogue.", "success");
     } catch (err) {
       toast(
-        err instanceof CatalogStorageError
+        err instanceof StoreWriteError && err.outOfSpace
           ? "Storage is full. Remove an older product or use a smaller image."
           : "Couldn't save that product.",
         "info"
@@ -46,9 +45,9 @@ export function CatalogManager() {
     }
   }
 
-  function handleRemove(item: CatalogItem) {
-    removeItem(item.id);
-    refresh();
+  async function handleRemove(item: CatalogItem) {
+    await catalog.remove(item.id);
+    await refresh();
     toast(`“${item.title}” removed from the catalogue.`, "info");
   }
 
@@ -58,7 +57,7 @@ export function CatalogManager() {
         <div>
           <h2 className="font-display text-headline-sm">Catalogue</h2>
           <p className="mt-1 text-label-sm text-marketplace-bronze">
-            Pieces you add here publish immediately — saved on this device only.
+            Pieces you add here publish immediately — they appear in the shop straight away.
           </p>
         </div>
         <Button variant="primary" onClick={() => setShowForm((v) => !v)}>
@@ -70,7 +69,7 @@ export function CatalogManager() {
         <div className="mt-6">
           <ProductForm
             submitLabel="Publish to Catalogue"
-            onSubmit={handleAdd}
+            onSubmit={(input) => void handleAdd(input)}
             onCancel={() => setShowForm(false)}
           />
         </div>
@@ -82,7 +81,7 @@ export function CatalogManager() {
           emptyMessage="No products added yet."
           actions={(item) => (
             <button
-              onClick={() => handleRemove(item)}
+              onClick={() => void handleRemove(item)}
               className="border border-outline-variant px-3 py-1.5 font-label-sm text-label-sm uppercase tracking-widest transition-colors hover:border-error hover:text-error"
             >
               Remove

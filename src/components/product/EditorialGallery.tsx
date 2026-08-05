@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/ProductImage";
 
 export function EditorialGallery({ images, title }: { images: string[]; title: string }) {
   if (images.length >= 3) {
@@ -11,7 +11,7 @@ export function EditorialGallery({ images, title }: { images: string[]; title: s
               key={i}
               className="relative group aspect-[4/5] overflow-hidden bg-surface-container"
             >
-              <Image
+              <ProductImage
                 src={src}
                 alt={`${title} — view ${i + 1}`}
                 fill
@@ -22,7 +22,7 @@ export function EditorialGallery({ images, title }: { images: string[]; title: s
             </div>
           ))}
           <div className="relative group aspect-[4/5] md:col-span-2 overflow-hidden bg-surface-container">
-            <Image
+            <ProductImage
               src={images[2]}
               alt={`${title} — lifestyle detail`}
               fill
@@ -38,7 +38,7 @@ export function EditorialGallery({ images, title }: { images: string[]; title: s
   return (
     <div className="lg:col-span-7">
       <div className="relative aspect-[4/5] overflow-hidden bg-surface-container">
-        <Image
+        <ProductImage
           src={images[0]}
           alt={title}
           fill

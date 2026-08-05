@@ -1,13 +1,28 @@
 "use client";
 
-import Image from "next/image";
-import type { CatalogItem } from "@/lib/local/catalog";
+import type { CatalogItem } from "@/lib/data";
+import { LoadingRow } from "@/components/ui/Loading";
+import { ProductImage } from "@/components/ui/ProductImage";
 
 export function ProductThumb({ item }: { item: CatalogItem }) {
+  // The first image is the primary one; the rest show on the product page.
+  const primary = item.images[0];
+  const extra = item.images.length - 1;
+
   return (
     <div className="relative h-14 w-11 shrink-0 overflow-hidden border border-border-subtle bg-surface-container-low">
-      {item.image ? (
-        <Image src={item.image} alt="" fill unoptimized className="object-cover" />
+      {primary ? (
+        <>
+          <ProductImage src={primary} alt="" fill unoptimized className="object-cover" />
+          {extra > 0 && (
+            <span
+              className="absolute bottom-0 right-0 bg-primary px-1 font-label-sm text-[10px] leading-4 text-on-primary"
+              title={`${item.images.length} images`}
+            >
+              +{extra}
+            </span>
+          )}
+        </>
       ) : (
         <span className="absolute inset-0 flex items-center justify-center">
           <span
@@ -47,13 +62,7 @@ export function CatalogTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border-subtle">
-          {!items && (
-            <tr>
-              <td className="px-4 py-6 text-text-muted" colSpan={columnCount}>
-                Loading…
-              </td>
-            </tr>
-          )}
+          {!items && <LoadingRow colSpan={columnCount} />}
 
           {items?.length === 0 && (
             <tr>

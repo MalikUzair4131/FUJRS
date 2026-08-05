@@ -12,24 +12,11 @@ import {
   formatCommissionRate,
   type CommissionRate,
 } from "@/lib/commission";
-import {
-  addLink,
-  buildReferralUrl,
-  listLinks,
-  referralCodeFor,
-  removeLink,
-  type AffiliateLink,
-} from "@/lib/local/affiliate";
-import {
-  MIN_PAYOUT_PKR,
-  PayoutValidationError,
-  availableToRequest,
-  listRequests,
-  requestPayout,
-  validatePayout,
-  type PayoutRequest,
-} from "@/lib/local/payouts";
-import { products } from "@/data/products";
+import { buildReferralUrl, referralCodeFor } from "@/lib/referral";
+import { MIN_PAYOUT_PKR, PayoutValidationError, validatePayout } from "@/lib/payouts";
+import { affiliate, catalog, payouts } from "@/lib/data";
+import type { AffiliateLink, CatalogItem, PayoutRequest } from "@/lib/data";
+import { LoadingRow } from "@/components/ui/Loading";
 
 type Section = "OVERVIEW" | "LINKS" | "EARNINGS";
 
@@ -72,21 +59,33 @@ export function VendorView() {
 
   const performance = useMemo(() => DEMO_VENDORS.find((v) => v.email === email), [email]);
 
-  const refresh = useCallback(() => {
-    if (!email) return;
-    setLinks(listLinks(email));
-    setPayoutRequests(listRequests(email));
-  }, [email]);
-
-  useEffect(refresh, [refresh]);
-  useEffect(() => setOrigin(window.location.origin), []);
-
   // What's left after any request the vendor has already raised.
   const pendingBalance = performance?.pendingPayout ?? 0;
-  const available =
-    email && payoutRequests ? availableToRequest(email, pendingBalance) : pendingBalance;
+  const [available, setAvailable] = useState(pendingBalance);
+  const [products, setProducts] = useState<CatalogItem[]>([]);
 
-  function handleRequestPayout(e: React.FormEvent) {
+  const refresh = useCallback(async () => {
+    if (!email) return;
+    const [nextLinks, nextRequests, nextAvailable, nextProducts] = await Promise.all([
+      affiliate.listLinks(email),
+      payouts.list(email),
+      payouts.availableToRequest(email, pendingBalance),
+      // The live catalogue, so a piece published today is promotable today.
+      catalog.list(),
+    ]);
+    setLinks(nextLinks);
+    setPayoutRequests(nextRequests);
+    setAvailable(nextAvailable);
+    setProducts(nextProducts);
+  }, [email, pendingBalance]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => setOrigin(window.location.origin), []);
+
+  async function handleRequestPayout(e: React.FormEvent) {
     e.preventDefault();
     const amount = Number(payoutAmount);
 
@@ -97,7 +96,7 @@ export function VendorView() {
     }
 
     try {
-      requestPayout(email, amount, available);
+      await payouts.request(email, amount, available);
     } catch (err) {
       setPayoutError(
         err instanceof PayoutValidationError ? err.message : "Couldn't raise that request."
@@ -108,7 +107,7 @@ export function VendorView() {
     setPayoutError(null);
     setPayoutAmount("");
     setShowPayoutForm(false);
-    refresh();
+    await refresh();
     toast(
       `Payout of ${PKR(Math.round(amount))} requested. Approval needs the backend — nothing has moved yet.`,
       "success"
@@ -124,16 +123,18 @@ export function VendorView() {
     }
   }
 
-  function handleCopyLink(product: { slug: string; title: string; price: number }) {
-    addLink(email, product);
-    refresh();
-    void copy(
+  async function handleCopyLink(product: { slug: string; title: string; price: number }) {
+    // Copy first: the clipboard write must stay in the same task as the click,
+    // or Safari treats it as untrusted and silently refuses.
+    await copy(
       buildReferralUrl(origin, product.slug, referralCode),
       `Link for “${product.title}” copied.`
     );
+    await affiliate.addLink(email, product);
+    await refresh();
   }
 
-  function handleCopyDetails(product: (typeof products)[number]) {
+  async function handleCopyDetails(product: CatalogItem) {
     const details = [
       product.title,
       `${PKR(product.price)} · ${product.fabric}`,
@@ -142,14 +143,15 @@ export function VendorView() {
       "",
       buildReferralUrl(origin, product.slug, referralCode),
     ].join("\n");
-    addLink(email, product);
-    refresh();
-    void copy(details, `Details for “${product.title}” copied.`);
+
+    await copy(details, `Details for “${product.title}” copied.`);
+    await affiliate.addLink(email, product);
+    await refresh();
   }
 
-  function handleRemoveLink(link: AffiliateLink) {
-    removeLink(email, link.id);
-    refresh();
+  async function handleRemoveLink(link: AffiliateLink) {
+    await affiliate.removeLink(email, link.id);
+    await refresh();
     toast(`Removed “${link.productTitle}” from your links.`, "info");
   }
 
@@ -162,7 +164,7 @@ export function VendorView() {
         p.fabric.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, products]);
 
   const stats = [
     { label: "Your Commission", value: formatCommissionRate(commission) },
@@ -302,14 +304,14 @@ export function VendorView() {
                       <Button
                         variant="primary"
                         className="px-5 py-2.5"
-                        onClick={() => handleCopyLink(product)}
+                        onClick={() => void handleCopyLink(product)}
                       >
                         Copy Link
                       </Button>
                       <Button
                         variant="secondary"
                         className="px-5 py-2.5"
-                        onClick={() => handleCopyDetails(product)}
+                        onClick={() => void handleCopyDetails(product)}
                       >
                         Copy Details
                       </Button>
@@ -336,13 +338,7 @@ export function VendorView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {!links && (
-                  <tr>
-                    <td className="px-4 py-6 text-text-muted" colSpan={5}>
-                      Loading…
-                    </td>
-                  </tr>
-                )}
+                {!links && <LoadingRow colSpan={5} />}
                 {links?.length === 0 && (
                   <tr>
                     <td className="px-4 py-6 text-text-muted" colSpan={5}>
@@ -372,7 +368,7 @@ export function VendorView() {
                           Copy
                         </button>
                         <button
-                          onClick={() => handleRemoveLink(link)}
+                          onClick={() => void handleRemoveLink(link)}
                           className="border border-outline-variant px-3 py-1.5 font-label-sm text-label-sm uppercase tracking-widest transition-colors hover:border-error hover:text-error"
                         >
                           Remove
@@ -436,7 +432,7 @@ export function VendorView() {
             </div>
 
             {showPayoutForm && (
-              <form onSubmit={handleRequestPayout} className="mt-6 max-w-sm">
+              <form onSubmit={(e) => void handleRequestPayout(e)} className="mt-6 max-w-sm">
                 <label
                   htmlFor="payout-amount"
                   className="text-label-sm uppercase tracking-widest text-text-muted"
@@ -485,13 +481,7 @@ export function VendorView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {!payoutRequests && (
-                  <tr>
-                    <td className="px-4 py-6 text-text-muted" colSpan={3}>
-                      Loading…
-                    </td>
-                  </tr>
-                )}
+                {!payoutRequests && <LoadingRow colSpan={3} />}
                 {payoutRequests?.length === 0 && (
                   <tr>
                     <td className="px-4 py-6 text-text-muted" colSpan={3}>
