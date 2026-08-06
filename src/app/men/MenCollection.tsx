@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { CatalogItem } from "@/lib/data";
 import { EmptyCatalogue } from "@/components/ui/EmptyCatalogue";
@@ -39,17 +40,23 @@ export function MenCollection({ products }: { products: CatalogItem[] }) {
 
   return (
     <div>
-      {/* Hero */}
-      <section className="relative h-[600px] md:h-[700px] flex items-center overflow-hidden">
+      {/* Hero — same reasoning as the homepage: from `md` up the section takes
+          the photograph's own 43:24 ratio so nothing is cropped and the model
+          is visible head to foot. A fixed 700px was wider than that at desktop
+          widths, which trimmed the top and bottom off. */}
+      <section className="relative h-[600px] md:h-auto md:aspect-[43/24] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div
-            className="w-full h-full bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBntGjHxeArpIyuoKfdKEkRd_oVpPWEY8xj6SfxJJPg0hE-oQVriVxLyXNPZoE7GEeOZjDJ4-USwgHqjyQsr6vuCCWKTpQwLcNhVdlIxgmE7ZhFbTcPvWkKYz-8_AdCbetfuLIaiw9LD0awdBeTAgsMjxmLw9jKUQjU2-ptFSc0mZTS5JlaxmZZ9f3FcDumZjN5Q8QmmjBeb2_ZL0YdyNyQmku1MNrujK5_LiCrTJLZbYwYmEfpyrjUn9o83vdy9qojGW0lfXGTq44')",
-            }}
-            role="img"
-            aria-label="A male model in a tailored traditional sherwani made from premium white Egyptian cotton, shot in a minimalist architectural space."
+          {/* See the note on the homepage hero — this is the LCP element, so
+              next/image with priority rather than a CSS background, which the
+              browser cannot preload. */}
+          <Image
+            src="/images/men-hero.webp"
+            alt="A man in a cream sherwani and matching trousers walking through a sunlit stone arcade."
+            fill
+            priority
+            sizes="100vw"
+            quality={85}
+            className="object-cover object-center"
           />
           <div className="absolute inset-0 bg-black/20" />
         </div>

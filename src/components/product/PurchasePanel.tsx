@@ -69,6 +69,12 @@ export function PurchasePanel({ product }: { product: CatalogItem }) {
             <span className="font-label-sm text-text-muted mb-1">SKU: {product.sku}</span>
           )}
         </div>
+        {/* The description belongs beside the price, not in the accordion
+            below: it's what the shopper reads to decide, and the accordion
+            sections are all collapsed by default. */}
+        <p className="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          {product.description}
+        </p>
       </section>
 
       {/* Atelier badge — adapted from source's marketplace seller badge.

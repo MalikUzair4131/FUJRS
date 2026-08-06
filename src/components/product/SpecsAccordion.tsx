@@ -42,19 +42,24 @@ export function SpecsAccordion({ product }: { product: CatalogItem }) {
         </div>
       </details>
 
-      <details className="group border-b border-border-subtle">
-        <summary className="flex justify-between items-center py-4 cursor-pointer list-none">
-          <span className="font-label-md text-primary uppercase tracking-widest">
-            {product.heritageStory ? "Heritage Story" : "Product Story"}
-          </span>
-          <span className="material-symbols-outlined transition-transform group-open:rotate-180">
-            expand_more
-          </span>
-        </summary>
-        <div className="pb-6 font-body-md text-on-surface-variant leading-relaxed">
-          {product.heritageStory ?? product.description}
-        </div>
-      </details>
+      {/* Only when there is one. This used to fall back to the description,
+          which meant a piece WITH a heritage story showed its description
+          nowhere on the page — the panel above owns that copy now. */}
+      {product.heritageStory && (
+        <details className="group border-b border-border-subtle">
+          <summary className="flex justify-between items-center py-4 cursor-pointer list-none">
+            <span className="font-label-md text-primary uppercase tracking-widest">
+              Heritage Story
+            </span>
+            <span className="material-symbols-outlined transition-transform group-open:rotate-180">
+              expand_more
+            </span>
+          </summary>
+          <div className="pb-6 font-body-md text-on-surface-variant leading-relaxed">
+            {product.heritageStory}
+          </div>
+        </details>
+      )}
 
       <details className="group border-b border-border-subtle">
         <summary className="flex justify-between items-center py-4 cursor-pointer list-none">

@@ -156,53 +156,73 @@ export function ProductForm({
   onCancel,
 }: {
   submitLabel: string;
-  onSubmit: (item: NewCatalogItem) => void;
+  /**
+   * Awaited: the button spins until it settles. Reject to keep the form
+   * filled in — a failed save must not cost the user everything they typed.
+   */
+  onSubmit: (item: NewCatalogItem) => Promise<void>;
   onCancel?: () => void;
 }) {
   const [form, setForm] = useState(emptyForm);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     const found = validate(form);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    onSubmit({
-      title: form.title.trim(),
-      price: Number(form.price),
-      compareAtPrice: form.compareAtPrice.trim() ? Number(form.compareAtPrice) : null,
-      fabric: form.fabric.trim(),
-      category: form.category.trim(),
-      gender: form.gender,
-      color: form.color.trim(),
-      sizes: parseSizes(form.sizes),
-      stock: Number(form.stock),
-      sku: optional(form.sku),
-      description: form.description.trim(),
-      isNewArrival: form.isNewArrival,
-      stitchingEligible: form.stitchingEligible,
-      stitchingAddOn: form.stitchingEligible ? Number(form.stitchingAddOn) : null,
-      badge: optional(form.badge),
-      meters: optional(form.meters),
-      embroidery: optional(form.embroidery),
-      dupattaInfo: optional(form.dupattaInfo),
-      heritageStory: optional(form.heritageStory),
-      images,
-    });
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        title: form.title.trim(),
+        price: Number(form.price),
+        compareAtPrice: form.compareAtPrice.trim() ? Number(form.compareAtPrice) : null,
+        fabric: form.fabric.trim(),
+        category: form.category.trim(),
+        gender: form.gender,
+        color: form.color.trim(),
+        sizes: parseSizes(form.sizes),
+        stock: Number(form.stock),
+        sku: optional(form.sku),
+        description: form.description.trim(),
+        isNewArrival: form.isNewArrival,
+        stitchingEligible: form.stitchingEligible,
+        stitchingAddOn: form.stitchingEligible ? Number(form.stitchingAddOn) : null,
+        badge: optional(form.badge),
+        meters: optional(form.meters),
+        embroidery: optional(form.embroidery),
+        dupattaInfo: optional(form.dupattaInfo),
+        heritageStory: optional(form.heritageStory),
+        images,
+      });
 
-    setForm(emptyForm);
-    setImages([]);
+      setForm(emptyForm);
+      setImages([]);
+    } catch {
+      // The caller has already told the user what went wrong; leave every
+      // field as it was so they can fix it and submit again.
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="border border-outline-variant p-8">
+    <form
+      onSubmit={(e) => void handleSubmit(e)}
+      noValidate
+      aria-busy={submitting || undefined}
+      className="border border-outline-variant p-8"
+    >
       <ImageGalleryUpload images={images} onChange={setImages} />
 
       <Group title="The piece">
@@ -372,14 +392,19 @@ export function ProductForm({
         </div>
       </Group>
 
-      <div className="mt-8 flex flex-wrap gap-4">
-        <Button type="submit" variant="primary">
+      <div className="mt-8 flex flex-wrap items-center gap-4">
+        <Button type="submit" variant="primary" loading={submitting} loadingLabel="Saving product">
           {submitLabel}
         </Button>
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
             Cancel
           </Button>
+        )}
+        {submitting && (
+          <p className="font-body text-label-sm text-text-muted">
+            Saving — images can take a moment.
+          </p>
         )}
       </div>
     </form>

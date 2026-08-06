@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProductForm } from "@/components/dashboard/ProductForm";
 import { CatalogTable } from "@/components/dashboard/CatalogTable";
 import { catalog, StoreWriteError } from "@/lib/data";
@@ -19,6 +20,8 @@ export function CatalogManager() {
   const { toast } = useToast();
   const [items, setItems] = useState<CatalogItem[] | null>(null);
   const [showForm, setShowForm] = useState(false);
+  /** The piece the confirmation dialog is asking about; null when closed. */
+  const [pendingRemoval, setPendingRemoval] = useState<CatalogItem | null>(null);
 
   const refresh = useCallback(async () => {
     setItems(await catalog.list());
@@ -42,13 +45,22 @@ export function CatalogManager() {
           : "Couldn't save that product.",
         "info"
       );
+      // Rethrown so the form keeps what was typed — it only clears on a save.
+      throw err;
     }
   }
 
-  async function handleRemove(item: CatalogItem) {
-    await catalog.remove(item.id);
-    await refresh();
-    toast(`“${item.title}” removed from the catalogue.`, "info");
+  async function handleRemove() {
+    if (!pendingRemoval) return;
+    try {
+      await catalog.remove(pendingRemoval.id);
+      await refresh();
+      toast(`“${pendingRemoval.title}” removed from the catalogue.`, "info");
+      setPendingRemoval(null);
+    } catch {
+      // Left open on the piece that didn't go, so a retry is one click away.
+      toast("Couldn't remove that product. Try again.", "info");
+    }
   }
 
   return (
@@ -69,7 +81,7 @@ export function CatalogManager() {
         <div className="mt-6">
           <ProductForm
             submitLabel="Publish to Catalogue"
-            onSubmit={(input) => void handleAdd(input)}
+            onSubmit={handleAdd}
             onCancel={() => setShowForm(false)}
           />
         </div>
@@ -81,7 +93,7 @@ export function CatalogManager() {
           emptyMessage="No products added yet."
           actions={(item) => (
             <button
-              onClick={() => void handleRemove(item)}
+              onClick={() => setPendingRemoval(item)}
               className="border border-outline-variant px-3 py-1.5 font-label-sm text-label-sm uppercase tracking-widest transition-colors hover:border-error hover:text-error"
             >
               Remove
@@ -89,6 +101,21 @@ export function CatalogManager() {
           )}
         />
       </div>
+
+      <ConfirmDialog
+        open={pendingRemoval !== null}
+        title="Remove this product?"
+        message={
+          <>
+            “{pendingRemoval?.title}” comes off the shop straight away. This can’t be undone — the
+            piece has to be added again from scratch.
+          </>
+        }
+        confirmLabel="Remove Product"
+        pendingLabel="Removing product"
+        onConfirm={handleRemove}
+        onCancel={() => setPendingRemoval(null)}
+      />
     </section>
   );
 }
