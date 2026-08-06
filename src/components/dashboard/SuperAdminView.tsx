@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { RevenueTrendChart } from "@/components/dashboard/charts/RevenueTrendChart";
 import { CategoryBarChart } from "@/components/dashboard/charts/CategoryBarChart";
 import { CatalogManager } from "@/components/dashboard/CatalogManager";
+import { TaxonomyManager } from "@/components/dashboard/TaxonomyManager";
 import { useToast } from "@/components/ui/Toast";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 
@@ -250,6 +251,7 @@ export function SuperAdminView() {
       {section === "CATALOGUE" && (
         <div className="mt-8">
           <CatalogManager />
+          <TaxonomyManager />
         </div>
       )}
 

@@ -1,57 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
+import { TextAreaField, TextField, SelectField } from "@/components/ui/Field";
+import { ChipMultiSelect, ColorSwatchPicker, OptionSelect } from "@/components/ui/OptionPickers";
 import { ImageGalleryUpload } from "@/components/ui/ImageGalleryUpload";
+import { productTaxonomy } from "@/lib/data";
 import {
   PRODUCT_GENDERS,
+  type CategoryOption,
   type NewCatalogItem,
   type ProductGender,
+  type ProductTaxonomy,
   type UploadedImage,
 } from "@/lib/data";
 
 const MIN_DESCRIPTION_LENGTH = 10;
 
-/** What fabric pieces are sold as. Made-up garments override this. */
-const DEFAULT_SIZES = "Unstitched";
-
 const emptyForm = {
   title: "",
   price: "",
   compareAtPrice: "",
-  fabric: "",
-  category: "",
   gender: "Women" as ProductGender,
-  color: "",
-  sizes: DEFAULT_SIZES,
+
+  categoryId: null as string | null,
+  fabricId: null as string | null,
+  fabricWeightGsm: "",
+  colorId: null as string | null,
+  badgeId: null as string | null,
+
+  sizeScaleId: null as string | null,
+  sizes: [] as string[],
+
   stock: "",
   sku: "",
   description: "",
   isNewArrival: false,
   stitchingEligible: false,
   stitchingAddOn: "",
-  badge: "",
+
   meters: "",
-  embroidery: "",
-  dupattaInfo: "",
+  metersNote: "",
+  embroideryIds: [] as string[],
+  dupattaLength: "",
+  dupattaFabricId: null as string | null,
+  dupattaFinish: "",
   heritageStory: "",
 };
 
 type Form = typeof emptyForm;
 type FormErrors = Partial<Record<keyof Form, string>>;
 
-/** "S, M, L" → ["S","M","L"], dropping blanks from a trailing comma. */
-const parseSizes = (value: string) =>
-  value
-    .split(",")
-    .map((size) => size.trim())
-    .filter(Boolean);
-
 /** An optional text field: empty means "not set", not an empty string. */
 const optional = (value: string) => value.trim() || null;
 
-function validate(form: Form): FormErrors {
+/** An optional number field. Blank is absent; anything unparseable is absent too. */
+function optionalNumber(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function validate(form: Form, category: CategoryOption | null): FormErrors {
   const errors: FormErrors = {};
   if (!form.title.trim()) errors.title = "Give the piece a name.";
 
@@ -69,13 +80,21 @@ function validate(form: Form): FormErrors {
     }
   }
 
-  if (!form.fabric.trim()) errors.fabric = "Name the fabric.";
-  if (!form.category.trim()) errors.category = "Choose a category.";
-  if (!form.color.trim()) errors.color = "Name the colour — the catalogue filters on it.";
+  // These three are NOT NULL columns, so the database would refuse the insert
+  // anyway — catching them here says which field rather than showing a driver
+  // error the person filling the form can do nothing with.
+  if (!form.categoryId) errors.categoryId = "Choose a category.";
+  if (!form.fabricId) errors.fabricId = "Choose a fabric.";
+  if (!form.colorId) errors.colorId = "Choose a colour — the shop filters on it.";
 
-  if (parseSizes(form.sizes).length === 0) {
-    errors.sizes = `At least one, e.g. “${DEFAULT_SIZES}”.`;
+  if (form.fabricWeightGsm.trim()) {
+    const weight = Number(form.fabricWeightGsm);
+    if (!Number.isInteger(weight) || weight <= 0) {
+      errors.fabricWeightGsm = "A whole number of grams, or leave it blank.";
+    }
   }
+
+  if (form.sizes.length === 0) errors.sizes = "Tick at least one size.";
 
   const stock = Number(form.stock);
   if (!form.stock.trim()) errors.stock = "Enter the stock count (0 is fine).";
@@ -85,6 +104,16 @@ function validate(form: Form): FormErrors {
     const addOn = Number(form.stitchingAddOn);
     if (!form.stitchingAddOn.trim()) errors.stitchingAddOn = "Enter the stitching charge.";
     else if (!Number.isFinite(addOn) || addOn < 0) errors.stitchingAddOn = "Zero or more.";
+  }
+
+  if (form.meters.trim()) {
+    const meters = Number(form.meters);
+    if (!Number.isFinite(meters) || meters <= 0) errors.meters = "A number above zero.";
+  }
+
+  if (category?.hasDupatta && form.dupattaLength.trim()) {
+    const length = Number(form.dupattaLength);
+    if (!Number.isFinite(length) || length <= 0) errors.dupattaLength = "A number above zero.";
   }
 
   if (form.description.trim().length < MIN_DESCRIPTION_LENGTH) {
@@ -146,14 +175,19 @@ function CheckboxField({
  * One product form for both paths — a Vendor submitting for review and an
  * Admin publishing directly. Only the copy on the submit button differs.
  *
- * It collects every column the storefront renders, not just the summary the
- * dashboard table shows: a piece published without a colour or size can't be
- * filtered, and one without stock can't be bought.
+ * Every taxonomy field is a PICK from a managed list rather than free text
+ * (migration 18): typed values used to become permanent storefront filter
+ * facets, so the catalogue ended up with three blues and four off-whites.
+ *
+ * Picking a category then pre-fills the stitching charge, size scale and
+ * meterage and decides whether the dupatta fields appear at all. Those are
+ * starting points, not rules — every one stays editable.
  */
 export function ProductForm({
   submitLabel,
   onSubmit,
   onCancel,
+  canManageOptions = false,
 }: {
   submitLabel: string;
   /**
@@ -162,22 +196,117 @@ export function ProductForm({
    */
   onSubmit: (item: NewCatalogItem) => Promise<void>;
   onCancel?: () => void;
+  /** Super Admins manage the lists; everyone else is told who can. */
+  canManageOptions?: boolean;
 }) {
   const [form, setForm] = useState(emptyForm);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [taxonomy, setTaxonomy] = useState<ProductTaxonomy | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    productTaxonomy
+      .read()
+      .then((lists) => {
+        if (!cancelled) setTaxonomy(lists);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function update<K extends keyof Form>(key: K, value: Form[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
 
+  const category = useMemo(
+    () => taxonomy?.categories.find((option) => option.id === form.categoryId) ?? null,
+    [taxonomy, form.categoryId]
+  );
+
+  /**
+   * Categories on offer for the chosen gender. A category with no gender is
+   * offered to all of them; the rest are scoped, so a Men's piece is never
+   * offered "3-Piece Suits".
+   */
+  const categoriesForGender = useMemo(
+    () =>
+      (taxonomy?.categories ?? []).filter(
+        (option) =>
+          option.gender === null || option.gender === form.gender || form.gender === "Unisex"
+      ),
+    [taxonomy, form.gender]
+  );
+
+  const sizeScale = useMemo(
+    () => taxonomy?.sizeScales.find((scale) => scale.id === form.sizeScaleId) ?? null,
+    [taxonomy, form.sizeScaleId]
+  );
+
+  /**
+   * Applies a category's defaults.
+   *
+   * Only fills fields the user has not already filled — retyping a stitching
+   * charge because you changed your mind about the category is exactly the
+   * annoyance the defaults exist to remove, but silently overwriting something
+   * already entered is worse than not helping at all.
+   */
+  const applyCategoryDefaults = useCallback(
+    (next: CategoryOption | null, lists: ProductTaxonomy) => {
+      if (!next) return;
+      setForm((prev) => {
+        const scale = next.defaultSizeScaleId
+          ? lists.sizeScales.find((option) => option.id === next.defaultSizeScaleId)
+          : null;
+
+        return {
+          ...prev,
+          stitchingEligible: prev.stitchingEligible || next.defaultStitchingAddOn !== null,
+          stitchingAddOn:
+            prev.stitchingAddOn ||
+            (next.defaultStitchingAddOn !== null ? String(next.defaultStitchingAddOn) : ""),
+          sizeScaleId: prev.sizeScaleId ?? next.defaultSizeScaleId,
+          // A scale with exactly one size ("Unstitched", "One Size") has nothing
+          // to choose, so tick it rather than making it a required extra click.
+          sizes:
+            prev.sizes.length > 0 ? prev.sizes : scale && scale.values.length === 1 ? scale.values : [],
+          meters: prev.meters || (next.defaultMeters !== null ? String(next.defaultMeters) : ""),
+        };
+      });
+    },
+    []
+  );
+
+  function chooseCategory(id: string | null) {
+    update("categoryId", id);
+    if (!taxonomy) return;
+    applyCategoryDefaults(taxonomy.categories.find((option) => option.id === id) ?? null, taxonomy);
+  }
+
+  /** Changing gender can strip the chosen category out of the offered list. */
+  function chooseGender(gender: ProductGender) {
+    setForm((prev) => {
+      const stillOffered = (taxonomy?.categories ?? []).some(
+        (option) =>
+          option.id === prev.categoryId &&
+          (option.gender === null || option.gender === gender || gender === "Unisex")
+      );
+      return { ...prev, gender, categoryId: stillOffered ? prev.categoryId : null };
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
 
-    const found = validate(form);
+    const found = validate(form, category);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
@@ -187,21 +316,32 @@ export function ProductForm({
         title: form.title.trim(),
         price: Number(form.price),
         compareAtPrice: form.compareAtPrice.trim() ? Number(form.compareAtPrice) : null,
-        fabric: form.fabric.trim(),
-        category: form.category.trim(),
+        description: form.description.trim(),
         gender: form.gender,
-        color: form.color.trim(),
-        sizes: parseSizes(form.sizes),
+
+        // Non-null by the time validation has passed.
+        categoryId: form.categoryId as string,
+        fabricId: form.fabricId as string,
+        fabricWeightGsm: optionalNumber(form.fabricWeightGsm),
+        colorId: form.colorId as string,
+        badgeId: form.badgeId,
+
+        sizeScaleId: form.sizeScaleId,
+        sizes: form.sizes,
+
         stock: Number(form.stock),
         sku: optional(form.sku),
-        description: form.description.trim(),
         isNewArrival: form.isNewArrival,
         stitchingEligible: form.stitchingEligible,
         stitchingAddOn: form.stitchingEligible ? Number(form.stitchingAddOn) : null,
-        badge: optional(form.badge),
-        meters: optional(form.meters),
-        embroidery: optional(form.embroidery),
-        dupattaInfo: optional(form.dupattaInfo),
+
+        meters: optionalNumber(form.meters),
+        metersNote: optional(form.metersNote),
+        embroideryIds: form.embroideryIds,
+        // A dupatta on a category that has none would be a field nobody saw.
+        dupattaLength: category?.hasDupatta ? optionalNumber(form.dupattaLength) : null,
+        dupattaFabricId: category?.hasDupatta ? form.dupattaFabricId : null,
+        dupattaFinish: category?.hasDupatta ? optional(form.dupattaFinish) : null,
         heritageStory: optional(form.heritageStory),
         images,
       });
@@ -216,6 +356,25 @@ export function ProductForm({
     }
   }
 
+  if (loadFailed) {
+    return (
+      <div className="border border-outline-variant p-8">
+        <p className="font-body text-body-md">
+          Couldn&apos;t load the product lists, so the form can&apos;t be filled in safely. Reload
+          the page to try again.
+        </p>
+      </div>
+    );
+  }
+
+  if (!taxonomy) {
+    return (
+      <div className="border border-outline-variant p-8">
+        <p className="font-body text-body-md text-text-muted">Loading the product lists…</p>
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={(e) => void handleSubmit(e)}
@@ -225,6 +384,15 @@ export function ProductForm({
     >
       <ImageGalleryUpload images={images} onChange={setImages} />
 
+      {!canManageOptions && (
+        // Never a dead control: the person filling this in needs to know why
+        // there is no "add a new fabric" button and who can add one.
+        <p className="mt-6 border border-outline-variant bg-surface-container-low px-4 py-3 font-body text-label-sm text-text-muted">
+          Categories, fabrics, colours and badges come from a managed list. Ask a Super Admin to add
+          one if what you need isn&apos;t here.
+        </p>
+      )}
+
       <Group title="The piece">
         <TextField
           label="Product Name"
@@ -233,31 +401,11 @@ export function ProductForm({
           error={errors.title}
           placeholder="Emerald Silk Unstitched Set"
         />
-        <TextField
-          label="Fabric"
-          value={form.fabric}
-          onChange={(e) => update("fabric", e.target.value)}
-          error={errors.fabric}
-          placeholder="Raw Silk"
-        />
-        <TextField
-          label="Category"
-          value={form.category}
-          onChange={(e) => update("category", e.target.value)}
-          error={errors.category}
-          placeholder="3-Piece Suits"
-        />
-        <TextField
-          label="Colour"
-          value={form.color}
-          onChange={(e) => update("color", e.target.value)}
-          error={errors.color}
-          placeholder="Emerald"
-        />
         <SelectField
           label="Gender"
           value={form.gender}
-          onChange={(e) => update("gender", e.target.value as ProductGender)}
+          onChange={(e) => chooseGender(e.target.value as ProductGender)}
+          hint="Scopes which categories are offered."
         >
           {PRODUCT_GENDERS.map((gender) => (
             <option key={gender} value={gender}>
@@ -265,14 +413,40 @@ export function ProductForm({
             </option>
           ))}
         </SelectField>
-        <TextField
-          label="Sizes"
-          value={form.sizes}
-          onChange={(e) => update("sizes", e.target.value)}
-          error={errors.sizes}
-          hint="Comma-separated. Unstitched fabric is sold as one size."
-          placeholder="Unstitched"
+        <OptionSelect
+          label="Category"
+          options={categoriesForGender}
+          value={form.categoryId}
+          onChange={chooseCategory}
+          error={errors.categoryId}
+          hint="Fills in the stitching charge, sizes and meterage below."
         />
+        <OptionSelect
+          label="Fabric"
+          options={taxonomy.fabrics}
+          value={form.fabricId}
+          onChange={(id) => update("fabricId", id)}
+          error={errors.fabricId}
+        />
+        <TextField
+          label="Fabric Weight (gsm)"
+          inputMode="numeric"
+          value={form.fabricWeightGsm}
+          onChange={(e) => update("fabricWeightGsm", e.target.value)}
+          error={errors.fabricWeightGsm}
+          hint="Optional. Keeps “Raw Silk 80gm” from becoming its own fabric."
+          placeholder="80"
+        />
+        <div className="sm:col-span-2">
+          <ColorSwatchPicker
+            label="Colour"
+            colors={taxonomy.colors}
+            value={form.colorId}
+            onChange={(id) => update("colorId", id)}
+            error={errors.colorId}
+            hint="The shop filters on the colour's family, not its name — so “Midnight Blue” and “Deep Navy” sit together under Blue."
+          />
+        </div>
         <div className="sm:col-span-2">
           <TextAreaField
             label="Description"
@@ -281,6 +455,31 @@ export function ProductForm({
             onChange={(e) => update("description", e.target.value)}
             error={errors.description}
             hint="Fabric weight, finish, and what makes the piece distinct."
+          />
+        </div>
+      </Group>
+
+      <Group title="Sizes">
+        <OptionSelect
+          label="Size Scale"
+          options={taxonomy.sizeScales}
+          value={form.sizeScaleId}
+          onChange={(id) => {
+            update("sizeScaleId", id);
+            // The old sizes belong to the old scale; keeping them would let a
+            // shoe be sold in "Unstitched".
+            update("sizes", []);
+          }}
+          hint="Unstitched fabric is sold as one size."
+        />
+        <div className="sm:col-span-2">
+          <ChipMultiSelect
+            label="Sizes Stocked"
+            options={(sizeScale?.values ?? []).map((size) => ({ id: size, label: size }))}
+            selected={form.sizes}
+            onChange={(sizes) => update("sizes", sizes)}
+            error={errors.sizes}
+            emptyMessage="Choose a size scale first."
           />
         </div>
       </Group>
@@ -338,7 +537,11 @@ export function ProductForm({
             value={form.stitchingAddOn}
             onChange={(e) => update("stitchingAddOn", e.target.value)}
             error={errors.stitchingAddOn}
-            hint="Added to the price when the customer chooses stitching."
+            hint={
+              category?.defaultStitchingAddOn != null
+                ? `Filled in from ${category.label}. Change it if this piece differs.`
+                : "Added to the price when the customer chooses stitching."
+            }
             placeholder="6500"
           />
         )}
@@ -356,31 +559,73 @@ export function ProductForm({
             onChange={(checked) => update("isNewArrival", checked)}
           />
         </div>
-        <TextField
+        <OptionSelect
           label="Badge"
-          value={form.badge}
-          onChange={(e) => update("badge", e.target.value)}
+          options={taxonomy.badges}
+          value={form.badgeId}
+          onChange={(id) => update("badgeId", id)}
+          allowEmpty
           hint="Short label on the card, e.g. “Limited Edition”."
-          placeholder="Limited Edition"
         />
         <TextField
           label="Meters"
+          inputMode="decimal"
           value={form.meters}
           onChange={(e) => update("meters", e.target.value)}
-          placeholder="3.5m shirt, 2.5m trouser"
+          error={errors.meters}
+          hint={
+            category?.defaultMeters != null
+              ? `Filled in from ${category.label}.`
+              : "Total metres of fabric."
+          }
+          placeholder="4.5"
         />
         <TextField
-          label="Embroidery"
-          value={form.embroidery}
-          onChange={(e) => update("embroidery", e.target.value)}
-          placeholder="Hand-worked tilla on neckline and sleeves"
+          label="Meters Note"
+          value={form.metersNote}
+          onChange={(e) => update("metersNote", e.target.value)}
+          hint="Optional, e.g. “Standard Suit”."
+          placeholder="Standard Suit"
         />
-        <TextField
-          label="Dupatta"
-          value={form.dupattaInfo}
-          onChange={(e) => update("dupattaInfo", e.target.value)}
-          placeholder="Scalloped-edge organza, 2.5m"
-        />
+        <div className="sm:col-span-2">
+          <ChipMultiSelect
+            label="Embroidery"
+            options={taxonomy.embroideryTechniques}
+            selected={form.embroideryIds}
+            onChange={(ids) => update("embroideryIds", ids)}
+            hint="Tick every technique on the piece."
+          />
+        </div>
+
+        {/* Only rendered where a dupatta exists. Footwear has none, and a field
+            that never applies is how a form starts feeling like paperwork. */}
+        {category?.hasDupatta && (
+          <>
+            <TextField
+              label="Dupatta Length (m)"
+              inputMode="decimal"
+              value={form.dupattaLength}
+              onChange={(e) => update("dupattaLength", e.target.value)}
+              error={errors.dupattaLength}
+              placeholder="2.5"
+            />
+            <OptionSelect
+              label="Dupatta Fabric"
+              options={taxonomy.fabrics}
+              value={form.dupattaFabricId}
+              onChange={(id) => update("dupattaFabricId", id)}
+              allowEmpty
+            />
+            <TextField
+              label="Dupatta Finish"
+              value={form.dupattaFinish}
+              onChange={(e) => update("dupattaFinish", e.target.value)}
+              hint="Optional, e.g. “scalloped edge”."
+              placeholder="with Border"
+            />
+          </>
+        )}
+
         <div className="sm:col-span-2">
           <TextAreaField
             label="Heritage Story"

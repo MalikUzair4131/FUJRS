@@ -31,8 +31,11 @@ import type {
   DashboardStats,
   NewCatalogItem,
   NewOrderInput,
+  NewTaxonomyOption,
   Order,
   PayoutRequest,
+  ProductTaxonomy,
+  TaxonomyKind,
   ReferredSale,
   SavedAddress,
   ReferenceImage,
@@ -129,6 +132,27 @@ export interface CatalogReadStore {
 export interface CatalogStore extends CatalogReadStore {
   create(input: NewCatalogItem, author: Author): Promise<CatalogItem>;
   remove(id: string): Promise<void>;
+}
+
+/**
+ * The managed lists the product form picks from — categories, fabrics, colours,
+ * badges, size scales and embroidery techniques.
+ *
+ * `read` returns every list in ONE call rather than one method per kind. The
+ * product form needs all six to render, and six round trips to draw one form is
+ * the kind of thing that turns into a loading spinner per field.
+ *
+ * Reads include archived options (`TaxonomyOption.archived`) so a product that
+ * references one still renders its label; callers filter for the pickers. Only
+ * a Super Admin may write — on `supabase` the database enforces that, not the
+ * UI hiding a button.
+ */
+export interface ProductTaxonomyStore {
+  read(): Promise<ProductTaxonomy>;
+  add(kind: TaxonomyKind, input: NewTaxonomyOption): Promise<ProductTaxonomy>;
+  /** Archive/restore. Options are never deleted — products reference them. */
+  setArchived(kind: TaxonomyKind, id: string, archived: boolean): Promise<ProductTaxonomy>;
+  rename(kind: TaxonomyKind, id: string, label: string): Promise<ProductTaxonomy>;
 }
 
 /** The signed-in vendor's own links — see the note on ProfileStore. */

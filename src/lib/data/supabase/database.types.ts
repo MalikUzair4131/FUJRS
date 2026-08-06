@@ -116,6 +116,36 @@ export type Database = {
           },
         ]
       }
+      badges: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          label: string
+          position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           added_at: string
@@ -176,6 +206,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      colors: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          family: Database["public"]["Enums"]["color_family"]
+          hex: string
+          id: string
+          label: string
+          position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          family: Database["public"]["Enums"]["color_family"]
+          hex: string
+          id?: string
+          label: string
+          position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          family?: Database["public"]["Enums"]["color_family"]
+          hex?: string
+          id?: string
+          label?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       commissions: {
         Row: {
@@ -274,6 +340,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      embroidery_techniques: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          label: string
+          position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fabrics: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          label: string
+          position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       newsletter_subscribers: {
         Row: {
@@ -521,6 +647,89 @@ export type Database = {
           },
         ]
       }
+      product_categories: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          default_meters: number | null
+          default_size_scale_id: string | null
+          default_stitching_addon_paisa: number | null
+          gender: Database["public"]["Enums"]["product_gender"] | null
+          has_dupatta: boolean
+          id: string
+          label: string
+          position: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          default_meters?: number | null
+          default_size_scale_id?: string | null
+          default_stitching_addon_paisa?: number | null
+          gender?: Database["public"]["Enums"]["product_gender"] | null
+          has_dupatta?: boolean
+          id?: string
+          label: string
+          position?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          default_meters?: number | null
+          default_size_scale_id?: string | null
+          default_stitching_addon_paisa?: number | null
+          gender?: Database["public"]["Enums"]["product_gender"] | null
+          has_dupatta?: boolean
+          id?: string
+          label?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_categories_default_size_scale_id_fkey"
+            columns: ["default_size_scale_id"]
+            isOneToOne: false
+            referencedRelation: "size_scales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_embroidery: {
+        Row: {
+          product_id: string
+          technique_id: string
+        }
+        Insert: {
+          product_id: string
+          technique_id: string
+        }
+        Update: {
+          product_id?: string
+          technique_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_embroidery_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_embroidery_technique_id_fkey"
+            columns: ["technique_id"]
+            isOneToOne: false
+            referencedRelation: "embroidery_techniques"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_images: {
         Row: {
           alt: string | null
@@ -607,23 +816,34 @@ export type Database = {
         Row: {
           archived_at: string | null
           badge: string | null
-          category: string
-          color: string
+          badge_id: string | null
+          category: string | null
+          category_id: string
+          color: string | null
+          color_id: string
           compare_at_paisa: number | null
           created_at: string
           created_by: string | null
           description: string
+          dupatta_fabric_id: string | null
+          dupatta_finish: string | null
           dupatta_info: string | null
+          dupatta_length: number | null
           embroidery: string | null
-          fabric: string
+          fabric: string | null
+          fabric_id: string
+          fabric_weight_gsm: number | null
           gender: Database["public"]["Enums"]["product_gender"]
           heritage_story: string | null
           id: string
           is_new_arrival: boolean
           meters: string | null
+          meters_length: number | null
+          meters_note: string | null
           price_paisa: number
           rating: number | null
           review_count: number
+          size_scale_id: string | null
           sku: string | null
           slug: string
           stitching_addon_paisa: number | null
@@ -635,23 +855,34 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           badge?: string | null
-          category: string
-          color: string
+          badge_id?: string | null
+          category?: string | null
+          category_id: string
+          color?: string | null
+          color_id: string
           compare_at_paisa?: number | null
           created_at?: string
           created_by?: string | null
           description: string
+          dupatta_fabric_id?: string | null
+          dupatta_finish?: string | null
           dupatta_info?: string | null
+          dupatta_length?: number | null
           embroidery?: string | null
-          fabric: string
+          fabric?: string | null
+          fabric_id: string
+          fabric_weight_gsm?: number | null
           gender: Database["public"]["Enums"]["product_gender"]
           heritage_story?: string | null
           id?: string
           is_new_arrival?: boolean
           meters?: string | null
+          meters_length?: number | null
+          meters_note?: string | null
           price_paisa: number
           rating?: number | null
           review_count?: number
+          size_scale_id?: string | null
           sku?: string | null
           slug: string
           stitching_addon_paisa?: number | null
@@ -663,23 +894,34 @@ export type Database = {
         Update: {
           archived_at?: string | null
           badge?: string | null
-          category?: string
-          color?: string
+          badge_id?: string | null
+          category?: string | null
+          category_id?: string
+          color?: string | null
+          color_id?: string
           compare_at_paisa?: number | null
           created_at?: string
           created_by?: string | null
           description?: string
+          dupatta_fabric_id?: string | null
+          dupatta_finish?: string | null
           dupatta_info?: string | null
+          dupatta_length?: number | null
           embroidery?: string | null
-          fabric?: string
+          fabric?: string | null
+          fabric_id?: string
+          fabric_weight_gsm?: number | null
           gender?: Database["public"]["Enums"]["product_gender"]
           heritage_story?: string | null
           id?: string
           is_new_arrival?: boolean
           meters?: string | null
+          meters_length?: number | null
+          meters_note?: string | null
           price_paisa?: number
           rating?: number | null
           review_count?: number
+          size_scale_id?: string | null
           sku?: string | null
           slug?: string
           stitching_addon_paisa?: number | null
@@ -690,10 +932,52 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "products_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_color_id_fkey"
+            columns: ["color_id"]
+            isOneToOne: false
+            referencedRelation: "colors"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_dupatta_fabric_id_fkey"
+            columns: ["dupatta_fabric_id"]
+            isOneToOne: false
+            referencedRelation: "fabrics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_fabric_id_fkey"
+            columns: ["fabric_id"]
+            isOneToOne: false
+            referencedRelation: "fabrics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_size_scale_id_fkey"
+            columns: ["size_scale_id"]
+            isOneToOne: false
+            referencedRelation: "size_scales"
             referencedColumns: ["id"]
           },
         ]
@@ -819,6 +1103,39 @@ export type Database = {
           can_view?: boolean
           category?: Database["public"]["Enums"]["access_category"]
           role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      size_scales: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          label: string
+          position: number
+          size_values: string[]
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          position?: number
+          size_values: string[]
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number
+          size_values?: string[]
+          slug?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1052,6 +1369,23 @@ export type Database = {
         | "VENDORS"
         | "REPORTS"
       app_role: "CUSTOMER" | "ADMIN" | "VENDOR" | "TAILOR" | "SUPER_ADMIN"
+      color_family:
+        | "BLACK"
+        | "WHITE"
+        | "CREAM"
+        | "BEIGE"
+        | "BROWN"
+        | "GREY"
+        | "RED"
+        | "PINK"
+        | "ORANGE"
+        | "YELLOW"
+        | "GREEN"
+        | "BLUE"
+        | "PURPLE"
+        | "GOLD"
+        | "SILVER"
+        | "MULTI"
       commission_status: "PENDING" | "CREDITED" | "PAID" | "REVERSED"
       commission_type: "PERCENT" | "FLAT"
       order_status:
@@ -1206,6 +1540,24 @@ export const Constants = {
         "REPORTS",
       ],
       app_role: ["CUSTOMER", "ADMIN", "VENDOR", "TAILOR", "SUPER_ADMIN"],
+      color_family: [
+        "BLACK",
+        "WHITE",
+        "CREAM",
+        "BEIGE",
+        "BROWN",
+        "GREY",
+        "RED",
+        "PINK",
+        "ORANGE",
+        "YELLOW",
+        "GREEN",
+        "BLUE",
+        "PURPLE",
+        "GOLD",
+        "SILVER",
+        "MULTI",
+      ],
       commission_status: ["PENDING", "CREDITED", "PAID", "REVERSED"],
       commission_type: ["PERCENT", "FLAT"],
       order_status: [

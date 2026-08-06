@@ -80,20 +80,24 @@ export const supabaseCatalog: CatalogStore = {
         description: input.description,
         price_paisa: toPaisa(input.price),
         compare_at_paisa: toPaisaOrNull(input.compareAtPrice),
-        fabric: input.fabric,
-        category: input.category,
+        category_id: input.categoryId,
+        fabric_id: input.fabricId,
+        fabric_weight_gsm: input.fabricWeightGsm,
         gender: input.gender,
-        color: input.color,
+        color_id: input.colorId,
+        badge_id: input.badgeId,
+        size_scale_id: input.sizeScaleId,
         sku: input.sku,
         stock: input.stock,
         is_new_arrival: input.isNewArrival,
         stitching_eligible: input.stitchingEligible,
         stitching_addon_paisa: toPaisaOrNull(input.stitchingAddOn),
-        badge: input.badge,
         heritage_story: input.heritageStory,
-        embroidery: input.embroidery,
-        dupatta_info: input.dupattaInfo,
-        meters: input.meters,
+        meters_length: input.meters,
+        meters_note: input.metersNote,
+        dupatta_length: input.dupattaLength,
+        dupatta_fabric_id: input.dupattaFabricId,
+        dupatta_finish: input.dupattaFinish,
         created_by: auth.user.id,
       })
       .select("id, created_at")
@@ -103,12 +107,16 @@ export const supabaseCatalog: CatalogStore = {
       // 42501 is Postgres "insufficient privilege" — i.e. RLS said no.
       // 23505 is a unique violation, which here can only be the SKU: the slug
       // carries a timestamp suffix, so it can't collide.
+      // 23503 is a foreign key violation — a taxonomy option that was archived
+      // and deleted, or a stale list in a tab left open since before a change.
       throw new StoreWriteError(
         error?.code === "42501"
           ? "Your account isn't allowed to publish products."
           : error?.code === "23505"
             ? "That SKU is already used by another product."
-            : "Couldn't save that product."
+            : error?.code === "23503"
+              ? "One of the options you picked no longer exists. Reload and try again."
+              : "Couldn't save that product."
       );
     }
 
@@ -119,6 +127,17 @@ export const supabaseCatalog: CatalogStore = {
       await supabase
         .from("product_variants")
         .insert(input.sizes.map((size) => ({ product_id: product.id, size, stock: 0 })));
+    }
+
+    // Embroidery is a many-to-many now rather than the CSV string it was, so
+    // the techniques are junction rows.
+    if (input.embroideryIds.length > 0) {
+      await supabase.from("product_embroidery").insert(
+        input.embroideryIds.map((techniqueId) => ({
+          product_id: product.id,
+          technique_id: techniqueId,
+        }))
+      );
     }
 
     // Upload each image, then record the ones that made it. Order is the
@@ -173,27 +192,54 @@ export const supabaseCatalog: CatalogStore = {
       );
     }
 
+    // Read the row back rather than assembling the return value from `input`.
+    // The form submits taxonomy IDS and a CatalogItem carries the LABELS, so
+    // building it here would mean re-implementing every join `toCatalogItem`
+    // already does — and the two would drift the first time a column moved.
+    const { data: saved } = await supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("id", product.id)
+      .single();
+
+    if (saved) return toCatalogItem(saved as unknown as ProductRow);
+
+    // The product IS saved; only reading it back failed. Report the write as
+    // the success it was and let the caller's refresh pick it up, rather than
+    // raising an error that reads as "nothing was published".
     return {
       id: product.id,
       slug,
       title: input.title,
       price: input.price,
       compareAtPrice: input.compareAtPrice,
-      fabric: input.fabric,
-      category: input.category,
+      fabric: "",
+      fabricId: input.fabricId,
+      fabricWeightGsm: input.fabricWeightGsm,
+      category: "",
+      categoryId: input.categoryId,
       gender: input.gender,
-      color: input.color,
+      color: "",
+      colorId: input.colorId,
+      colorHex: "#808080",
+      colorFamily: "MULTI",
       sizes: input.sizes,
+      sizeScaleId: input.sizeScaleId,
       stock: input.stock,
       sku: input.sku,
       description: input.description,
       isNewArrival: input.isNewArrival,
       stitchingEligible: input.stitchingEligible,
       stitchingAddOn: input.stitchingAddOn,
-      badge: input.badge,
+      badge: null,
+      badgeId: input.badgeId,
       meters: input.meters,
-      embroidery: input.embroidery,
-      dupattaInfo: input.dupattaInfo,
+      metersNote: input.metersNote,
+      embroidery: [],
+      dupattaLength: input.dupattaLength,
+      dupattaFabric: null,
+      dupattaFabricId: input.dupattaFabricId,
+      dupattaFinish: input.dupattaFinish,
       heritageStory: input.heritageStory,
       images: input.images.map((image) => image.dataUrl),
       rating: null,

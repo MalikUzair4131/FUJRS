@@ -3,6 +3,7 @@
 // at the boundary (CLAUDE.md), so a component never sees a raw row.
 
 import type { AppRole } from "@/lib/auth/roles";
+import type { ColorFamily } from "@/lib/productTaxonomy";
 import type { CommissionRate } from "@/lib/commission";
 import type { OrderStatus } from "@/lib/orderStatus";
 import type { StitchingStatus } from "@/lib/stitchingStatus";
@@ -98,6 +99,78 @@ export interface NewOrderInput {
 export const PRODUCT_GENDERS = ["Women", "Men", "Unisex"] as const;
 export type ProductGender = (typeof PRODUCT_GENDERS)[number];
 
+// --- Taxonomy ---------------------------------------------------------------
+//
+// The managed lists a product picks from, instead of the free text the form
+// used to collect. See migration 18 for why: typed values became storefront
+// filter facets, so "2 pice" and "Deep Navy"/"Midnight Blue"/"Pastel Blue" were
+// each their own permanent row in the filter panel.
+
+/** Common to every list. `archived` options still render on products that already reference them — they just stop being offered. */
+export interface TaxonomyOption {
+  id: string;
+  slug: string;
+  label: string;
+  archived: boolean;
+}
+
+export interface ColorOption extends TaxonomyOption {
+  /** Lower-case `#rrggbb`. The swatch. */
+  hex: string;
+  /** The axis the storefront filters on — many labels share one. */
+  family: ColorFamily;
+}
+
+/** An ordered set of sizes, e.g. Unstitched, Alpha (XS–XXL), Shoe (EU). */
+export interface SizeScaleOption extends TaxonomyOption {
+  values: string[];
+}
+
+/**
+ * A category, plus the defaults a new product in it inherits.
+ *
+ * The defaults are what actually shortens the form: picking "3-Piece Suits"
+ * pre-fills the stitching charge, size scale and meterage and reveals the
+ * dupatta fields. Every one stays editable — a starting point, not a rule,
+ * which is why nothing downstream reads them.
+ */
+export interface CategoryOption extends TaxonomyOption {
+  /** Null = offered for every gender; otherwise it scopes the picker. */
+  gender: ProductGender | null;
+  defaultStitchingAddOn: number | null;
+  defaultSizeScaleId: string | null;
+  defaultMeters: number | null;
+  hasDupatta: boolean;
+}
+
+/** Every list, read in one go — the product form needs all of them at once. */
+export interface ProductTaxonomy {
+  categories: CategoryOption[];
+  fabrics: TaxonomyOption[];
+  colors: ColorOption[];
+  badges: TaxonomyOption[];
+  sizeScales: SizeScaleOption[];
+  embroideryTechniques: TaxonomyOption[];
+}
+
+export type TaxonomyKind = keyof ProductTaxonomy;
+
+/** What the Super Admin screen submits to add an option. */
+export interface NewTaxonomyOption {
+  label: string;
+  /** colors only. */
+  hex?: string;
+  family?: ColorFamily;
+  /** sizeScales only. */
+  values?: string[];
+  /** categories only. */
+  gender?: ProductGender | null;
+  defaultStitchingAddOn?: number | null;
+  defaultSizeScaleId?: string | null;
+  defaultMeters?: number | null;
+  hasDupatta?: boolean;
+}
+
 /**
  * A published product, as both the dashboard and the storefront read it.
  *
@@ -114,12 +187,32 @@ export interface CatalogItem {
   price: number;
   /** Was-price for a markdown. Null when the piece isn't discounted. */
   compareAtPrice: number | null;
+  // The taxonomy fields are carried BOTH ways: the label, because that is what
+  // every listing and the product page print, and the id, because that is what
+  // the row actually references and what an edit form has to pre-select. The
+  // adapter resolves one from the other — a component never joins anything.
   fabric: string;
+  fabricId: string;
+  /**
+   * Fabric weight, split out of the name. "Pure Raw Silk (80gm)" used to be its
+   * own fabric, separate from "Raw Silk" and "Silk"; the weight lives here so
+   * all three collapse into one filter facet.
+   */
+  fabricWeightGsm: number | null;
   category: string;
+  categoryId: string;
   gender: ProductGender;
+  /** The marketing name — "Midnight Blue". */
   color: string;
+  colorId: string;
+  /** The swatch, so a listing never has to look the colour up. */
+  colorHex: string;
+  /** What the storefront filter groups on. Many colours share a family. */
+  colorFamily: ColorFamily;
   /** `["Unstitched"]` for fabric; real sizes for made-up pieces. */
   sizes: string[];
+  /** Which scale `sizes` was chosen from. Null on rows predating the scales. */
+  sizeScaleId: string | null;
   stock: number;
   sku: string | null;
   description: string;
@@ -129,9 +222,18 @@ export interface CatalogItem {
   /** Added to the price when stitching is chosen. Null when not eligible. */
   stitchingAddOn: number | null;
   badge: string | null;
-  meters: string | null;
-  embroidery: string | null;
-  dupattaInfo: string | null;
+  badgeId: string | null;
+  /** Metres of fabric. A number now — it was "4.5 Meters (Standard Suit)". */
+  meters: number | null;
+  /** The parenthetical that used to be inside that string. */
+  metersNote: string | null;
+  /** Technique labels. Was the CSV string "Gold Tilla, Zardozi, Sequins". */
+  embroidery: string[];
+  /** The three fields "2.5 Meters Organza with Border" used to be. */
+  dupattaLength: number | null;
+  dupattaFabric: string | null;
+  dupattaFabricId: string | null;
+  dupattaFinish: string | null;
   heritageStory: string | null;
   /** Ordered; the first is the primary shown in listings. Empty is allowed. */
   images: string[];
@@ -147,14 +249,47 @@ export interface CatalogItem {
 }
 
 /**
- * What the product form collects. The fields left out of it are the ones the
- * store owns: `id`, `slug`, `rating`/`reviewCount` (derived from reviews) and
- * the authorship/timestamp columns.
+ * What the product form collects.
+ *
+ * Spelled out rather than derived from `CatalogItem`, because the two genuinely
+ * differ now: the form submits taxonomy IDS, and the item carries the resolved
+ * LABELS alongside them. Deriving this with `Omit` would let a form send a
+ * label the database has no row for — the exact thing migration 18 removes.
+ *
+ * Left out are the fields the store owns: `id`, `slug`, `rating`/`reviewCount`
+ * (derived from reviews) and the authorship/timestamp columns.
  */
-export interface NewCatalogItem extends Omit<
-  CatalogItem,
-  "id" | "slug" | "images" | "rating" | "reviewCount" | "addedByEmail" | "addedByName" | "createdAt"
-> {
+export interface NewCatalogItem {
+  title: string;
+  price: number;
+  compareAtPrice: number | null;
+  description: string;
+  gender: ProductGender;
+
+  categoryId: string;
+  fabricId: string;
+  fabricWeightGsm: number | null;
+  colorId: string;
+  badgeId: string | null;
+
+  sizeScaleId: string | null;
+  sizes: string[];
+
+  stock: number;
+  sku: string | null;
+  isNewArrival: boolean;
+  stitchingEligible: boolean;
+  stitchingAddOn: number | null;
+
+  meters: number | null;
+  metersNote: string | null;
+  /** Technique ids, not labels — the junction table takes ids. */
+  embroideryIds: string[];
+  dupattaLength: number | null;
+  dupattaFabricId: string | null;
+  dupattaFinish: string | null;
+  heritageStory: string | null;
+
   /**
    * Carries intrinsic dimensions, unlike the string URLs on `CatalogItem` —
    * `product_images.width`/`.height` are NOT NULL and can only be measured

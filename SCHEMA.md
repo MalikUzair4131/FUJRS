@@ -213,6 +213,65 @@ awkward later.
 
 ---
 
+## 2a. Product taxonomy
+
+`products.category`, `.fabric`, `.color`, `.badge` and `.embroidery` began as
+free text typed into the dashboard form, and the storefront built its filter
+facets from the distinct set of whatever was typed. That is a data-quality bug
+with a visible symptom: eighteen seeded products already produced three separate
+blues (`Deep Navy`, `Midnight Blue`, `Pastel Blue`), four off-whites, three
+silks (`Silk`, `Raw Silk`, `Pure Raw Silk (80gm)`) and two badges meaning the
+same thing. The first product created through the live dashboard was filed under
+category `"2 pice"`.
+
+Migration 18 replaces each with a managed list, referenced by id:
+
+| Table | Carries beyond the label |
+| --- | --- |
+| `product_categories` | `gender` scope, plus the defaults a new product inherits |
+| `fabrics` | — (weight moved to `products.fabric_weight_gsm`) |
+| `colors` | `hex` for the swatch, `family` for the filter axis |
+| `badges` | — |
+| `size_scales` | `size_values text[]`, ordered |
+| `embroidery_techniques` | many-to-many via `product_embroidery` |
+
+**One table per taxonomy, not a single `product_options (kind, …)`.** They do
+not share a column set — a colour has a hex and a family, a category has
+defaults, a size scale has an ordered array. Collapsing them into one table
+would make every one of those nullable and push "which columns apply to this
+kind" into application code, which is the one-true-lookup-table anti-pattern.
+
+**Colour is two fields.** `colors.label` is the marketing name shown on the
+product page; `colors.family` is a fixed enum (16 values) that the storefront
+facets on. "Midnight Blue" and "Deep Navy" both file under `BLUE`, so the filter
+list stays 16 rows however many colours are added. The family is an enum rather
+than a table on purpose — it is the filter axis, and an editable axis drifts
+straight back to the problem being fixed.
+
+**Three columns were split, not just constrained.** `meters` was
+`"4.5 Meters (Standard Suit)"` → `meters_length numeric` + `meters_note`.
+`dupatta_info` was `"2.5 Meters Organza with Border"` → `dupatta_length` +
+`dupatta_fabric_id` + `dupatta_finish`. `embroidery` was the CSV string
+`"Gold Tilla, Zardozi, Sequins"` → junction rows.
+
+**Archive, never delete.** Every lookup FK is `on delete restrict`, and rows
+carry `archived_at`. Archiving stops an option being offered without changing
+what a published product says it is. RLS therefore allows reading archived rows
+— hiding them would make an archived colour read as a missing colour on a NOT
+NULL domain field. Writes are Super Admin only.
+
+Migration 18 only adds; migration 19 drops the legacy text columns and is held
+back deliberately. See the header of
+`supabase/migrations/20260806000019_drop_legacy_product_text.sql` for the
+checklist before pushing it.
+
+The same seed exists three times, joined by slug, and all three must agree:
+the SQL block in migration 18, `src/lib/data/static/taxonomy.ts` (the `local`
+backend, which has no database), and `scripts/generate-seed.mjs` (which reads
+its slugs from the second rather than re-deriving them).
+
+---
+
 ## 3. Orders
 
 From `src/lib/local/orders.ts` and `src/lib/orderStatus.ts`.

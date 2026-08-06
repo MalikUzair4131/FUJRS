@@ -13,6 +13,7 @@ import { localAffiliate } from "./local/affiliate";
 import { localAuth } from "./local/auth";
 import { localCart } from "./local/cart";
 import { localCatalog } from "./local/catalog";
+import { localProductTaxonomy } from "./local/taxonomy";
 import { localMessages } from "./local/messages";
 import { localOrders } from "./local/orders";
 import { localPayouts } from "./local/payouts";
@@ -30,6 +31,7 @@ import { supabaseAffiliate } from "./supabase/affiliate";
 import { supabaseAuth } from "./supabase/auth";
 import { supabaseCart } from "./supabase/cart";
 import { supabaseCatalog } from "./supabase/catalog";
+import { supabaseProductTaxonomy } from "./supabase/taxonomy";
 import { supabaseMessages } from "./supabase/messages";
 import { supabaseOrders } from "./supabase/orders";
 import { supabasePayouts } from "./supabase/payouts";
@@ -52,6 +54,7 @@ import type {
   OrderStore,
   PayoutStore,
   PermissionStore,
+  ProductTaxonomyStore,
   ProfileStore,
   ReferralStore,
   ReviewStore,
@@ -87,6 +90,9 @@ const useSupabase = backend === "supabase";
 
 export const auth: AuthStore = useSupabase ? supabaseAuth : localAuth;
 export const catalog: CatalogStore = useSupabase ? supabaseCatalog : localCatalog;
+export const productTaxonomy: ProductTaxonomyStore = useSupabase
+  ? supabaseProductTaxonomy
+  : localProductTaxonomy;
 export const orders: OrderStore = useSupabase ? supabaseOrders : localOrders;
 export const users: UserAdminStore = useSupabase ? supabaseUsers : localUsers;
 export const profiles: ProfileStore = useSupabase ? supabaseProfiles : localProfiles;

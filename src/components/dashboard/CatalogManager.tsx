@@ -83,6 +83,10 @@ export function CatalogManager() {
             submitLabel="Publish to Catalogue"
             onSubmit={handleAdd}
             onCancel={() => setShowForm(false)}
+            // Only a Super Admin can change the lists (the database enforces
+            // it); everyone else is told who to ask rather than shown a button
+            // that would be refused.
+            canManageOptions={session?.user.role === "SUPER_ADMIN"}
           />
         </div>
       )}

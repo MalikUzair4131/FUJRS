@@ -5,6 +5,7 @@ import { Reveal } from "@/components/ui/Reveal";
 import { AddToBagButton } from "@/components/product/AddToBagButton";
 import type { CatalogItem } from "@/lib/data";
 import { ProductImage } from "@/components/ui/ProductImage";
+import { Swatch } from "@/components/ui/OptionPickers";
 
 export function WomenProductTile({
   product,
@@ -51,7 +52,8 @@ export function WomenProductTile({
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-headline-sm text-headline-sm text-primary mb-1">{product.title}</h3>
-          <p className="font-label-sm text-label-sm uppercase text-secondary tracking-widest">
+          <p className="flex items-center gap-1.5 font-label-sm text-label-sm uppercase text-secondary tracking-widest">
+            <Swatch hex={product.colorHex} size={12} />
             {product.color}
           </p>
         </div>
