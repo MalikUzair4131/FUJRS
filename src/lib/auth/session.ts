@@ -1,7 +1,8 @@
-// The signed-in user, persisted in the browser. There is no backend session
-// to validate against yet — this is the whole of "auth" in this build.
+// The signed-in user, persisted in the browser.
+//
+// Only the local adapter uses this. Under Supabase the session lives in a
+// cookie and this file is unused — see src/lib/data/supabase/auth.ts.
 import type { AppRole } from "@/lib/auth/roles";
-import { DEMO_ACCOUNTS } from "./roles";
 
 const SESSION_KEY = "fujrs-session";
 
@@ -11,30 +12,16 @@ export interface StoredUser {
   name: string;
   role: AppRole;
   assignedStitcherSlug: string | null;
-  /** Set on the fixture staff logins, which read dashboard demo data. */
-  isDemo?: boolean;
-}
 
-const DEMO_DISPLAY_NAMES: Record<AppRole, string> = {
-  CUSTOMER: "Demo Customer",
-  ADMIN: "Demo Admin",
-  VENDOR: "Demo Vendor",
-  TAILOR: "Demo Tailor",
-  SUPER_ADMIN: "Demo Super Admin",
-};
-
-export function createDemoUser(email: string): StoredUser | null {
-  const account = DEMO_ACCOUNTS.find((a) => a.email === email.trim().toLowerCase());
-  if (!account) return null;
-
-  return {
-    id: `demo-${account.role.toLowerCase()}`,
-    email: account.email,
-    name: DEMO_DISPLAY_NAMES[account.role],
-    role: account.role,
-    assignedStitcherSlug: null,
-    isDemo: true,
-  };
+  /**
+   * True for a guest — someone with a uuid holding their bag, but no account.
+   *
+   * They have a real session, so `session` being non-null does NOT mean
+   * "signed in". Anything that offers to sign them OUT, or shows them account
+   * details they never entered, has to check this first. Always false on the
+   * local adapter, which has no anonymous identity.
+   */
+  isAnonymous: boolean;
 }
 
 export function persistSession(user: StoredUser) {
@@ -47,7 +34,10 @@ export function readSession(): StoredUser | null {
   const raw = window.localStorage.getItem(SESSION_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as StoredUser;
+    const stored = JSON.parse(raw) as StoredUser;
+    // Sessions written before `isAnonymous` existed have no such field, and
+    // `undefined` is falsy in the wrong direction only by luck. Pin it.
+    return { ...stored, isAnonymous: stored.isAnonymous ?? false };
   } catch {
     return null;
   }

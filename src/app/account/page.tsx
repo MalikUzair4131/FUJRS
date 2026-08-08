@@ -5,8 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { SignInRequired } from "@/components/auth/SignInRequired";
 import { LinkButton } from "@/components/ui/Button";
-import { listOrders, type LocalOrder } from "@/lib/local/orders";
+import { formatOrderNumber } from "@/lib/orderNumber";
+import { orders as orderStore } from "@/lib/data";
+import type { Order } from "@/lib/data";
 import {
   ROLE_LABELS,
   ROLE_WORKSPACE,
@@ -119,10 +122,16 @@ function StaffAccount({ user }: { user: AccountUser & { role: StaffRole } }) {
 }
 
 function CustomerAccount({ user }: { user: AccountUser }) {
-  const [orders, setOrders] = useState<LocalOrder[] | null>(null);
+  const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
-    setOrders(listOrders());
+    let active = true;
+    orderStore.list().then((list) => {
+      if (active) setOrders(list);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -160,7 +169,7 @@ function CustomerAccount({ user }: { user: AccountUser }) {
                 >
                   <div>
                     <p className="font-body text-body-md">
-                      Order #{order.id.slice(-8).toUpperCase()}
+                      Order {formatOrderNumber(order.orderNumber)}
                     </p>
                     <p className="font-label-sm text-on-surface-variant mt-1">
                       {new Date(order.createdAt).toLocaleDateString()} · {order.items.length} item
@@ -216,7 +225,7 @@ function CustomerAccount({ user }: { user: AccountUser }) {
 }
 
 export default function AccountPage() {
-  const { session, status } = useAuth();
+  const { session, status, isGuest } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -228,6 +237,19 @@ export default function AccountPage() {
       <div className="max-w-container-max mx-auto px-margin-mobile py-16 text-center text-on-surface-variant">
         Loading your account…
       </div>
+    );
+  }
+
+  // A guest reaches this route by typing it or following an old link. There is
+  // no name, email or order history behind their session and nothing to sign
+  // out of, so showing the account shell would be showing them blanks.
+  if (isGuest) {
+    return (
+      <SignInRequired
+        title="Sign In to See Your Account"
+        message="You're browsing as a guest. Sign in, or create an account, to see your order history and profile."
+        callbackUrl="/account"
+      />
     );
   }
 

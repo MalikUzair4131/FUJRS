@@ -5,10 +5,12 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { RouteProgress } from "@/components/layout/RouteProgress";
+import { ReferralBar } from "@/components/layout/ReferralBar";
 import { CartProvider } from "@/components/cart/CartContext";
 import { WishlistProvider } from "@/components/wishlist/WishlistContext";
 import { TailoringProvider } from "@/components/tailoring/TailoringContext";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { VisitReporter } from "@/components/providers/VisitReporter";
 import { ToastProvider } from "@/components/ui/Toast";
 
 const playfair = Playfair_Display({
@@ -43,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <ToastProvider>
           <AuthProvider>
+            <VisitReporter />
             <CartProvider>
               <WishlistProvider>
                 <TailoringProvider>
@@ -50,6 +53,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <RouteProgress />
                   </Suspense>
                   <Navbar />
+                  <Suspense fallback={null}>
+                    <ReferralBar />
+                  </Suspense>
                   <main className="flex-1">{children}</main>
                   <Footer />
                 </TailoringProvider>
