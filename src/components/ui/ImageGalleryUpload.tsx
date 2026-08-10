@@ -66,7 +66,7 @@ export function ImageGalleryUpload({
         );
       }
       if (overflow > 0) {
-        problems.push(`${overflow} more skipped — the limit is ${max} images.`);
+        problems.push(`${overflow} more skipped, because the limit is ${max} images.`);
       }
       setError(problems.join(" ") || null);
     } finally {
@@ -140,7 +140,7 @@ export function ImageGalleryUpload({
               </span>
             </button>
 
-            {/* Arrows as well as dragging — dragging is not reachable by
+            {/* Arrows as well as dragging, because dragging is not reachable by
                 keyboard, and this is the only way to set the main image. */}
             <div className="absolute inset-x-0 bottom-0 flex justify-between bg-surface/90 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
               <button
@@ -199,7 +199,7 @@ export function ImageGalleryUpload({
                   {images.length === 0 ? "Add images" : "Add more"}
                 </span>
                 <span className="font-body text-label-sm text-text-muted">
-                  Drop files or click — {remaining} left
+                  Drop files or click · {remaining} left
                 </span>
               </>
             )}
@@ -223,7 +223,7 @@ export function ImageGalleryUpload({
         </p>
       ) : (
         <p className="mt-3 font-body text-label-sm text-text-muted">
-          Select several at once. The first image is the main one shown in listings — drag a tile or
+          Select several at once. The first image is the main one shown in listings. Drag a tile or
           use the arrows to reorder. Portrait 4:5 works best; PNG, JPEG or WebP, resized
           automatically.
         </p>

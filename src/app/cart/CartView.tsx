@@ -37,7 +37,7 @@ export function CartView({ products }: { products: CatalogItem[] }) {
     e.preventDefault();
     setPromoMessage(
       promoCode.trim()
-        ? "Promo codes aren't available yet — check back soon."
+        ? "Promo codes aren't available yet. Check back soon."
         : "Enter a code first."
     );
   }
@@ -263,7 +263,7 @@ export function CartView({ products }: { products: CatalogItem[] }) {
         </aside>
       </div>
 
-      {/* Complete the Look — hidden entirely when none of those accessories
+      {/* Complete the Look: hidden entirely when none of those accessories
           are in the catalogue, rather than a heading over an empty grid. */}
       {completeTheLook.length > 0 && (
         <section className="mt-32">

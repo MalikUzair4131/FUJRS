@@ -102,8 +102,7 @@ export interface ProductRow {
   size_scale: { id: string } | null;
   dupatta_fabric: LabelRef | null;
   product_embroidery:
-    | { embroidery_techniques: { id: string; label: string; position: number } | null }[]
-    | null;
+    { embroidery_techniques: { id: string; label: string; position: number } | null }[] | null;
   product_images: { storage_path: string; position: number }[] | null;
   product_variants: { size: string }[] | null;
 }
@@ -115,7 +114,7 @@ export interface ProductRow {
  * It exists because the embed is typed as nullable and the domain field is not,
  * and a thrown error here would blank the whole shop over one bad row.
  */
-const MISSING_COLOR = { label: "—", hex: "#808080", family: "MULTI" as ColorFamily };
+const MISSING_COLOR = { label: "-", hex: "#808080", family: "MULTI" as ColorFamily };
 
 export function toCatalogItem(row: ProductRow): CatalogItem {
   // Ordered by position — index 0 is the primary image.
@@ -171,9 +170,9 @@ export function toCatalogItem(row: ProductRow): CatalogItem {
     rating: row.rating,
     reviewCount: row.review_count,
     // The row records WHO created it by id; resolving that to a name needs a
-    // join the list view doesn't justify. Shown as "—" until something needs it.
+    // join the list view doesn't justify. Shown as "-" until something needs it.
     addedByEmail: row.created_by ?? "",
-    addedByName: "—",
+    addedByName: "-",
     createdAt: row.created_at,
   };
 }

@@ -168,7 +168,7 @@ export const supabaseAffiliate: AffiliateStore = {
         // rest is honest without pretending the commission belongs to one.
         product:
           items.length === 0
-            ? "—"
+            ? "-"
             : items.length === 1
               ? items[0].title
               : `${items[0].title} +${items.length - 1} more`,

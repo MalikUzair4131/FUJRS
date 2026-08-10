@@ -24,7 +24,7 @@ export function ProductImage({ alt, className = "", ...props }: ImageProps & { a
         // placeholder in the same box the photo would have occupied.
         className={`${props.fill ? "absolute inset-0" : "h-full w-full"} flex flex-col items-center justify-center gap-1 bg-surface-container-low text-text-muted ${className}`}
         role="img"
-        aria-label={alt ? `${alt} — image unavailable` : "Image unavailable"}
+        aria-label={alt ? `${alt}: image unavailable` : "Image unavailable"}
       >
         <span aria-hidden="true" className="material-symbols-outlined text-2xl opacity-40">
           image_not_supported

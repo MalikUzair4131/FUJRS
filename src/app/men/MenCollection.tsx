@@ -59,12 +59,12 @@ export function MenCollection({ products }: { products: CatalogItem[] }) {
 
   return (
     <div>
-      {/* Hero — same reasoning as the homepage: from `md` up the section takes
+      {/* Hero: same reasoning as the homepage: from `md` up the section takes
           the photograph's own 43:24 ratio so nothing is cropped and the model
           is visible head to foot. A fixed 700px was wider than that at desktop
           widths, which trimmed the top and bottom off. */}
       <section className="relative h-[600px] md:h-auto md:aspect-[43/24] flex items-center overflow-hidden">
-        {/* See the note on the homepage hero — the opening frame is the LCP
+        {/* See the note on the homepage hero: the opening frame is the LCP
             element, so next/image with priority rather than a CSS background,
             which the browser cannot preload. */}
         <HeroSlideshow slides={menHeroSlides} />

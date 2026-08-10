@@ -86,7 +86,7 @@ function validate(form: Form, category: CategoryOption | null): FormErrors {
   // error the person filling the form can do nothing with.
   if (!form.categoryId) errors.categoryId = "Choose a category.";
   if (!form.fabricId) errors.fabricId = "Choose a fabric.";
-  if (!form.colorId) errors.colorId = "Choose a colour — the shop filters on it.";
+  if (!form.colorId) errors.colorId = "Choose a colour, because the shop filters on it.";
 
   if (form.fabricWeightGsm.trim()) {
     const weight = Number(form.fabricWeightGsm);
@@ -279,7 +279,11 @@ export function ProductForm({
           // A scale with exactly one size ("Unstitched", "One Size") has nothing
           // to choose, so tick it rather than making it a required extra click.
           sizes:
-            prev.sizes.length > 0 ? prev.sizes : scale && scale.values.length === 1 ? scale.values : [],
+            prev.sizes.length > 0
+              ? prev.sizes
+              : scale && scale.values.length === 1
+                ? scale.values
+                : [],
           meters: prev.meters || (next.defaultMeters !== null ? String(next.defaultMeters) : ""),
         };
       });
@@ -458,7 +462,7 @@ export function ProductForm({
             value={form.colorId}
             onChange={(id) => update("colorId", id)}
             error={errors.colorId}
-            hint="The shop filters on the colour's family, not its name — so “Midnight Blue” and “Deep Navy” sit together under Blue."
+            hint="The shop filters on the colour's family, not its name, so “Midnight Blue” and “Deep Navy” sit together under Blue."
           />
         </div>
         <div className="sm:col-span-2">
@@ -513,7 +517,7 @@ export function ProductForm({
           value={form.compareAtPrice}
           onChange={(e) => update("compareAtPrice", e.target.value)}
           error={errors.compareAtPrice}
-          hint="Optional — shown struck through beside the price."
+          hint="Optional. Shown struck through beside the price."
           placeholder="32000"
         />
         <TextField
@@ -563,7 +567,7 @@ export function ProductForm({
 
       <Group
         title="Product page details"
-        hint="All optional — each one fills a row in the specs panel on the product page."
+        hint="All optional. Each one fills a row in the specs panel on the product page."
       >
         <div className="sm:col-span-2">
           <CheckboxField
@@ -646,7 +650,7 @@ export function ProductForm({
             rows={3}
             value={form.heritageStory}
             onChange={(e) => update("heritageStory", e.target.value)}
-            hint="The craft behind the piece — where it was made and by whom."
+            hint="The craft behind the piece: where it was made and by whom."
           />
         </div>
       </Group>
@@ -662,7 +666,7 @@ export function ProductForm({
         )}
         {submitting && (
           <p className="font-body text-label-sm text-text-muted">
-            Saving — images can take a moment.
+            Saving. Images can take a moment.
           </p>
         )}
       </div>

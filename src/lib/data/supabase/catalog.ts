@@ -44,10 +44,10 @@ function logStoreError(step: string, error: unknown) {
 function driverDetail(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
   const driver = error as { message?: string; hint?: string };
-  const parts = [driver.message, driver.hint].filter(
-    (part): part is string => Boolean(part && part.trim())
+  const parts = [driver.message, driver.hint].filter((part): part is string =>
+    Boolean(part && part.trim())
   );
-  return parts.length > 0 ? parts.join(" — ") : null;
+  return parts.length > 0 ? parts.join(": ") : null;
 }
 
 /** The admin form produces a data URL; Storage needs bytes. */

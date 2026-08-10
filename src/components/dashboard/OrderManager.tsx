@@ -112,7 +112,7 @@ function OrderDetail({
           <p className="mt-6 text-label-sm uppercase tracking-widest text-text-muted">Actions</p>
           {moves.length === 0 ? (
             <p className="mt-3 text-body-md text-text-muted">
-              {ORDER_STATUS_LABELS[order.status]} is final — nothing further to do.
+              {ORDER_STATUS_LABELS[order.status]} is final. Nothing further to do.
             </p>
           ) : (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -133,7 +133,7 @@ function OrderDetail({
           )}
           {order.paymentMethod === "cod" && !isTerminalStatus(order.status) && (
             <p className="mt-3 max-w-prose text-label-sm text-marketplace-bronze">
-              Refunds are recorded here only — moving money back to the customer needs a payment
+              Refunds are recorded here only. Moving money back to the customer needs a payment
               provider, which isn&apos;t wired up yet.
             </p>
           )}
@@ -219,7 +219,7 @@ export function OrderManager() {
                   <td className="px-4 py-3">{order.items.length}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{PKR(order.total)}</td>
                   <td className="px-4 py-3 text-label-sm uppercase tracking-widest text-marketplace-bronze">
-                    {order.referralCode ?? <span className="text-text-muted">—</span>}
+                    {order.referralCode ?? <span className="text-text-muted">-</span>}
                   </td>
                   <td className="px-4 py-3 text-label-sm uppercase text-text-muted">
                     {ORDER_STATUS_LABELS[order.status]}
@@ -275,7 +275,7 @@ export function OrderManager() {
 
       {/* A "Sample Orders" fixture table used to sit here, to make the
           dashboard look lived-in. Orders are real now, so it was two tables
-          where one of them had to be invented — and a fixture beside real data
+          where one of them had to be invented, and a fixture beside real data
           is the kind of thing someone eventually reads as fact. */}
     </section>
   );

@@ -49,7 +49,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <StatusScreen
         icon="receipt_long"
         title="Order not found"
-        body="Orders are stored on this device — this one may have been placed elsewhere."
+        body="Orders are stored on this device, so this one may have been placed elsewhere."
         actions={
           <LinkButton href="/account" variant="primary" className="!px-10 !py-4">
             Back to Account
@@ -113,7 +113,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
                 {item.stitchingLabel && (
                   <div className="mt-4 border-t border-outline-variant/30 pt-4">
                     <p className="mb-3 font-label-sm text-label-sm uppercase text-on-surface-variant">
-                      Bespoke Stitching — {item.stitchingLabel}
+                      Bespoke Stitching: {item.stitchingLabel}
                     </p>
                     <ol className="flex flex-wrap gap-2">
                       {STITCHING_STATUSES.map((stage, i) => {

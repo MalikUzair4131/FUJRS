@@ -68,7 +68,7 @@ export function SpecsAccordion({ product }: { product: CatalogItem }) {
 
       {/* Only when there is one. This used to fall back to the description,
           which meant a piece WITH a heritage story showed its description
-          nowhere on the page — the panel above owns that copy now. */}
+          nowhere on the page; the panel above owns that copy now. */}
       {product.heritageStory && (
         <details className="group border-b border-border-subtle">
           <summary className="flex justify-between items-center py-4 cursor-pointer list-none">

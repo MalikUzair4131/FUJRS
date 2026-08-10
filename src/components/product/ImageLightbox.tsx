@@ -121,7 +121,7 @@ export function ImageLightbox({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`${title} — image ${index + 1} of ${images.length}`}
+      aria-label={`${title}: image ${index + 1} of ${images.length}`}
       className="fixed inset-0 z-[70] flex flex-col bg-primary/95 backdrop-blur-sm"
     >
       <div className="flex items-center justify-between gap-4 px-gutter py-4 text-on-primary">
@@ -171,7 +171,7 @@ export function ImageLightbox({
           >
             <ProductImage
               src={images[index]}
-              alt={`${title} — view ${index + 1}`}
+              alt={`${title}, view ${index + 1}`}
               fill
               sizes="100vw"
               className="object-contain"

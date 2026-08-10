@@ -98,7 +98,7 @@ function normalise(row: Record<string, unknown>): CatalogItem {
     rating: num(row.rating),
     reviewCount: num(row.reviewCount) ?? 0,
     addedByEmail: str(row.addedByEmail) || str(row.submittedByEmail),
-    addedByName: str(row.addedByName) || str(row.submittedByName) || "—",
+    addedByName: str(row.addedByName) || str(row.submittedByName) || "-",
     createdAt: str(row.createdAt, new Date(0).toISOString()),
   };
 }

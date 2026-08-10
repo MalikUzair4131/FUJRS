@@ -77,7 +77,7 @@ export function PurchasePanel({ product }: { product: CatalogItem }) {
         </p>
       </section>
 
-      {/* Atelier badge — adapted from source's marketplace seller badge.
+      {/* Atelier badge: adapted from source's marketplace seller badge.
           Every piece is made in-house, so this is the brand, not a per-product
           seller: which Master Stitcher takes a job is decided when a stitching
           request is assigned, not on the product row. */}

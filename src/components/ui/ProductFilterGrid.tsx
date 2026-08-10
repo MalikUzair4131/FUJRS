@@ -176,7 +176,7 @@ export function ProductFilterGrid({ products }: { products: CatalogItem[] }) {
         </span>
       </button>
 
-      {/* Filter panel — static, not fixed/overlay, so no containing-block risk */}
+      {/* Filter panel: static, not fixed/overlay, so no containing-block risk */}
       <aside className={`space-y-6 lg:block ${filtersOpen ? "block" : "hidden"}`}>
         <div className="flex items-center justify-between">
           <h2 className="label-caps">Filter</h2>

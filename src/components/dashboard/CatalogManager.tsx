@@ -78,7 +78,7 @@ export function CatalogManager() {
         <div>
           <h2 className="font-display text-headline-sm">Catalogue</h2>
           <p className="mt-1 text-label-sm text-marketplace-bronze">
-            Pieces you add here publish immediately — they appear in the shop straight away.
+            Pieces you add here publish immediately; they appear in the shop straight away.
           </p>
         </div>
         <Button variant="primary" onClick={() => setShowForm((v) => !v)}>
@@ -120,7 +120,7 @@ export function CatalogManager() {
         title="Remove this product?"
         message={
           <>
-            “{pendingRemoval?.title}” comes off the shop straight away. This can’t be undone — the
+            “{pendingRemoval?.title}” comes off the shop straight away. This can’t be undone: the
             piece has to be added again from scratch.
           </>
         }

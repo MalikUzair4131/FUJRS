@@ -24,7 +24,7 @@ export function EditorialGallery({ images, title }: { images: string[]; title: s
               directly rather than through a photo that can't load. */}
           <div
             role="img"
-            aria-label={`${title} — no photography yet`}
+            aria-label={`${title}: no photography yet`}
             className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-surface-container-low text-text-muted"
           >
             <span aria-hidden="true" className="material-symbols-outlined text-3xl opacity-40">
@@ -75,7 +75,7 @@ export function EditorialGallery({ images, title }: { images: string[]; title: s
           >
             <ProductImage
               src={images[active]}
-              alt={`${title} — view ${active + 1}`}
+              alt={`${title}, view ${active + 1}`}
               fill
               priority={active === 0}
               sizes="(min-width: 1024px) 50vw, 100vw"

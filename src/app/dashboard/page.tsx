@@ -73,10 +73,10 @@ export default function DashboardPage() {
       <p className="label-caps text-gold">Internal Tools</p>
       <h1 className="mt-2 font-display text-headline-md">Dashboard</h1>
       <p className="mt-2 text-body-md text-text-muted">
-        Signed in as {session?.user.name} — {ROLE_LABELS[role]}.{" "}
+        Signed in as {session?.user.name}, {ROLE_LABELS[role]}.{" "}
         {process.env.NEXT_PUBLIC_DATA_BACKEND === "supabase"
-          ? "Connected to the database — everything here is live."
-          : "Running on browser storage — nothing here is shared or permanent."}
+          ? "Connected to the database, so everything here is live."
+          : "Running on browser storage, so nothing here is shared or permanent."}
       </p>
 
       {availableRoles.length > 1 && (
