@@ -164,9 +164,16 @@ export function OrderManager() {
   async function handleStatusChange(order: Order, status: OrderStatus) {
     const updated = await orderStore.updateStatus(order.id, status);
     if (!updated) {
+      // The store returns null for illegal transitions and for write failures
+      // (RLS, trigger errors). Prefer the legal-move message only when the UI
+      // somehow offered one that `nextStatuses` would refuse — otherwise say
+      // the save failed so staff don't chase a transition rule that is fine.
+      const offered = nextStatuses(order.status).includes(status);
       toast(
-        `An order that's ${ORDER_STATUS_LABELS[order.status].toLowerCase()} can't move to ${ORDER_STATUS_LABELS[status].toLowerCase()}.`,
-        "info"
+        offered
+          ? "Couldn't update that order. Refresh and try again."
+          : `An order that's ${ORDER_STATUS_LABELS[order.status].toLowerCase()} can't move to ${ORDER_STATUS_LABELS[status].toLowerCase()}.`,
+        offered ? "error" : "info"
       );
       return;
     }
