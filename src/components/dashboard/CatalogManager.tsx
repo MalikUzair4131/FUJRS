@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProductForm } from "@/components/dashboard/ProductForm";
 import { CatalogTable } from "@/components/dashboard/CatalogTable";
 import { catalog, StoreWriteError } from "@/lib/data";
-import type { CatalogItem, NewCatalogItem } from "@/lib/data";
+import type { CatalogItem, ProductInput } from "@/lib/data";
 
 /**
  * Catalogue management for the roles that can publish — shared by the Admin
@@ -31,7 +31,7 @@ export function CatalogManager() {
     void refresh();
   }, [refresh]);
 
-  async function handleAdd(input: NewCatalogItem) {
+  async function handleAdd(input: ProductInput) {
     if (!session) {
       toast("You need to be signed in to publish a product.", "error");
       throw new StoreWriteError("You need to be signed in to publish a product.");
@@ -104,6 +104,7 @@ export function CatalogManager() {
         <CatalogTable
           items={items}
           emptyMessage="No products added yet."
+          hrefFor={(item) => `/dashboard/products/${item.slug}`}
           actions={(item) => (
             <button
               onClick={() => setPendingRemoval(item)}

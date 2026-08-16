@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProductImage } from "@/components/ui/ProductImage";
+import type { ProductPhoto } from "@/lib/data";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
@@ -25,7 +26,7 @@ export function ImageLightbox({
   onIndexChange,
   onClose,
 }: {
-  images: string[];
+  images: ProductPhoto[];
   title: string;
   /** Which photo is showing; the gallery owns it so both stay in step. */
   index: number;
@@ -170,7 +171,9 @@ export function ImageLightbox({
             onDoubleClick={() => changeZoom(zoomed ? MIN_ZOOM : QUICK_ZOOM)}
           >
             <ProductImage
-              src={images[index]}
+              // No focal point: the viewer shows the whole frame (object-contain),
+              // which is the one place nothing is cropped away.
+              src={images[index].url}
               alt={`${title}, view ${index + 1}`}
               fill
               sizes="100vw"

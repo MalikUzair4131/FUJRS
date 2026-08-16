@@ -7,7 +7,9 @@ async function searchProducts(query: string) {
   if (!q) return [];
   const products = await catalogRead.list();
   return products.filter((p) =>
-    [p.title, p.fabric, p.category, p.color].some((field) => field.toLowerCase().includes(q))
+    [p.title, p.fabric, p.category, ...p.colors.map((color) => color.label)].some((field) =>
+      field.toLowerCase().includes(q)
+    )
   );
 }
 

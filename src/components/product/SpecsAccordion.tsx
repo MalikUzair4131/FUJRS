@@ -56,13 +56,19 @@ export function SpecsAccordion({ product }: { product: CatalogItem }) {
               <span className="text-primary font-medium">{dupatta}</span>
             </div>
           )}
-          <div className="flex justify-between border-b border-surface-container pb-2">
-            <span>Color</span>
-            <span className="flex items-center gap-2 text-primary font-medium">
-              <Swatch hex={product.colorHex} size={16} />
-              {product.color}
-            </span>
-          </div>
+          {product.colors.length > 0 && (
+            <div className="flex justify-between border-b border-surface-container pb-2">
+              <span>{product.colors.length > 1 ? "Colors" : "Color"}</span>
+              <span className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-primary font-medium">
+                {product.colors.map((color) => (
+                  <span key={color.id || color.label} className="flex items-center gap-2">
+                    <Swatch hex={color.hex} size={16} />
+                    {color.label}
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
         </div>
       </details>
 

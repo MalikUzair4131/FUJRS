@@ -289,7 +289,8 @@ export function CartView({ products }: { products: CatalogItem[] }) {
                 <Link href={`/products/${product.slug}`} className="block">
                   <div className="relative aspect-[4/5] bg-surface-container overflow-hidden mb-4">
                     <ProductImage
-                      src={product.images[0]}
+                      src={product.images[0]?.url}
+                      focal={product.images[0]}
                       alt={product.title}
                       fill
                       sizes="(min-width: 768px) 25vw, 50vw"

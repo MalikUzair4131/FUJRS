@@ -113,18 +113,24 @@ export function ProductFilterGrid({ products }: { products: CatalogItem[] }) {
     // were three separate blues, and four different off-whites sat apart from
     // each other. The family collapses those, so this list stays short however
     // many colours the catalogue grows to.
+    // A product is offered in several colourways, so it contributes a facet per
+    // colour: a piece cut in emerald and navy appears under Green and Blue.
+    const colors = products.flatMap((p) => p.colors);
+
     const families = COLOR_FAMILIES.filter((family) =>
-      products.some((p) => p.colorFamily === family)
-    ).map((family) => ({
-      family,
-      label: COLOR_FAMILY_LABELS[family],
+      colors.some((color) => color.family === family)
+    ).map((family) => {
       // The swatch of the only colour in that family, so a family holding just
       // "Emerald" shows emerald rather than a generic green.
-      hex:
-        uniq(products.filter((p) => p.colorFamily === family).map((p) => p.colorHex)).length === 1
-          ? products.find((p) => p.colorFamily === family)!.colorHex
-          : COLOR_FAMILY_SWATCHES[family],
-    }));
+      const hexes = uniq(
+        colors.filter((color) => color.family === family).map((color) => color.hex)
+      );
+      return {
+        family,
+        label: COLOR_FAMILY_LABELS[family],
+        hex: hexes.length === 1 ? hexes[0] : COLOR_FAMILY_SWATCHES[family],
+      };
+    });
 
     return {
       categories: uniq(products.map((p) => p.category)),
@@ -143,7 +149,7 @@ export function ProductFilterGrid({ products }: { products: CatalogItem[] }) {
       (p) =>
         (categories.length === 0 || categories.includes(p.category)) &&
         (fabrics.length === 0 || fabrics.includes(p.fabric)) &&
-        (families.length === 0 || families.includes(p.colorFamily)) &&
+        (families.length === 0 || p.colors.some((color) => families.includes(color.family))) &&
         (maxPrice === null || p.price <= maxPrice)
     );
 

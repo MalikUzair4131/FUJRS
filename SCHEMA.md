@@ -178,6 +178,14 @@ create table product_images (
   mime_type     text not null,
   blur_data_url text,
 
+  -- Where the crop is anchored, 0-100, fed straight to CSS object-position.
+  -- The storefront renders one photo into 4:5 grid tiles, a 16:9 Women feature
+  -- tile and a 16:10 Men one; object-cover centres, which loses the neckline
+  -- and hem of a portrait shot in a wide tile. Defaulted to the centred crop
+  -- so every existing row renders unchanged.
+  focal_x       smallint not null default 50 check (focal_x between 0 and 100),
+  focal_y       smallint not null default 50 check (focal_y between 0 and 100),
+
   created_at    timestamptz not null default now()
 );
 create index on product_images (product_id, position);
@@ -230,7 +238,7 @@ Migration 18 replaces each with a managed list, referenced by id:
 | --- | --- |
 | `product_categories` | `gender` scope, plus the defaults a new product inherits |
 | `fabrics` | — (weight moved to `products.fabric_weight_gsm`) |
-| `colors` | `hex` for the swatch, `family` for the filter axis |
+| `colors` | `hex` for the swatch, `family` for the filter axis; many-to-many via `product_colors` (migration 21) |
 | `badges` | — |
 | `size_scales` | `size_values text[]`, ordered |
 | `embroidery_techniques` | many-to-many via `product_embroidery` |
@@ -247,6 +255,17 @@ facets on. "Midnight Blue" and "Deep Navy" both file under `BLUE`, so the filter
 list stays 16 rows however many colours are added. The family is an enum rather
 than a table on purpose — it is the filter axis, and an editable axis drifts
 straight back to the problem being fixed.
+
+**A product has several colours, not one.** Migration 18 gave `products` a
+single `color_id`, because the form offered a single swatch. A piece is cut in
+three colourways off one pattern, so that forced publishing it three times, with
+three SKUs and three stock counts to keep in step. Migration 21 adds
+`product_colors (product_id, color_id, position)` — the same junction shape as
+`product_embroidery`, plus an order, because position 0 is the colour a listing
+tile shows next to the title. A product now contributes a facet per colour, so a
+red-and-blue piece is found under both. `products.color_id` stays for now,
+populated with the primary colour and read by nothing, and a later migration
+drops it — the same expand-then-contract split as 18 and 19.
 
 **Three columns were split, not just constrained.** `meters` was
 `"4.5 Meters (Standard Suit)"` → `meters_length numeric` + `meters_note`.

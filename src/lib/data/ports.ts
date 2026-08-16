@@ -29,7 +29,7 @@ import type {
   CatalogItem,
   ContactMessage,
   DashboardStats,
-  NewCatalogItem,
+  ProductInput,
   NewOrderInput,
   NewTaxonomyOption,
   Order,
@@ -130,7 +130,17 @@ export interface CatalogReadStore {
 }
 
 export interface CatalogStore extends CatalogReadStore {
-  create(input: NewCatalogItem, author: Author): Promise<CatalogItem>;
+  create(input: ProductInput, author: Author): Promise<CatalogItem>;
+  /**
+   * Replaces everything the form owns on an existing piece.
+   *
+   * A whole-input replace rather than a patch of changed fields: the form
+   * submits its complete state, and a partial update would need every caller
+   * to work out what moved, which is exactly how a cleared field ends up
+   * silently keeping its old value. The slug, the author and the timestamps
+   * are the store's, and survive untouched.
+   */
+  update(id: string, input: ProductInput): Promise<CatalogItem>;
   remove(id: string): Promise<void>;
 }
 

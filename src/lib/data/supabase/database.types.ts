@@ -700,6 +700,39 @@ export type Database = {
           },
         ]
       }
+      product_colors: {
+        Row: {
+          color_id: string
+          position: number
+          product_id: string
+        }
+        Insert: {
+          color_id: string
+          position?: number
+          product_id: string
+        }
+        Update: {
+          color_id?: string
+          position?: number
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_colors_color_id_fkey"
+            columns: ["color_id"]
+            isOneToOne: false
+            referencedRelation: "colors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_colors_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_embroidery: {
         Row: {
           product_id: string
@@ -736,6 +769,8 @@ export type Database = {
           blur_data_url: string | null
           bytes: number | null
           created_at: string
+          focal_x: number
+          focal_y: number
           height: number
           id: string
           mime_type: string
@@ -749,6 +784,8 @@ export type Database = {
           blur_data_url?: string | null
           bytes?: number | null
           created_at?: string
+          focal_x?: number
+          focal_y?: number
           height: number
           id?: string
           mime_type: string
@@ -762,6 +799,8 @@ export type Database = {
           blur_data_url?: string | null
           bytes?: number | null
           created_at?: string
+          focal_x?: number
+          focal_y?: number
           height?: number
           id?: string
           mime_type?: string

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/ProductImage";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -313,8 +313,9 @@ export function VendorView() {
               {filtered.map((product) => (
                 <article key={product.id} className="flex flex-col border border-border-subtle">
                   <div className="relative aspect-[3/4] bg-surface-container-low">
-                    <Image
-                      src={product.images[0]}
+                    <ProductImage
+                      src={product.images[0]?.url}
+                      focal={product.images[0]}
                       alt=""
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
