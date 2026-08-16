@@ -18,6 +18,30 @@ export const COMMISSION_TYPE_LABELS: Record<CommissionType, string> = {
   FLAT: "Flat amount per sale",
 };
 
+/**
+ * Where a commission has got to. Mirrors the `commission_status` enum.
+ *
+ * It lives here rather than in the data layer because it is a domain fact, not
+ * a storage detail: the hold below is what moves a row from PENDING to
+ * CREDITED, and a refund is what moves it to REVERSED.
+ */
+export const COMMISSION_STATUSES = ["PENDING", "CREDITED", "PAID", "REVERSED"] as const;
+export type CommissionStatus = (typeof COMMISSION_STATUSES)[number];
+
+/**
+ * What each state is called on the vendor's own screen.
+ *
+ * The database words are right for the database and wrong for a person. A
+ * vendor looking at their money needs to know that PENDING is a clock running,
+ * not a payment that failed.
+ */
+export const COMMISSION_STATUS_LABELS: Record<CommissionStatus, string> = {
+  PENDING: "On hold",
+  CREDITED: "Available",
+  PAID: "Paid out",
+  REVERSED: "Reversed",
+};
+
 export const DEFAULT_COMMISSION: CommissionRate = { type: "PERCENT", value: 10 };
 
 /**

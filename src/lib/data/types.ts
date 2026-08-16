@@ -4,7 +4,7 @@
 
 import type { AppRole } from "@/lib/auth/roles";
 import type { ColorFamily } from "@/lib/productTaxonomy";
-import type { CommissionRate } from "@/lib/commission";
+import type { CommissionRate, CommissionStatus } from "@/lib/commission";
 import type { OrderStatus } from "@/lib/orderStatus";
 import type { RefundRequestStatus } from "@/lib/refunds";
 import type { StitchingStatus } from "@/lib/stitchingStatus";
@@ -560,6 +560,14 @@ export interface ReferredSale {
   date: string;
   /** Commission on this sale, as it was calculated at the time. */
   commission: number;
+  /**
+   * Where this sale's commission has got to.
+   *
+   * Carried because a vendor reading "you earned PKR 20" under a headline of
+   * "Earned To Date: PKR 0" has been told two different things. PENDING is the
+   * hold in `src/lib/commission.ts` running, not a payment that failed.
+   */
+  status: CommissionStatus;
 }
 
 // --- Dashboard statistics ---------------------------------------------------

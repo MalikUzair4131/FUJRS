@@ -1484,6 +1484,18 @@ export type Database = {
       is_staff: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       reserve_order_stock: { Args: { p_order_id: string }; Returns: undefined }
+      vendor_referred_sales: {
+        Args: never
+        Returns: {
+          amount_paisa: number
+          created_at: string
+          id: string
+          item_titles: string[]
+          order_number: string
+          sale_paisa: number
+          status: Database["public"]["Enums"]["commission_status"]
+        }[]
+      }
     }
     Enums: {
       access_category:

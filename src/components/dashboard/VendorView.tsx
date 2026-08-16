@@ -6,6 +6,8 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import {
+  COMMISSION_HOLD_DAYS,
+  COMMISSION_STATUS_LABELS,
   DEFAULT_COMMISSION,
   calculateCommission,
   formatCommissionRate,
@@ -181,11 +183,30 @@ export function VendorView() {
     );
   }, [query, products]);
 
+  // "Earned To Date" counts CREDITED and PAID only, so a sale still inside its
+  // hold contributes nothing to it. On its own that reads as money that went
+  // missing: the table below lists the sale with a commission against it while
+  // the headline says zero. The note is what reconciles the two.
   const stats = [
-    { label: "Your Commission", value: formatCommissionRate(commission) },
-    { label: "Link Clicks", value: performance ? performance.clicks.toLocaleString() : "-" },
-    { label: "Sales Referred", value: performance ? performance.sales.toLocaleString() : "-" },
-    { label: "Earned To Date", value: performance ? PKR(performance.earned) : "-" },
+    { label: "Your Commission", value: formatCommissionRate(commission), note: null },
+    {
+      label: "Link Clicks",
+      value: performance ? performance.clicks.toLocaleString() : "-",
+      note: null,
+    },
+    {
+      label: "Sales Referred",
+      value: performance ? performance.sales.toLocaleString() : "-",
+      note: null,
+    },
+    {
+      label: "Earned To Date",
+      value: performance ? PKR(performance.earned) : "-",
+      note:
+        performance && performance.pending > 0
+          ? `${PKR(performance.pending)} on hold, credited ${COMMISSION_HOLD_DAYS} days after delivery`
+          : null,
+    },
   ];
 
   return (
@@ -218,6 +239,9 @@ export function VendorView() {
               <div key={stat.label} className="border border-border-subtle p-6">
                 <p className="text-label-sm uppercase text-text-muted">{stat.label}</p>
                 <p className="mt-2 font-display text-headline-sm">{stat.value}</p>
+                {stat.note && (
+                  <p className="mt-2 text-label-sm text-marketplace-bronze">{stat.note}</p>
+                )}
               </div>
             ))}
           </div>
@@ -250,13 +274,14 @@ export function VendorView() {
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Sale</th>
                   <th className="px-4 py-3 font-medium">You Earned</th>
+                  <th className="px-4 py-3 font-medium">State</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {!sales && <LoadingRow colSpan={5} />}
+                {!sales && <LoadingRow colSpan={6} />}
                 {sales?.length === 0 && (
                   <tr>
-                    <td className="px-4 py-6 text-text-muted" colSpan={5}>
+                    <td className="px-4 py-6 text-text-muted" colSpan={6}>
                       No referred sales yet. They appear here when someone buys through one of your
                       links.
                     </td>
@@ -275,6 +300,18 @@ export function VendorView() {
                           the rate was copied when the sale happened, so a later
                           rate change must not rewrite what they earned. */}
                       {PKR(sale.commission)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {/* Without this the row says "you earned PKR X" and the
+                          stat above says PKR 0, with nothing on screen to
+                          explain the gap. */}
+                      <span
+                        className={`text-label-sm uppercase ${
+                          sale.status === "REVERSED" ? "text-error" : "text-text-muted"
+                        }`}
+                      >
+                        {COMMISSION_STATUS_LABELS[sale.status]}
+                      </span>
                     </td>
                   </tr>
                 ))}
