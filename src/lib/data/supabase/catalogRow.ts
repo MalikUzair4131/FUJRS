@@ -40,6 +40,7 @@ export const PRODUCT_SELECT = `
   dupatta_fabric:fabrics!products_dupatta_fabric_id_fkey ( id, label ),
   product_embroidery ( embroidery_techniques ( id, label, position ) ),
   product_images ( id, storage_path, position, focal_x, focal_y ),
+  author:users!products_created_by_fkey ( name, email ),
   product_variants ( size )
 `;
 
@@ -100,6 +101,7 @@ export interface ProductRow {
   review_count: number;
   created_at: string;
   created_by: string | null;
+  author: { name: string | null; email: string | null } | null;
   category: LabelRef | null;
   fabric: LabelRef | null;
   product_colors:
@@ -179,10 +181,14 @@ export function toCatalogItem(row: ProductRow): CatalogItem {
     images,
     rating: row.rating,
     reviewCount: row.review_count,
-    // The row records WHO created it by id; resolving that to a name needs a
-    // join the list view doesn't justify. Shown as "-" until something needs it.
-    addedByEmail: row.created_by ?? "",
-    addedByName: "-",
+    // Null in two ordinary cases, so neither is treated as an error: a seeded
+    // product was created by nobody, and a shopper reading the storefront can
+    // only see their own `users` row, so the join returns nothing for them.
+    // Nothing on the shop renders these; the dashboard is the only reader.
+    addedByEmail: row.author?.email ?? "",
+    // Falls back to the email because `users.name` is nullable: a staff member
+    // who has not set one should still be identifiable, not anonymous.
+    addedByName: row.author?.name || row.author?.email || "-",
     createdAt: row.created_at,
   };
 }

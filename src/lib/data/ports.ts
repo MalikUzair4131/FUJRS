@@ -13,6 +13,7 @@
 import type { AppRole } from "@/lib/auth/roles";
 import type { CommissionRate } from "@/lib/commission";
 import type { OrderStatus } from "@/lib/orderStatus";
+import type { RefundRequestStatus } from "@/lib/refunds";
 import type { StitchingStatus } from "@/lib/stitchingStatus";
 import type { StoredUser } from "@/lib/auth/session";
 import type { UploadedImage } from "@/lib/downscaleImage";
@@ -36,6 +37,7 @@ import type {
   PayoutRequest,
   ProductTaxonomy,
   TaxonomyKind,
+  RefundRequest,
   ReferredSale,
   SavedAddress,
   ReferenceImage,
@@ -93,6 +95,35 @@ export interface OrderStore {
   create(input: NewOrderInput): Promise<Order>;
   /** Null when the order is gone or the transition isn't legal. */
   updateStatus(id: string, status: OrderStatus): Promise<Order | null>;
+}
+
+/**
+ * Customer-initiated refunds (`src/lib/refunds.ts`).
+ *
+ * There is no staff `create` on purpose. A refund starts with the customer
+ * asking, and approving that request is what moves the order to REFUNDED, so
+ * staff cannot refund an order that nobody asked to have refunded.
+ */
+export interface RefundStore {
+  /**
+   * Newest first. Who sees what is the backend's job, the same way orders
+   * work: a customer gets their own requests, staff get every one.
+   */
+  list(): Promise<RefundRequest[]>;
+  /** The latest request against one order, or null when there is none. */
+  forOrder(orderId: string): Promise<RefundRequest | null>;
+  /** Throws `StoreWriteError` when the order isn't eligible. */
+  request(input: { orderId: string; reason: string }): Promise<RefundRequest>;
+  /**
+   * Staff ruling on a request. Approving also moves the order to REFUNDED,
+   * which releases stock and reverses commission. Null when the request is
+   * gone, already reviewed, or the caller isn't staff.
+   */
+  review(input: {
+    id: string;
+    decision: Exclude<RefundRequestStatus, "REQUESTED">;
+    note?: string;
+  }): Promise<RefundRequest | null>;
 }
 
 /**

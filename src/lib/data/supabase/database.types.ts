@@ -531,6 +531,7 @@ export type Database = {
       orders: {
         Row: {
           contact_email: string
+          delivered_at: string | null
           fabric_total_paisa: number
           id: string
           order_number: string
@@ -550,6 +551,7 @@ export type Database = {
         }
         Insert: {
           contact_email: string
+          delivered_at?: string | null
           fabric_total_paisa: number
           id?: string
           order_number: string
@@ -569,6 +571,7 @@ export type Database = {
         }
         Update: {
           contact_email?: string
+          delivered_at?: string | null
           fabric_total_paisa?: number
           id?: string
           order_number?: string
@@ -1066,6 +1069,70 @@ export type Database = {
           },
         ]
       }
+      refund_requests: {
+        Row: {
+          amount_paisa: number
+          created_at: string
+          id: string
+          order_id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_note: string | null
+          status: Database["public"]["Enums"]["refund_request_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_paisa: number
+          created_at?: string
+          id?: string
+          order_id: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_note?: string | null
+          status?: Database["public"]["Enums"]["refund_request_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_paisa?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_note?: string | null
+          status?: Database["public"]["Enums"]["refund_request_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           body: string | null
@@ -1453,6 +1520,7 @@ export type Database = {
         | "REFUNDED"
       payout_status: "REQUESTED" | "PROCESSING" | "PAID" | "REJECTED"
       product_gender: "Women" | "Men" | "Unisex"
+      refund_request_status: "REQUESTED" | "APPROVED" | "DECLINED"
       stitching_status:
         | "AWAITING_MEASUREMENTS"
         | "IN_PROGRESS"

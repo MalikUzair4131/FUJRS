@@ -6,6 +6,7 @@ import type { AppRole } from "@/lib/auth/roles";
 import type { ColorFamily } from "@/lib/productTaxonomy";
 import type { CommissionRate } from "@/lib/commission";
 import type { OrderStatus } from "@/lib/orderStatus";
+import type { RefundRequestStatus } from "@/lib/refunds";
 import type { StitchingStatus } from "@/lib/stitchingStatus";
 import type { PayoutStatus } from "@/lib/payouts";
 import type { MeasurementSet } from "@/lib/measurements";
@@ -58,6 +59,12 @@ export interface Order {
   orderNumber: string;
   createdAt: string;
   status: OrderStatus;
+  /**
+   * When the order was marked delivered, or null if it hasn't been (and on
+   * orders placed before this was recorded). The return window is counted from
+   * here, not from `createdAt` (`src/lib/refunds.ts`).
+   */
+  deliveredAt: string | null;
   items: OrderItem[];
   fabricTotal: number;
   stitchingTotal: number;
@@ -94,6 +101,33 @@ export interface NewOrderInput {
   city: string;
   postalCode: string;
   paymentMethod: PaymentMethod;
+}
+
+// --- Refunds ----------------------------------------------------------------
+
+/**
+ * A customer asking for their money back on a delivered order.
+ *
+ * Staff never create one of these: the request is the only route to a REFUNDED
+ * order, so every refund carries a reason and a person who asked for it
+ * (`src/lib/refunds.ts`).
+ */
+export interface RefundRequest {
+  id: string;
+  orderId: string;
+  /** The short code the customer knows the order by, e.g. "2VVS7D5B". */
+  orderNumber: string;
+  /** Who asked, for the staff queue. Empty on the local backend's own view. */
+  customerName: string;
+  status: RefundRequestStatus;
+  /** In the customer's words. Shown to staff, never rendered as HTML. */
+  reason: string;
+  /** What was asked back: the order total at the time of the request. */
+  amount: number;
+  /** Why staff ruled the way they did, once they have. */
+  staffNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
 }
 
 // --- Catalogue --------------------------------------------------------------
@@ -225,8 +259,7 @@ export interface ProductPhoto extends FocalPoint {
  * focal point is still editable, because that is two columns and no pixels.
  */
 export type ProductFormPhoto =
-  | ({ kind: "stored" } & ProductPhoto)
-  | ({ kind: "upload" } & UploadedImage);
+  ({ kind: "stored" } & ProductPhoto) | ({ kind: "upload" } & UploadedImage);
 
 /** Where to point an `<img>` at, whichever kind it is. */
 export function photoSrc(photo: ProductFormPhoto): string {
