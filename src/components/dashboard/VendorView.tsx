@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/ProductImage";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import {
+  COMMISSION_HOLD_DAYS,
+  COMMISSION_STATUS_LABELS,
+  COMMISSION_TYPE_LABELS,
   DEFAULT_COMMISSION,
   calculateCommission,
   formatCommissionRate,
@@ -124,7 +127,7 @@ export function VendorView() {
     setShowPayoutForm(false);
     await refresh();
     toast(
-      `Payout of ${PKR(Math.round(amount))} requested. Approval needs the backend — nothing has moved yet.`,
+      `Payout of ${PKR(Math.round(amount))} requested. Approval needs the backend, so nothing has moved yet.`,
       "success"
     );
   }
@@ -134,7 +137,7 @@ export function VendorView() {
       await navigator.clipboard.writeText(text);
       toast(successMessage, "success");
     } catch {
-      toast("Your browser blocked the copy — select the text and copy it manually.", "info");
+      toast("Your browser blocked the copy. Select the text and copy it manually.", "info");
     }
   }
 
@@ -181,11 +184,38 @@ export function VendorView() {
     );
   }, [query, products]);
 
+  // "Earned To Date" counts CREDITED and PAID only, so a sale still inside its
+  // hold contributes nothing to it. On its own that reads as money that went
+  // missing: the table below lists the sale with a commission against it while
+  // the headline says zero. The note is what reconciles the two.
   const stats = [
-    { label: "Your Commission", value: formatCommissionRate(commission) },
-    { label: "Link Clicks", value: performance ? performance.clicks.toLocaleString() : "—" },
-    { label: "Sales Referred", value: performance ? performance.sales.toLocaleString() : "—" },
-    { label: "Earned To Date", value: performance ? PKR(performance.earned) : "—" },
+    {
+      label: "Your Commission",
+      value: formatCommissionRate(commission),
+      // Which basis FUJRS settled on, spelled out. "PKR 500" on its own could
+      // be read as a one-off or as a share of something; naming it as a flat
+      // amount per sale (or a percentage of it) is the difference between a
+      // vendor knowing what they earn and guessing.
+      note: COMMISSION_TYPE_LABELS[commission.type],
+    },
+    {
+      label: "Link Clicks",
+      value: performance ? performance.clicks.toLocaleString() : "-",
+      note: null,
+    },
+    {
+      label: "Sales Referred",
+      value: performance ? performance.sales.toLocaleString() : "-",
+      note: null,
+    },
+    {
+      label: "Earned To Date",
+      value: performance ? PKR(performance.earned) : "-",
+      note:
+        performance && performance.pending > 0
+          ? `${PKR(performance.pending)} on hold, credited ${COMMISSION_HOLD_DAYS} days after delivery`
+          : null,
+    },
   ];
 
   return (
@@ -218,6 +248,9 @@ export function VendorView() {
               <div key={stat.label} className="border border-border-subtle p-6">
                 <p className="text-label-sm uppercase text-text-muted">{stat.label}</p>
                 <p className="mt-2 font-display text-headline-sm">{stat.value}</p>
+                {stat.note && (
+                  <p className="mt-2 text-label-sm text-marketplace-bronze">{stat.note}</p>
+                )}
               </div>
             ))}
           </div>
@@ -225,7 +258,7 @@ export function VendorView() {
           <div className="mt-10 border border-border-subtle p-6">
             <p className="text-label-sm uppercase text-text-muted">Your Referral Code</p>
             <div className="mt-3 flex flex-wrap items-center gap-4">
-              <p className="font-display text-headline-sm tracking-widest">{referralCode || "—"}</p>
+              <p className="font-display text-headline-sm tracking-widest">{referralCode || "-"}</p>
               <Button
                 variant="secondary"
                 onClick={() => void copy(referralCode, "Referral code copied.")}
@@ -235,8 +268,9 @@ export function VendorView() {
             </div>
             <p className="mt-4 max-w-prose text-body-md text-text-muted">
               Every link you take carries this code. When someone buys through it, the sale is
-              credited to you and you earn {formatCommissionRate(commission)} of it. Your rate is
-              set by FUJRS — you can see it here but not change it.
+              credited to you and you earn {formatCommissionRate(commission)}, your rate as a{" "}
+              {COMMISSION_TYPE_LABELS[commission.type].toLowerCase()}. That rate is set by FUJRS, so
+              you can see it here but not change it.
             </p>
           </div>
 
@@ -249,15 +283,17 @@ export function VendorView() {
                   <th className="px-4 py-3 font-medium">Order</th>
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Sale</th>
+                  <th className="px-4 py-3 font-medium">Rate</th>
                   <th className="px-4 py-3 font-medium">You Earned</th>
+                  <th className="px-4 py-3 font-medium">State</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {!sales && <LoadingRow colSpan={5} />}
+                {!sales && <LoadingRow colSpan={7} />}
                 {sales?.length === 0 && (
                   <tr>
-                    <td className="px-4 py-6 text-text-muted" colSpan={5}>
-                      No referred sales yet — they appear here when someone buys through one of your
+                    <td className="px-4 py-6 text-text-muted" colSpan={7}>
+                      No referred sales yet. They appear here when someone buys through one of your
                       links.
                     </td>
                   </tr>
@@ -270,11 +306,30 @@ export function VendorView() {
                     </td>
                     <td className="px-4 py-3 text-text-muted">{sale.date}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{PKR(sale.salePrice)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-text-muted">
+                      {/* The rate this sale was settled on, not the rate today.
+                          Two sales can pay differently because FUJRS changed
+                          the rate between them, and without this column that
+                          reads as an error rather than a history. */}
+                      {formatCommissionRate(sale.rate)}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-marketplace-bronze">
                       {/* Read back from the commission record, not recalculated:
                           the rate was copied when the sale happened, so a later
                           rate change must not rewrite what they earned. */}
                       {PKR(sale.commission)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {/* Without this the row says "you earned PKR X" and the
+                          stat above says PKR 0, with nothing on screen to
+                          explain the gap. */}
+                      <span
+                        className={`text-label-sm uppercase ${
+                          sale.status === "REVERSED" ? "text-error" : "text-text-muted"
+                        }`}
+                      >
+                        {COMMISSION_STATUS_LABELS[sale.status]}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -313,8 +368,9 @@ export function VendorView() {
               {filtered.map((product) => (
                 <article key={product.id} className="flex flex-col border border-border-subtle">
                   <div className="relative aspect-[3/4] bg-surface-container-low">
-                    <Image
-                      src={product.images[0]}
+                    <ProductImage
+                      src={product.images[0]?.url}
+                      focal={product.images[0]}
                       alt=""
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -419,13 +475,13 @@ export function VendorView() {
             <div className="border border-border-subtle p-6">
               <p className="text-label-sm uppercase text-text-muted">Earned To Date</p>
               <p className="mt-2 font-display text-headline-sm">
-                {performance ? PKR(performance.earned) : "—"}
+                {performance ? PKR(performance.earned) : "-"}
               </p>
             </div>
             <div className="border border-border-subtle p-6">
               <p className="text-label-sm uppercase text-text-muted">Pending Payout</p>
               <p className="mt-2 font-display text-headline-sm">
-                {performance ? PKR(performance.pending) : "—"}
+                {performance ? PKR(performance.pending) : "-"}
               </p>
             </div>
             <div className="border border-border-subtle p-6">
@@ -437,6 +493,9 @@ export function VendorView() {
               <p className="mt-2 font-display text-headline-sm">
                 {formatCommissionRate(commission)}
               </p>
+              <p className="mt-2 text-label-sm text-marketplace-bronze">
+                {COMMISSION_TYPE_LABELS[commission.type]}
+              </p>
             </div>
           </div>
 
@@ -446,7 +505,7 @@ export function VendorView() {
                 <h2 className="font-display text-headline-sm">Withdraw Your Balance</h2>
                 <p className="mt-1 max-w-prose text-body-md text-text-muted">
                   Minimum withdrawal is {PKR(MIN_PAYOUT_PKR)}. Requests are reviewed by FUJRS before
-                  payment — raising one here records it only, since there&apos;s no payout provider
+                  payment. Raising one here records it only, since there&apos;s no payout provider
                   connected yet.
                 </p>
               </div>
@@ -543,7 +602,8 @@ export function VendorView() {
             <h3 className="font-display text-headline-sm">How your commission works</h3>
             <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 text-body-md text-text-muted">
               <li>
-                FUJRS sets your rate — {formatCommissionRate(commission)} on every referred sale.
+                FUJRS sets your rate at {formatCommissionRate(commission)} on every referred sale,
+                paid as a {COMMISSION_TYPE_LABELS[commission.type].toLowerCase()}.
               </li>
               <li>
                 You always share the piece at its real FUJRS price; you don&apos;t set prices.

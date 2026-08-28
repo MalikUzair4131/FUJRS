@@ -57,12 +57,19 @@ the Section 8 decisions, which are the real blocker on writing the schema.
 
 - [x] Orders: view, open a detail panel (items, totals, ship-to, payment,
       referral attribution)
-- [x] **Order status management including cancel and refund** —
-      `src/components/dashboard/OrderManager.tsx`. Legal moves come from
-      `nextStatuses()` in `src/lib/orderStatus.ts`, so the UI can't offer an
-      illegal transition: cancel is unavailable once delivered, refund is
-      terminal. Orders placed in this browser are actionable; the sample rows
-      are labelled as fixtures and aren't.
+- [x] **Order status management** — `src/components/dashboard/OrderManager.tsx`.
+      Legal moves come from `nextStatuses()` in `src/lib/orderStatus.ts`, so the
+      UI can't offer an illegal transition: cancel is unavailable once
+      delivered, and a delivered order reads as complete with no further
+      action. Orders placed in this browser are actionable; the sample rows are
+      labelled as fixtures and aren't.
+- [x] **Refunds are customer-initiated** — `src/lib/refunds.ts`,
+      `RefundQueue.tsx` (staff), `components/account/RefundRequest.tsx`
+      (customer). Staff have no button that refunds an order out of nowhere:
+      the customer raises a request against a delivered order inside the 14 day
+      return window, staff approve or decline it, and approving is what moves
+      the order to REFUNDED. See SCHEMA.md §3.1 for where each rule is enforced
+      in the database.
 - [x] **Product management** — `CatalogManager` / `ProductForm` /
       `CatalogTable`, backed by `src/lib/data/`. Add and remove publish
       immediately; there is no review queue. The form now captures every
@@ -112,8 +119,9 @@ The finished UI pins down these entities. This is the input to the schema:
 - **User** — id, name, email, role (`CUSTOMER | ADMIN | VENDOR | TAILOR |
   SUPER_ADMIN`), plus `commissionType` / `commissionValue` on vendors
 - **Product** — the `Product` interface in `src/data/products.ts`
-- **Order** — status (`CONFIRMED | PROCESSING | DELIVERED | CANCELLED |
-  REFUNDED`), fabric/stitching/shipping/total, ship-to, payment method, and
+- **Order** — status (`CONFIRMED | PROCESSING | PAYMENT_RECEIVED | DELIVERED |
+  CANCELLED | REFUNDED`), fabric/stitching/shipping/total, ship-to, payment
+  method, and
   **`referralCode`**
 - **OrderItem** — product, qty, price, and the stitching fields
 - **StitchingRequest** — the 12 measurements, neckline/sleeve/hemline,

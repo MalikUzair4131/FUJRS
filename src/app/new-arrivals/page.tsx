@@ -3,6 +3,14 @@ import { LinkButton } from "@/components/ui/Button";
 import { catalogRead } from "@/lib/data/server";
 import { EmptyCatalogue } from "@/components/ui/EmptyCatalogue";
 import { ProductImage } from "@/components/ui/ProductImage";
+import type { Metadata } from "next";
+import { siteOrigin } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "New Arrivals",
+  description: "Discover the latest ready-to-wear and unstitched fashion from FUJRS in Pakistan.",
+  alternates: siteOrigin ? { canonical: "/new-arrivals" } : undefined,
+};
 
 export default async function NewArrivalsPage() {
   const newArrivals = (await catalogRead.list()).filter((p) => p.isNewArrival);
@@ -25,7 +33,8 @@ export default async function NewArrivalsPage() {
         <div className="container-luxe mt-10 grid grid-cols-1 gap-gutter lg:grid-cols-2">
           <div className="relative aspect-[4/5] overflow-hidden bg-surface-container lg:aspect-auto">
             <ProductImage
-              src={spotlight.images[0]}
+              src={spotlight.images[0]?.url}
+              focal={spotlight.images[0]}
               alt={spotlight.title}
               fill
               sizes="(min-width: 1024px) 50vw, 100vw"

@@ -3,9 +3,28 @@ import Link from "next/link";
 import { Reveal } from "@/components/ui/Reveal";
 import { getStitcherBySlug, stitchers } from "@/data/stitchers";
 import { LinkButton } from "@/components/ui/Button";
+import type { Metadata } from "next";
+import { siteOrigin } from "@/lib/seo";
 
 export function generateStaticParams() {
   return stitchers.map((s) => ({ slug: s.slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const stitcher = getStitcherBySlug((await params).slug);
+  if (!stitcher) return {};
+
+  return {
+    title: `${stitcher.name}, FUJRS Master Tailor`,
+    description: stitcher.bio,
+    alternates: siteOrigin
+      ? { canonical: `/tailoring/stitchers/${stitcher.slug}` }
+      : undefined,
+  };
 }
 
 const spanClass: Record<string, string> = {
@@ -46,7 +65,7 @@ export default async function StitcherProfilePage({
             <div>
               <h1 className="font-display-lg text-display-lg leading-none mb-4">{stitcher.name}</h1>
               <p className="font-headline-sm text-headline-sm text-text-muted italic">
-                {stitcher.workshopNote ? stitcher.workshopNote.split(" — ")[0] : stitcher.specialty}
+                {stitcher.workshopNote ? stitcher.workshopNote.split(". ")[0] : stitcher.specialty}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-8 border-y border-black/10 py-8">
@@ -180,7 +199,7 @@ export default async function StitcherProfilePage({
                         &ldquo;{t.quote}&rdquo;
                       </p>
                       <cite className="font-label-md text-label-md uppercase tracking-widest text-marketplace-bronze not-italic">
-                        — {t.author}
+                        {t.author}
                       </cite>
                     </blockquote>
                   ))}
