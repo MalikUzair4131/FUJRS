@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useTailoring, MEASUREMENT_FIELDS } from "@/components/tailoring/TailoringContext";
+import { useTailoring } from "@/components/tailoring/TailoringContext";
+import { MEASUREMENT_FIELDS, isMeasurementSetComplete } from "@/lib/measurements";
 import { useCart } from "@/components/cart/CartContext";
 import { getStitcherBySlug, stitchers } from "@/data/stitchers";
+import { Button } from "@/components/ui/Button";
 
 const styleImages: Record<string, string> = {
   Mandarin:
@@ -26,8 +28,7 @@ export default function ReviewPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    const hasMeasurements = MEASUREMENT_FIELDS.every((f) => config.measurements[f]?.trim());
-    if (!hasMeasurements) router.replace("/tailoring/configure");
+    if (!isMeasurementSetComplete(config.measurements)) router.replace("/tailoring/configure");
   }, [mounted, config, router]);
 
   if (!mounted) return null;
@@ -36,7 +37,7 @@ export default function ReviewPage() {
     addCustomItem({
       id: `bespoke-${Date.now()}`,
       slug: "bespoke-stitching-project",
-      title: `Bespoke ${config.garmentType} — ${config.neckline}, ${config.sleeve}`,
+      title: `Bespoke ${config.garmentType}: ${config.neckline}, ${config.sleeve}`,
       image: styleImages[config.neckline] ?? styleImages.Mandarin,
       price: total,
       stitching: { label: `${config.neckline}, ${config.sleeve}, ${config.hemline}`, addOn: 0 },
@@ -79,9 +80,12 @@ export default function ReviewPage() {
                 </div>
                 <h2 className="font-headline-md text-primary mb-1">{stitcher.name}</h2>
                 <p className="text-secondary italic font-body-md">
-                  The FUJRS Atelier {stitcher.experience && `• ${stitcher.experience} of Craftsmanship`}
+                  The FUJRS Atelier{" "}
+                  {stitcher.experience && `• ${stitcher.experience} of Craftsmanship`}
                 </p>
-                <p className="text-on-surface-variant text-label-sm mt-4 max-w-md">{stitcher.bio}</p>
+                <p className="text-on-surface-variant text-label-sm mt-4 max-w-md">
+                  {stitcher.bio}
+                </p>
               </div>
             </div>
           </section>
@@ -97,11 +101,15 @@ export default function ReviewPage() {
                 { label: "Hemline Finish", value: config.hemline },
               ].map((item) => (
                 <div key={item.label} className="space-y-4">
-                  <p className="text-label-sm text-secondary uppercase tracking-widest">{item.label}</p>
+                  <p className="text-label-sm text-secondary uppercase tracking-widest">
+                    {item.label}
+                  </p>
                   <div className="relative">
                     <div
                       className="w-full aspect-[4/5] object-cover bg-surface bg-cover bg-center"
-                      style={{ backgroundImage: `url('${styleImages[item.value] ?? styleImages.Mandarin}')` }}
+                      style={{
+                        backgroundImage: `url('${styleImages[item.value] ?? styleImages.Mandarin}')`,
+                      }}
                     />
                     <div className="mt-4">
                       <h4 className="font-label-md text-primary uppercase">{item.value}</h4>
@@ -122,9 +130,14 @@ export default function ReviewPage() {
             </h3>
             <div className="grid grid-cols-2 gap-y-6 gap-x-12">
               {MEASUREMENT_FIELDS.map((field) => (
-                <div key={field} className="flex justify-between items-end border-b border-black/5 pb-2">
+                <div
+                  key={field}
+                  className="flex justify-between items-end border-b border-black/5 pb-2"
+                >
                   <span className="text-label-sm text-secondary uppercase">{field}</span>
-                  <span className="font-label-md text-primary">{config.measurements[field] ?? "—"}</span>
+                  <span className="font-label-md text-primary">
+                    {config.measurements[field] ?? "-"}
+                  </span>
                 </div>
               ))}
             </div>
@@ -138,8 +151,8 @@ export default function ReviewPage() {
                     Estimated Completion: 14-21 Business Days
                   </p>
                   <p className="text-label-sm text-secondary mt-1 italic">
-                    Includes master artisan review, pattern drafting,
-                    hand-stitching, and final quality audit.
+                    Includes master artisan review, pattern drafting, hand-stitching, and final
+                    quality audit.
                   </p>
                 </div>
               </div>
@@ -153,13 +166,14 @@ export default function ReviewPage() {
             </div>
 
             <div className="mt-8 space-y-4">
-              <button
+              <Button
                 onClick={handleProceed}
                 disabled={placed}
-                className="w-full bg-primary text-white py-5 px-8 uppercase font-label-md tracking-widest hover:bg-on-primary-fixed transition-colors duration-300 disabled:opacity-60"
+                variant="primary"
+                className="w-full !py-5 !px-8"
               >
                 {placed ? "Added to Bag…" : "Proceed to Shopping Bag"}
-              </button>
+              </Button>
               <Link
                 href="/tailoring/configure"
                 className="block text-center text-label-sm uppercase tracking-widest text-secondary hover:text-primary transition-colors py-2"
@@ -171,14 +185,15 @@ export default function ReviewPage() {
 
           <div className="p-8 border border-black/10 flex items-center gap-6">
             <div className="bg-marketplace-bronze/10 p-3">
-              <span className="material-symbols-outlined text-marketplace-bronze">verified_user</span>
+              <span className="material-symbols-outlined text-marketplace-bronze">
+                verified_user
+              </span>
             </div>
             <div>
               <h4 className="font-label-md text-primary uppercase">The Perfect Fit Guarantee</h4>
               <p className="text-label-sm text-secondary">
-                Our artisans review every measurement. If we spot an
-                anomaly, we&apos;ll reach out for a re-verification before
-                cutting the fabric.
+                Our artisans review every measurement. If we spot an anomaly, we&apos;ll reach out
+                for a re-verification before cutting the fabric.
               </p>
             </div>
           </div>

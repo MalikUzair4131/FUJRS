@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/ui/Reveal";
+import { LinkButton } from "@/components/ui/Button";
 
 const craftsmanship = [
   {
@@ -81,10 +82,9 @@ export default function AboutPage() {
           </Reveal>
           <Reveal delay={150} className="md:col-start-8 md:col-span-4">
             <p className="font-body text-body-lg text-on-surface-variant leading-relaxed">
-              FUJRS was born from a desire to preserve the vanishing arts of
-              the Indus Valley while tailoring them for the contemporary
-              global stage. We believe that a garment is more than just
-              attire; it is a canvas of cultural identity.
+              FUJRS was born from a desire to preserve the vanishing arts of the Indus Valley while
+              tailoring them for the contemporary global stage. We believe that a garment is more
+              than just attire; it is a canvas of cultural identity.
             </p>
           </Reveal>
         </div>
@@ -94,9 +94,11 @@ export default function AboutPage() {
       <section className="py-24 bg-surface-container-low">
         <div className="max-w-container-max mx-auto px-margin-desktop">
           <div className="flex items-baseline justify-between mb-16 border-b border-outline-variant pb-8">
-            <h3 className="font-display text-display-lg-mobile md:text-headline-md">The Heritage</h3>
+            <h3 className="font-display text-display-lg-mobile md:text-headline-md">
+              The Heritage
+            </h3>
             <span className="font-body text-label-md uppercase tracking-widest text-on-surface-variant">
-              01 — Origins
+              01 · Origins
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
@@ -109,20 +111,23 @@ export default function AboutPage() {
                 }}
               />
             </Reveal>
-            <Reveal delay={150} className="md:col-span-5 flex flex-col justify-center px-8 md:px-12">
+            <Reveal
+              delay={150}
+              className="md:col-span-5 flex flex-col justify-center px-8 md:px-12"
+            >
               <h4 className="font-display text-headline-sm mb-6">A Legacy in Every Knot</h4>
               <p className="font-body text-body-md text-on-surface-variant mb-8">
-                From the bustling bazaars of Lahore to the remote weaving
-                villages of Sindh, we source techniques that have remained
-                unchanged for centuries. Our heritage is not just in our
-                archives; it&apos;s in the muscle memory of our artisans.
+                From the bustling bazaars of Lahore to the remote weaving villages of Sindh, we
+                source techniques that have remained unchanged for centuries. Our heritage is not
+                just in our archives; it&apos;s in the muscle memory of our artisans.
               </p>
               <div className="p-8 border border-primary/10 bg-surface">
                 <p className="font-display italic text-headline-sm text-primary">
-                  &ldquo;To understand our future, we must look at the
-                  threads of our past.&rdquo;
+                  &ldquo;To understand our future, we must look at the threads of our past.&rdquo;
                 </p>
-                <p className="font-body text-label-sm mt-4 uppercase">— Khadija S., Creative Director</p>
+                <p className="font-body text-label-sm mt-4 uppercase">
+                  Khadija S., Creative Director
+                </p>
               </div>
             </Reveal>
           </div>
@@ -174,7 +179,9 @@ export default function AboutPage() {
                     {item.icon}
                   </span>
                   <div>
-                    <h6 className="font-body text-label-md uppercase tracking-widest mb-2">{item.title}</h6>
+                    <h6 className="font-body text-label-md uppercase tracking-widest mb-2">
+                      {item.title}
+                    </h6>
                     <p className="font-body text-body-md text-on-primary-container">{item.body}</p>
                   </div>
                 </div>
@@ -197,23 +204,20 @@ export default function AboutPage() {
       {/* CTA */}
       <section className="py-32 text-center px-margin-mobile">
         <Reveal className="max-w-2xl mx-auto">
-          <h2 className="font-display text-display-lg-mobile md:text-headline-md mb-8">Wear the Story</h2>
+          <h2 className="font-display text-display-lg-mobile md:text-headline-md mb-8">
+            Wear the Story
+          </h2>
           <p className="font-body text-body-lg text-on-surface-variant mb-12 leading-relaxed">
-            Explore our latest unstitched collections and discover the heritage woven into every fiber.
+            Explore our latest unstitched collections and discover the heritage woven into every
+            fiber.
           </p>
           <div className="flex flex-col md:flex-row justify-center gap-6">
-            <a
-              href="/new-arrivals"
-              className="bg-primary text-white px-12 py-5 font-body text-label-md uppercase tracking-widest hover:bg-marketplace-bronze transition-colors duration-300"
-            >
+            <LinkButton href="/new-arrivals" variant="primary" className="!px-12 !py-5">
               View Collections
-            </a>
-            <a
-              href="/tailoring/configure"
-              className="border border-primary text-primary px-12 py-5 font-body text-label-md uppercase tracking-widest hover:bg-primary hover:text-white transition-all duration-300"
-            >
+            </LinkButton>
+            <LinkButton href="/tailoring/configure" variant="secondary" className="!px-12 !py-5">
               Book A Tailor
-            </a>
+            </LinkButton>
           </div>
         </Reveal>
       </section>

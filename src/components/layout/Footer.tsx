@@ -27,12 +27,15 @@ export function Footer() {
     <footer className="bg-surface-container border-t border-outline-variant mt-margin-desktop">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-gutter px-gutter py-20 max-w-container-max mx-auto">
         <div className="col-span-1 md:col-span-1">
-          <Link href="/" className="font-display-lg text-headline-md text-primary mb-8 block uppercase">
+          <Link
+            href="/"
+            className="font-display-lg text-headline-md text-primary mb-8 block uppercase"
+          >
             FUJRS
           </Link>
           <p className="text-on-surface-variant font-body-md mb-6">
-            Threads of Heritage. Redefining luxury retail for the modern
-            global South. Tradition, stitched for the future.
+            Threads of Heritage. Redefining luxury retail for the modern global South. Tradition,
+            stitched for the future.
           </p>
           <div className="flex gap-4">
             {socials.map((social) => (

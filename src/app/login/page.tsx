@@ -4,6 +4,8 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { Button } from "@/components/ui/Button";
+import { isStaffRole } from "@/lib/auth/roles";
 
 function LoginForm() {
   const router = useRouter();
@@ -25,11 +27,13 @@ function LoginForm() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Incorrect email or password.");
+      setError(result.error);
       return;
     }
-    router.push(callbackUrl);
-    router.refresh();
+
+    // Staff land on their dashboard unless they asked for somewhere specific.
+    const isDefaultTarget = callbackUrl === "/account";
+    router.push(isStaffRole(result.role) && isDefaultTarget ? "/dashboard" : callbackUrl);
   }
 
   return (
@@ -42,10 +46,14 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="login-email"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Email
             </label>
             <input
+              id="login-email"
               type="email"
               required
               value={email}
@@ -54,10 +62,22 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="login-password"
+                className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+              >
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="font-body text-label-sm text-on-surface-variant underline hover:text-primary"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
+              id="login-password"
               type="password"
               required
               value={password}
@@ -68,13 +88,9 @@ function LoginForm() {
 
           {error && <p className="font-label-sm text-error">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-on-primary py-4 font-body text-label-md uppercase tracking-widest hover:bg-marketplace-bronze transition-colors disabled:opacity-60"
-          >
+          <Button type="submit" disabled={loading} variant="primary" className="w-full !py-4">
             {loading ? "Signing In…" : "Sign In"}
-          </button>
+          </Button>
         </form>
 
         <p className="mt-6 text-center font-body text-body-md text-on-surface-variant">

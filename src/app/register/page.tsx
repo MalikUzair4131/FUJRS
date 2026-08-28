@@ -3,20 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { stitchers } from "@/data/stitchers";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { Button } from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { signIn, signUp } = useAuth();
+  const { signUp } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const [isStaff, setIsStaff] = useState(false);
-  const [staffRole, setStaffRole] = useState<"VENDOR" | "TAILOR">("VENDOR");
-  const [staffInviteCode, setStaffInviteCode] = useState("");
-  const [assignedStitcherSlug, setAssignedStitcherSlug] = useState(stitchers[0].slug);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,52 +21,16 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        email,
-        password,
-        ...(isStaff
-          ? {
-              staffRole,
-              staffInviteCode,
-              ...(staffRole === "TAILOR" ? { assignedStitcherSlug } : {}),
-            }
-          : {}),
-      }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong.");
-      setLoading(false);
-      return;
-    }
-
-    const signUpResult = await signUp({
-      email,
-      password,
-      name,
-      role: isStaff ? staffRole : "CUSTOMER",
-      assignedStitcherSlug: isStaff && staffRole === "TAILOR" ? assignedStitcherSlug : null,
-    });
-    if (signUpResult.error) {
-      setError(signUpResult.error);
-      setLoading(false);
-      return;
-    }
-
-    const result = await signIn(email, password);
+    // The account is created on this device only — there's no backend to
+    // register against, and the password is intentionally not stored.
+    const result = await signUp({ email, password, name });
     setLoading(false);
 
-    if (result?.error) {
-      router.push("/login");
+    if (result.error) {
+      setError(result.error);
       return;
     }
-    router.push(isStaff ? "/dashboard" : "/account");
-    router.refresh();
+    router.push("/account");
   }
 
   return (
@@ -84,10 +43,14 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="register-name"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Full Name
             </label>
             <input
+              id="register-name"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -95,10 +58,14 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="register-email"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Email
             </label>
             <input
+              id="register-email"
               type="email"
               required
               value={email}
@@ -107,10 +74,14 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
+            <label
+              htmlFor="register-password"
+              className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant"
+            >
               Password
             </label>
             <input
+              id="register-password"
               type="password"
               required
               minLength={8}
@@ -121,80 +92,11 @@ export default function RegisterPage() {
             <p className="mt-1 font-label-sm text-on-surface-variant">At least 8 characters.</p>
           </div>
 
-          <div className="border-t border-outline-variant pt-4">
-            <label className="flex items-center gap-2 font-label-sm uppercase tracking-widest text-on-surface-variant cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isStaff}
-                onChange={(e) => setIsStaff(e.target.checked)}
-                className="h-4 w-4"
-              />
-              This is a staff account (Vendor / Tailor)
-            </label>
-
-            {isStaff && (
-              <div className="mt-4 space-y-4 border border-marketplace-bronze/30 bg-surface-container-low p-4">
-                <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
-                    Role
-                  </label>
-                  <select
-                    value={staffRole}
-                    onChange={(e) => setStaffRole(e.target.value as "VENDOR" | "TAILOR")}
-                    className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
-                  >
-                    <option value="VENDOR">Vendor (merchandising)</option>
-                    <option value="TAILOR">Tailor (master stitcher)</option>
-                  </select>
-                </div>
-
-                {staffRole === "TAILOR" && (
-                  <div>
-                    <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
-                      Which Master Stitcher is this?
-                    </label>
-                    <select
-                      value={assignedStitcherSlug}
-                      onChange={(e) => setAssignedStitcherSlug(e.target.value)}
-                      className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
-                    >
-                      {stitchers.map((s) => (
-                        <option key={s.slug} value={s.slug}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label className="font-body text-label-sm uppercase tracking-widest text-on-surface-variant">
-                    Staff Invite Code
-                  </label>
-                  <input
-                    required={isStaff}
-                    value={staffInviteCode}
-                    onChange={(e) => setStaffInviteCode(e.target.value)}
-                    className="mt-1 w-full border border-outline-variant bg-white px-4 py-3 font-body text-body-md focus:outline-none focus:border-marketplace-bronze"
-                  />
-                  <p className="mt-1 font-label-sm text-on-surface-variant">
-                    Ask an admin for this. Without a valid code, the
-                    account is created as a regular customer instead.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {error && <p className="font-label-sm text-error">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary text-on-primary py-4 font-body text-label-md uppercase tracking-widest hover:bg-marketplace-bronze transition-colors disabled:opacity-60"
-          >
+          <Button type="submit" disabled={loading} variant="primary" className="w-full !py-4">
             {loading ? "Creating Account…" : "Create Account"}
-          </button>
+          </Button>
         </form>
 
         <p className="mt-6 text-center font-body text-body-md text-on-surface-variant">

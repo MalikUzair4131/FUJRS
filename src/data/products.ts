@@ -1,3 +1,16 @@
+// The hand-authored catalogue FUJRS shipped with.
+//
+// NOT the app's product type any more. Components read `CatalogItem` from
+// `@/lib/data`; this array reaches them two ways, and only two:
+//
+//   * `src/lib/data/static/catalog.ts` maps it to CatalogItem for the `local`
+//     backend, the same way an adapter maps a database row
+//   * `scripts/generate-seed.mjs` turns it into supabase/seed.sql
+//
+// Nothing else may import it — a component reaching in here is a component
+// that would stop seeing products the moment the catalogue moved to the
+// database.
+
 export type Gender = "Men" | "Women";
 
 export interface Product {
@@ -14,15 +27,17 @@ export interface Product {
   isNewArrival: boolean;
   description: string;
   sizes: string[];
-  rating: number;
-  reviewCount: number;
   meters?: string;
   badge?: string;
   sku?: string;
   heritageStory?: string;
   embroidery?: string;
   dupattaInfo?: string;
-  stitcher?: { name: string; slug: string; rating: number; reviewCount: number };
+  /**
+   * Present when the piece can be sent for bespoke stitching, and the charge
+   * for it. Which Master Stitcher takes the job is an operational assignment
+   * made later, never a column on the product.
+   */
   stitchingAddOn?: number;
 }
 
@@ -99,8 +114,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "An unstitched three-piece suit in emerald green raw silk with heavy gold tilla work on the neckline and sleeves, paired with a diaphanous scalloped-edge organza dupatta.",
-    rating: 4.8,
-    reviewCount: 132,
     sizes: ["Unstitched"],
   },
   {
@@ -116,8 +129,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "A midnight blue velvet shirt piece with heavy silver zardozi embroidery, matching silk trouser piece, and a net dupatta with silver sparkle motifs.",
-    rating: 4.9,
-    reviewCount: 47,
     sizes: ["Unstitched"],
   },
   {
@@ -133,8 +144,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "Soft blush-colored organza with delicate 3D floral appliqués and pearl beadwork, sheer and light with graceful movement.",
-    rating: 4.7,
-    reviewCount: 63,
     sizes: ["Unstitched"],
   },
   {
@@ -150,8 +159,6 @@ export const products: Product[] = [
     isNewArrival: true,
     description:
       "Classic off-white karandi fabric with a subtle geometric self-weave, presented with premium obsidian buttons for a modern, architectural finish.",
-    rating: 4.5,
-    reviewCount: 28,
     sizes: ["Unstitched"],
   },
 
@@ -170,9 +177,7 @@ export const products: Product[] = [
     images: [src.giza87],
     isNewArrival: false,
     description:
-      "Premium Egyptian Giza 87 cotton with a subtle, elegant sheen and a fine weave — our signature white, 4.5 meters.",
-    rating: 4.8,
-    reviewCount: 54,
+      "Premium Egyptian Giza 87 cotton with a subtle, elegant sheen and a fine weave. Our signature white, 4.5 meters.",
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
     badge: "Sold by FUJRS",
@@ -188,9 +193,8 @@ export const products: Product[] = [
     price: 8900,
     images: [src.indigoLatha],
     isNewArrival: false,
-    description: "Deep navy Latha fabric, folded and finished for a modern, masculine wardrobe staple.",
-    rating: 4.5,
-    reviewCount: 22,
+    description:
+      "Deep navy Latha fabric, folded and finished for a modern, masculine wardrobe staple.",
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
     badge: "Sold by FUJRS",
@@ -207,8 +211,6 @@ export const products: Product[] = [
     images: [src.winterKarandi],
     isNewArrival: false,
     description: "Textured slub-weave karandi in slate gray, cut for winter formalwear.",
-    rating: 4.6,
-    reviewCount: 31,
     sizes: ["Unstitched"],
     meters: "4.0 Meters",
   },
@@ -223,9 +225,8 @@ export const products: Product[] = [
     price: 7500,
     images: [src.liquidMicrofiber],
     isNewArrival: false,
-    description: "Wrinkle-resistant microfiber with a liquid-like drape, off-white, for effortless formal wear.",
-    rating: 4.4,
-    reviewCount: 17,
+    description:
+      "Wrinkle-resistant microfiber with a liquid-like drape, off-white, for effortless formal wear.",
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
   },
@@ -240,9 +241,8 @@ export const products: Product[] = [
     price: 10800,
     images: [src.emeraldSelfPrint],
     isNewArrival: false,
-    description: "Deep emerald cotton with a subtle self-print pattern, for a refined everyday look.",
-    rating: 4.3,
-    reviewCount: 14,
+    description:
+      "Deep emerald cotton with a subtle self-print pattern, for a refined everyday look.",
     sizes: ["Unstitched"],
     meters: "4.5 Meters",
   },
@@ -268,8 +268,6 @@ export const products: Product[] = [
     isNewArrival: false,
     description:
       "Ivory embroidered silk with metallic tilla embroidery and pearl embellishments, draped over a minimalist boutique display.",
-    rating: 4.9,
-    reviewCount: 124,
     sizes: ["Unstitched"],
     badge: "Sold by FUJRS",
     sku: "FJ-UNS-AG882",
@@ -278,11 +276,6 @@ export const products: Product[] = [
     meters: "4.5 Meters (Standard Suit)",
     heritageStory:
       "The 'Aurelian' weave draws inspiration from the royal courts of the 17th-century Mughal era. Hand-woven on traditional looms in Banaras, this raw silk base undergoes a unique gold-dipping process before being meticulously embroidered by fourth-generation artisans. Every stitch tells a story of perseverance and refined luxury.",
-    // Source credited an external marketplace seller ("Khyber Artisans")
-    // with a "View Store" link — adapted into an internal FUJRS master
-    // tailor credit per your marketplace exclusion, linking to the
-    // internal team profile (built in Phase 4).
-    stitcher: { name: "Khyber Artisans — FUJRS Atelier", slug: "khyber-artisans", rating: 4.9, reviewCount: 124 },
     stitchingAddOn: 12500,
   },
   {
@@ -297,8 +290,6 @@ export const products: Product[] = [
     images: [src.noirEleganceLawn],
     isNewArrival: false,
     description: "Black embroidered lawn with crisp white threadwork across the neckline.",
-    rating: 4.7,
-    reviewCount: 61,
     sizes: ["Unstitched"],
     badge: "Best Seller",
   },
@@ -313,9 +304,8 @@ export const products: Product[] = [
     price: 18200,
     images: [src.celestialBlueChiffon],
     isNewArrival: false,
-    description: "Pastel blue chiffon with a shimmering beaded floral vine pattern in silver thread.",
-    rating: 4.6,
-    reviewCount: 29,
+    description:
+      "Pastel blue chiffon with a shimmering beaded floral vine pattern in silver thread.",
     sizes: ["Unstitched"],
     badge: "Official Store",
   },
@@ -330,9 +320,8 @@ export const products: Product[] = [
     price: 22500,
     images: [src.oliveTillaEmbroidery],
     isNewArrival: false,
-    description: "Olive green fabric with heavy golden border embroidery, for a warm-toned festive look.",
-    rating: 4.7,
-    reviewCount: 25,
+    description:
+      "Olive green fabric with heavy golden border embroidery, for a warm-toned festive look.",
     sizes: ["Unstitched"],
     badge: "Premium Collection",
   },
@@ -347,9 +336,8 @@ export const products: Product[] = [
     price: 31000,
     images: [src.ivoryPearlNet],
     isNewArrival: false,
-    description: "White-on-white embroidered net with a relief-like threadwork texture, sheer and delicate.",
-    rating: 4.8,
-    reviewCount: 12,
+    description:
+      "White-on-white embroidered net with a relief-like threadwork texture, sheer and delicate.",
     sizes: ["Unstitched"],
     badge: "Limited Edition",
   },
@@ -366,9 +354,8 @@ export const products: Product[] = [
     price: 8500,
     images: [src.khussa],
     isNewArrival: false,
-    description: "Handcrafted gold Khussa shoes with intricate Zardozi embroidery, complementing a luxury silk suit.",
-    rating: 4.6,
-    reviewCount: 19,
+    description:
+      "Handcrafted gold Khussa shoes with intricate Zardozi embroidery, complementing a luxury silk suit.",
     sizes: ["36", "37", "38", "39", "40"],
   },
   {
@@ -382,9 +369,8 @@ export const products: Product[] = [
     price: 14200,
     images: [src.chandbali],
     isNewArrival: false,
-    description: "Oversized gold Chandbali earrings with pearl drops, perfect for a bridal or formal look.",
-    rating: 4.8,
-    reviewCount: 33,
+    description:
+      "Oversized gold Chandbali earrings with pearl drops, perfect for a bridal or formal look.",
     sizes: ["One Size"],
   },
   {
@@ -399,8 +385,6 @@ export const products: Product[] = [
     images: [src.clutch],
     isNewArrival: false,
     description: "A structured gold silk clutch bag with a traditional jewel-encrusted clasp.",
-    rating: 4.5,
-    reviewCount: 11,
     sizes: ["One Size"],
   },
   {
@@ -414,9 +398,8 @@ export const products: Product[] = [
     price: 28000,
     images: [src.pashmina],
     isNewArrival: false,
-    description: "A fine Pashmina shawl in muted cream with intricate gold needlework at the borders.",
-    rating: 4.7,
-    reviewCount: 8,
+    description:
+      "A fine Pashmina shawl in muted cream with intricate gold needlework at the borders.",
     sizes: ["One Size"],
   },
 ];

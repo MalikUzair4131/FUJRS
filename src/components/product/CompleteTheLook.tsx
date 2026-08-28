@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { AddToBagButton } from "@/components/product/AddToBagButton";
-import type { Product } from "@/data/products";
+import type { CatalogItem } from "@/lib/data";
+import { ProductImage } from "@/components/ui/ProductImage";
 
-export function CompleteTheLook({ items }: { items: Product[] }) {
+export function CompleteTheLook({ items }: { items: CatalogItem[] }) {
   if (items.length === 0) return null;
 
   return (
@@ -22,14 +22,15 @@ export function CompleteTheLook({ items }: { items: Product[] }) {
           <div key={item.id} className="group">
             <Link href={`/products/${item.slug}`} className="block">
               <div className="aspect-[4/5] bg-surface-container overflow-hidden relative mb-4">
-                <Image
-                  src={item.images[0]}
+                <ProductImage
+                  src={item.images[0]?.url}
+                  focal={item.images[0]}
                   alt={item.title}
                   fill
                   sizes="(min-width: 768px) 25vw, 50vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute bottom-0 left-0 w-full bg-black text-white font-label-md py-4 text-center opacity-0 group-hover:opacity-100 transition-opacity translate-y-full group-hover:translate-y-0 duration-300">
+                <div className="absolute bottom-0 left-0 w-full bg-black text-white font-label-md py-4 text-center opacity-100 translate-y-0 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100 md:translate-y-full md:group-hover:translate-y-0 md:group-focus-within:opacity-100 md:group-focus-within:translate-y-0">
                   <AddToBagButton product={item} label="Quick Add" />
                 </div>
               </div>

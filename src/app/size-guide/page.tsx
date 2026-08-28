@@ -63,8 +63,7 @@ export default function SizeGuidePage() {
       <p className="label-caps text-gold">Reference</p>
       <h1 className="mt-2 font-display text-headline-md">Size Guide</h1>
       <p className="mt-3 max-w-xl text-body-md text-text-muted">
-        Use the charts below for ready-to-wear sizing. For a guaranteed fit,
-        book a{" "}
+        Use the charts below for ready-to-wear sizing. For a guaranteed fit, book a{" "}
         <Link href="/tailoring" className="text-on-surface underline">
           custom tailoring appointment
         </Link>{" "}
@@ -100,8 +99,7 @@ export default function SizeGuidePage() {
           <div>
             <p className="label-caps text-text-muted">Chest / Bust</p>
             <p className="mt-2 text-body-md text-text-muted">
-              Measure around the fullest part of your chest, keeping the tape
-              level.
+              Measure around the fullest part of your chest, keeping the tape level.
             </p>
           </div>
           <div>
@@ -113,8 +111,7 @@ export default function SizeGuidePage() {
           <div>
             <p className="label-caps text-text-muted">Hips</p>
             <p className="mt-2 text-body-md text-text-muted">
-              Measure around the fullest part of your hips, roughly 8 inches
-              below your waist.
+              Measure around the fullest part of your hips, roughly 8 inches below your waist.
             </p>
           </div>
         </div>

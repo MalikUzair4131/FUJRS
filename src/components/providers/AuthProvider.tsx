@@ -1,16 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { createBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { AppRole } from "@/lib/supabase/server";
+import type { AppRole } from "@/lib/auth/roles";
+import type { StoredUser } from "@/lib/auth/session";
+import { auth } from "@/lib/data";
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: AppRole;
-  assignedStitcherSlug: string | null;
-}
+type AuthUser = StoredUser;
 
 interface AuthSession {
   user: AuthUser;
@@ -18,97 +13,93 @@ interface AuthSession {
 
 interface AuthContextValue {
   session: AuthSession | null;
+
+  /**
+   * True when the session belongs to a guest rather than a registered account.
+   *
+   * A guest has a real session — that uuid is what owns their bag, their
+   * wishlist and a guest-checkout order — so `session !== null` answers "do we
+   * know who this is?", NOT "have they signed in?". Screens that offer to sign
+   * someone out, or show them account details they never entered, must check
+   * this. Screens that need the shopper's own data (their order, their bag)
+   * must not: a guest is entitled to those.
+   */
+  isGuest: boolean;
+
   status: "loading" | "authenticated" | "unauthenticated";
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (input: { email: string; password: string; name: string; role?: AppRole; assignedStitcherSlug?: string | null }) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string; role?: AppRole }>;
+  signUp: (input: { email: string; password: string; name: string }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<{ error?: string }>;
+  updateName: (newName: string) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function toUser(user: any): AuthUser {
-  const metadata = user?.user_metadata ?? {};
-  return {
-    id: user?.id ?? "",
-    email: user?.email ?? "",
-    name: metadata.name ?? user?.email ?? "",
-    role: (metadata.role ?? "CUSTOMER") as AppRole,
-    assignedStitcherSlug: metadata.assigned_stitcher_slug ?? null,
-  };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
-  const [client] = useState(() => createBrowserSupabaseClient());
 
+  // Every auth decision goes through the port, so this provider is identical
+  // whether the session is a localStorage stub or a real Supabase cookie.
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    async function hydrate() {
-      const { data: { session: initialSession }, error } = await client.auth.getSession();
-      if (!mounted) return;
-      if (error) {
-        setSession(null);
-        setStatus("unauthenticated");
-        return;
-      }
+    void auth.current().then((user) => {
+      if (!active) return;
+      setSession(user ? { user } : null);
+      setStatus(user ? "authenticated" : "unauthenticated");
+    });
 
-      if (initialSession?.user) {
-        setSession({ user: toUser(initialSession.user) });
-        setStatus("authenticated");
-      } else {
-        setSession(null);
-        setStatus("unauthenticated");
-      }
-    }
-
-    hydrate();
-
-    const { data: subscription } = client.auth.onAuthStateChange((event: string, nextSession: { user?: any } | null) => {
-      if (!mounted) return;
-      if (nextSession?.user) {
-        setSession({ user: toUser(nextSession.user) });
-        setStatus("authenticated");
-      } else {
-        setSession(null);
-        setStatus("unauthenticated");
-      }
+    // A token refresh, or a sign-out in another tab, must be reflected here —
+    // otherwise the UI shows a signed-in shell over a dead session.
+    const unsubscribe = auth.onChange((user) => {
+      if (!active) return;
+      setSession(user ? { user } : null);
+      setStatus(user ? "authenticated" : "unauthenticated");
     });
 
     return () => {
-      mounted = false;
-      subscription.subscription.unsubscribe();
+      active = false;
+      unsubscribe();
     };
-  }, [client]);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
+      isGuest: session?.user.isAnonymous ?? false,
       status,
       async signIn(email, password) {
-        const { error } = await client.auth.signInWithPassword({ email, password });
-        return { error: error?.message };
+        const result = await auth.signIn(email, password);
+        if (result.error || !result.user) return { error: result.error };
+        setSession({ user: result.user });
+        setStatus("authenticated");
+        return { role: result.user.role };
       },
       async signUp(input) {
-        const { error } = await client.auth.signUp({
-          email: input.email,
-          password: input.password,
-          options: {
-            data: {
-              name: input.name,
-              role: input.role ?? "CUSTOMER",
-              assigned_stitcher_slug: input.assignedStitcherSlug ?? null,
-            },
-          },
-        });
-        return { error: error?.message };
+        const result = await auth.signUp(input);
+        if (result.error || !result.user) return { error: result.error };
+        setSession({ user: result.user });
+        setStatus("authenticated");
+        return {};
       },
       async signOut() {
-        await client.auth.signOut();
+        await auth.signOut();
+        setSession(null);
+        setStatus("unauthenticated");
+      },
+      async updatePassword(newPassword) {
+        return auth.updatePassword(newPassword);
+      },
+      async updateName(newName) {
+        const result = await auth.updateName(newName);
+        if (result.error || !result.user) return { error: result.error };
+        setSession({ user: result.user });
+        return {};
       },
     }),
-    [client, session, status]
+    [session, status]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

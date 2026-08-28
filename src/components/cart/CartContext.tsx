@@ -1,31 +1,25 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
-import type { Product } from "@/data/products";
-import { useAuth } from "@/components/providers/AuthProvider";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import type { CatalogItem } from "@/lib/data";
+import { DEFAULT_STITCHER_SLUG } from "@/data/stitchers";
+import { orderTotals } from "@/lib/pricing";
+import { cart } from "@/lib/data";
+import type { CartLine, StitchingSelection } from "@/lib/data";
 
-export interface StitchingSelection {
-  label: string;
-  addOn: number;
-}
-
-export interface CartItem {
-  id: string;
-  slug: string;
-  title: string;
-  image: string;
-  price: number;
-  qty: number;
-  stitching?: StitchingSelection;
-  // Which Master Stitcher this line is assigned to — only meaningful
-  // when `stitching` is set. Used to route bespoke orders to the right
-  // Tailor dashboard queue.
-  stitcherSlug?: string;
-}
+// Re-exported so the many components importing these from the provider keep
+// working. The shapes themselves live in the data layer — one definition.
+export type { StitchingSelection };
+export type CartItem = CartLine;
 
 interface CartContextValue {
   items: CartItem[];
-  addItem: (product: Product, qty?: number, stitching?: StitchingSelection, stitcherSlug?: string) => void;
+  addItem: (
+    product: CatalogItem,
+    qty?: number,
+    stitching?: StitchingSelection,
+    stitcherSlug?: string
+  ) => void;
   addCustomItem: (item: {
     id: string;
     slug: string;
@@ -39,10 +33,19 @@ interface CartContextValue {
   updateQty: (id: string, qty: number, stitched?: boolean) => void;
   clear: () => void;
   mounted: boolean;
+  /**
+   * The bag drawer. Adding a piece used to change nothing but a number in the
+   * navbar, which reads as "did that work?", so the bag slides open over the
+   * page instead: what was added, at what price, with the way to take it back
+   * off right there. It is state rather than a route so the shopper never
+   * loses the grid they were browsing.
+   */
+  drawerOpen: boolean;
+  openDrawer: () => void;
+  closeDrawer: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = "fujrs-cart";
 
 function lineKeyById(id: string, stitched: boolean) {
   return `${id}::${stitched ? "stitched" : "plain"}`;
@@ -52,94 +55,52 @@ function lineKeyBySlug(slug: string, stitched: boolean) {
   return `${slug}::${stitched ? "stitched" : "plain"}`;
 }
 
-async function syncCartToServer(items: CartItem[]) {
-  try {
-    await fetch("/api/cart", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
-    });
-  } catch {
-    // Optimistic local state already applied — a retry/toast layer is a
-    // reasonable future addition, not required for this pass.
-  }
-}
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { status } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [mounted, setMounted] = useState(false);
-  const hydrated = useRef(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Guests: load from localStorage. Signed-in: load from the DB, merging
-  // in anything saved locally before they signed in (by slug, since a
-  // DB-loaded row's id is a database id, not the product id).
+  /** What the store already holds, so an unchanged bag isn't written back. */
+  const persisted = useRef<string>(JSON.stringify([]));
+
+  // Storage lives in the data layer, so this provider holds React state only
+  // and swaps backends with everything else. See BACKEND_SETUP.md §1.
   useEffect(() => {
-    if (status === "loading") return;
+    let active = true;
+    cart
+      .read()
+      .then((lines) => {
+        if (!active) return;
+        persisted.current = JSON.stringify(lines);
+        setItems(lines);
+      })
+      .finally(() => {
+        if (active) setMounted(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-    if (status === "authenticated") {
-      (async () => {
-        let localItems: CartItem[] = [];
-        try {
-          localItems = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-        } catch {
-          localItems = [];
-        }
-
-        try {
-          const res = await fetch("/api/cart");
-          const data = await res.json();
-          const dbItems: CartItem[] = res.ok ? data.items : [];
-
-          const merged = [...dbItems];
-          for (const localItem of localItems) {
-            const key = lineKeyBySlug(localItem.slug, !!localItem.stitching);
-            const existing = merged.find(
-              (i) => lineKeyBySlug(i.slug, !!i.stitching) === key
-            );
-            if (existing) {
-              existing.qty += localItem.qty;
-            } else {
-              merged.push(localItem);
-            }
-          }
-
-          setItems(merged);
-          hydrated.current = true;
-          if (localItems.length > 0) {
-            await syncCartToServer(merged);
-            localStorage.removeItem(STORAGE_KEY);
-          }
-        } catch {
-          setItems(localItems);
-          hydrated.current = true;
-        }
-        setMounted(true);
-      })();
-    } else {
-      try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-        if (Array.isArray(stored)) setItems(stored);
-      } catch {
-        setItems([]);
-      }
-      hydrated.current = true;
-      setMounted(true);
-    }
-  }, [status]);
-
-  // Persist on every change, once initial hydration/merge is done.
   useEffect(() => {
-    if (!mounted || !hydrated.current) return;
-    if (status === "authenticated") {
-      syncCartToServer(items);
-    } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-  }, [items, mounted, status]);
+    // Skip the write until the first read has landed, or an empty initial
+    // state would overwrite a real saved bag.
+    if (!mounted) return;
+
+    // And skip it when nothing has actually changed. `mounted` flipping true
+    // fires this effect once with whatever `read()` returned, so without the
+    // comparison every page load writes the bag straight back — a round trip
+    // that saves nothing, and for a signed-out visitor a guest account created
+    // to hold an empty bag.
+    const snapshot = JSON.stringify(items);
+    if (snapshot === persisted.current) return;
+    persisted.current = snapshot;
+
+    void cart.write(items);
+  }, [items, mounted]);
 
   function addItem(
-    product: Product,
+    product: CatalogItem,
     qty = 1,
     stitching?: StitchingSelection,
     stitcherSlug?: string
@@ -158,16 +119,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           id: product.id,
           slug: product.slug,
           title: product.title,
-          image: product.images[0],
+          // A snapshot of the URL: the bag thumbnail must keep showing what was
+          // added even if the product's photography is replaced later.
+          image: product.images[0]?.url ?? "",
           price: product.price,
           qty,
           stitching,
-          stitcherSlug: stitching ? stitcherSlug ?? product.stitcher?.slug ?? "khyber-artisans" : undefined,
+          stitcherSlug: stitching ? (stitcherSlug ?? DEFAULT_STITCHER_SLUG) : undefined,
         },
       ];
     });
+    setDrawerOpen(true);
   }
 
+  /**
+   * A bespoke project, which arrives from the tailoring journey rather than a
+   * product grid. Deliberately does NOT open the drawer: that flow sends the
+   * customer to the full bag itself, and a drawer would be a panel that opens
+   * only to be navigated out from under.
+   */
   function addCustomItem(item: {
     id: string;
     slug: string;
@@ -188,7 +158,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   function updateQty(id: string, qty: number, stitched = false) {
     const key = lineKeyById(id, stitched);
     setItems((prev) =>
-      prev.map((i) => (lineKeyById(i.id, !!i.stitching) === key ? { ...i, qty: Math.max(1, qty) } : i))
+      prev.map((i) =>
+        lineKeyById(i.id, !!i.stitching) === key ? { ...i, qty: Math.max(1, qty) } : i
+      )
     );
   }
 
@@ -196,9 +168,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   }
 
+  // Stable identities: the drawer closes itself on navigation from an effect
+  // keyed on these, and a fresh arrow every render would fire that effect on
+  // every render, shutting the panel the same tick `addItem` opened it.
+  const openDrawer = useCallback(() => setDrawerOpen(true), []);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+
   return (
     <CartContext.Provider
-      value={{ items, addItem, addCustomItem, removeItem, updateQty, clear, mounted }}
+      value={{
+        items,
+        addItem,
+        addCustomItem,
+        removeItem,
+        updateQty,
+        clear,
+        mounted,
+        drawerOpen,
+        openDrawer,
+        closeDrawer,
+      }}
     >
       {children}
     </CartContext.Provider>
@@ -211,11 +200,16 @@ export function useCart() {
   return ctx;
 }
 
+/**
+ * Bag totals. The arithmetic itself is in `@/lib/pricing`, because the server
+ * recomputes it when the order is placed and the two must not drift.
+ */
 export function cartTotals(items: CartItem[]) {
-  const fabricTotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const stitchingTotal = items.reduce((sum, i) => sum + (i.stitching?.addOn ?? 0) * i.qty, 0);
-  const subtotal = fabricTotal + stitchingTotal;
-  const shipping = items.length === 0 ? 0 : 350;
-  const total = subtotal + shipping;
-  return { fabricTotal, stitchingTotal, subtotal, shipping, total };
+  return orderTotals(
+    items.map((item) => ({
+      price: item.price,
+      qty: item.qty,
+      stitchingAddOn: item.stitching?.addOn,
+    }))
+  );
 }

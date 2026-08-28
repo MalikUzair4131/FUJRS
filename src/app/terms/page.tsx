@@ -1,3 +1,5 @@
+import { LinkButton } from "@/components/ui/Button";
+
 const sections = [
   {
     id: "introduction",
@@ -21,9 +23,18 @@ const sections = [
     title: "Use of Custom Stitching Services",
     body: null,
     list: [
-      { label: "Measurement Accuracy", text: "It is the customer's responsibility to provide accurate measurements using our measurement tooltips. We are not liable for ill-fitting garments resulting from incorrect data provided." },
-      { label: "Design Variations", text: "Minor variations in embroidery placement or thread shade may occur due to the artisanal nature of the process." },
-      { label: "Lead Times", text: "Custom tailoring requires a minimum of 14-21 business days, excluding transit time." },
+      {
+        label: "Measurement Accuracy",
+        text: "It is the customer's responsibility to provide accurate measurements using our measurement tooltips. We are not liable for ill-fitting garments resulting from incorrect data provided.",
+      },
+      {
+        label: "Design Variations",
+        text: "Minor variations in embroidery placement or thread shade may occur due to the artisanal nature of the process.",
+      },
+      {
+        label: "Lead Times",
+        text: "Custom tailoring requires a minimum of 14-21 business days, excluding transit time.",
+      },
     ],
   },
   {
@@ -95,14 +106,13 @@ export default function TermsPage() {
         </div>
 
         <div className="mt-20 pt-12 border-t border-outline-variant text-center">
-          <p className="mb-8 font-body text-body-md italic">Have questions regarding our legal policies?</p>
+          <p className="mb-8 font-body text-body-md italic">
+            Have questions regarding our legal policies?
+          </p>
           <div className="flex flex-col md:flex-row gap-4 justify-center">
-            <a
-              href="/contact"
-              className="bg-primary text-on-primary px-10 py-4 font-body text-label-md uppercase tracking-widest hover:bg-marketplace-bronze transition-all duration-300"
-            >
+            <LinkButton href="/contact" variant="primary" className="!px-10 !py-4">
               Contact Support
-            </a>
+            </LinkButton>
           </div>
         </div>
       </article>

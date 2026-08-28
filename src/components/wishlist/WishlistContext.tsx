@@ -1,95 +1,61 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import type { Product } from "@/data/products";
-import { useAuth } from "@/components/providers/AuthProvider";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import type { CatalogItem } from "@/lib/data";
+import { wishlist } from "@/lib/data";
 
 interface WishlistContextValue {
   slugs: string[];
-  toggle: (product: Product) => void;
+  toggle: (product: CatalogItem) => void;
   isWishlisted: (slug: string) => boolean;
   mounted: boolean;
 }
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
-const STORAGE_KEY = "fujrs-wishlist";
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
-  const { session, status } = useAuth();
   const [slugs, setSlugs] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
 
-  // Guests: load from localStorage. Signed-in users: load from the DB
-  // (and merge in anything saved locally before they signed in).
+  /** What the store already holds, so an unchanged list isn't written back. */
+  const persisted = useRef<string>(JSON.stringify([]));
+
+  // Storage lives in the data layer; this provider holds React state only.
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (status === "authenticated") {
-      (async () => {
-        let localSlugs: string[] = [];
-        try {
-          localSlugs = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-        } catch {
-          localSlugs = [];
-        }
-
-        try {
-          const res = await fetch("/api/wishlist");
-          const data = await res.json();
-          const dbSlugs: string[] = res.ok ? data.slugs : [];
-
-          const merged = Array.from(new Set([...dbSlugs, ...localSlugs]));
-          const toSync = merged.filter((s) => !dbSlugs.includes(s));
-          for (const slug of toSync) {
-            await fetch("/api/wishlist", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ productSlug: slug }),
-            });
-          }
-
-          setSlugs(merged);
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          setSlugs(localSlugs);
-        }
-        setMounted(true);
-      })();
-    } else {
-      try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-        if (Array.isArray(stored)) setSlugs(stored);
-      } catch {
-        setSlugs([]);
-      }
-      setMounted(true);
-    }
-  }, [status]);
+    let active = true;
+    wishlist
+      .read()
+      .then((saved) => {
+        if (!active) return;
+        persisted.current = JSON.stringify(saved);
+        setSlugs(saved);
+      })
+      .finally(() => {
+        if (active) setMounted(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
-    if (mounted && status !== "authenticated") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(slugs));
-    }
-  }, [slugs, mounted, status]);
+    // Skip until the first read lands, or an empty initial state would
+    // overwrite a real saved wishlist.
+    if (!mounted) return;
 
-  async function toggle(product: Product) {
-    const wasWishlisted = slugs.includes(product.slug);
+    // Skip it again when the list matches what was read — see CartContext for
+    // why: the mount-time write is what was minting a guest account per visit.
+    const snapshot = JSON.stringify(slugs);
+    if (snapshot === persisted.current) return;
+    persisted.current = snapshot;
+
+    void wishlist.write(slugs);
+  }, [slugs, mounted]);
+
+  function toggle(product: CatalogItem) {
     setSlugs((prev) =>
-      wasWishlisted ? prev.filter((s) => s !== product.slug) : [...prev, product.slug]
+      prev.includes(product.slug) ? prev.filter((s) => s !== product.slug) : [...prev, product.slug]
     );
-
-    if (status === "authenticated") {
-      try {
-        await fetch("/api/wishlist", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productSlug: product.slug }),
-        });
-      } catch {
-        // Optimistic update already applied; a real retry/toast layer is
-        // a reasonable next iteration, not needed for this pass.
-      }
-    }
   }
 
   function isWishlisted(slug: string) {

@@ -3,12 +3,29 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Reveal } from "@/components/ui/Reveal";
+import { LinkButton } from "@/components/ui/Button";
 
 const steps = [
-  { n: "01", title: "Request Auth", body: "Submit your request via our portal and receive a Return Authorization (RA) number." },
-  { n: "02", title: "Pack & Label", body: "Place items in original packaging and attach the pre-paid shipping label provided." },
-  { n: "03", title: "Courier Pickup", body: "Schedule a pickup or drop off at any authorized FUJRS logistics partner." },
-  { n: "04", title: "Refund Process", body: "Once inspected (approx. 5 days), your refund will be processed to the original payment method." },
+  {
+    n: "01",
+    title: "Request Auth",
+    body: "Submit your request via our portal and receive a Return Authorization (RA) number.",
+  },
+  {
+    n: "02",
+    title: "Pack & Label",
+    body: "Place items in original packaging and attach the pre-paid shipping label provided.",
+  },
+  {
+    n: "03",
+    title: "Courier Pickup",
+    body: "Schedule a pickup or drop off at any authorized FUJRS logistics partner.",
+  },
+  {
+    n: "04",
+    title: "Refund Process",
+    body: "Once inspected (approx. 5 days), your refund will be processed to the original payment method.",
+  },
 ];
 
 const faqs = [
@@ -36,7 +53,7 @@ export default function ReturnsExchangesPage() {
     e.preventDefault();
     if (!orderNumber.trim() || !email.trim()) return;
     setFound(
-      "This is a frontend-only demo — connecting real order lookup happens once the backend is wired up. For now, please reach our concierge team directly."
+      "Order lookup isn't available yet. Please reach our concierge team directly and they'll pull up your order for you."
     );
   }
 
@@ -53,16 +70,12 @@ export default function ReturnsExchangesPage() {
               Returns &amp; Exchanges
             </h1>
             <p className="font-body text-body-lg text-text-muted max-w-lg mb-8">
-              Our commitment to your satisfaction is as meticulous as our
-              craftsmanship. We offer a seamless return process designed
-              for the modern luxury experience.
+              Our commitment to your satisfaction is as meticulous as our craftsmanship. We offer a
+              seamless return process designed for the modern luxury experience.
             </p>
-            <a
-              href="#portal"
-              className="inline-block bg-primary text-on-primary px-10 py-4 font-body text-label-md uppercase tracking-widest hover:bg-tertiary-fixed hover:text-on-tertiary-fixed transition-all duration-300"
-            >
+            <LinkButton href="#portal" variant="primary" className="!px-10 !py-4">
               Start a Return
-            </a>
+            </LinkButton>
           </div>
           <div className="relative group hidden md:block">
             <div className="aspect-[4/5] overflow-hidden grayscale hover:grayscale-0 transition-all duration-700">
@@ -76,8 +89,8 @@ export default function ReturnsExchangesPage() {
             </div>
             <div className="absolute -bottom-8 -left-8 bg-surface-container p-8 border border-black max-w-xs">
               <p className="font-body text-label-sm italic text-primary">
-                &ldquo;The fit is the final thread of the design. We ensure
-                every piece meets our standard of perfection.&rdquo;
+                &ldquo;The fit is the final thread of the design. We ensure every piece meets our
+                standard of perfection.&rdquo;
               </p>
             </div>
           </div>
@@ -95,10 +108,9 @@ export default function ReturnsExchangesPage() {
                 </span>
                 <h3 className="font-display text-headline-md mb-4">The 14-Day Guarantee</h3>
                 <p className="font-body text-body-md text-text-muted max-w-md">
-                  Items must be returned within 14 days of delivery. All
-                  garments must be in their original condition, unworn,
-                  unwashed, and with all tags intact within original FUJRS
-                  packaging.
+                  Items must be returned within 14 days of delivery. All garments must be in their
+                  original condition, unworn, unwashed, and with all tags intact within original
+                  FUJRS packaging.
                 </p>
               </div>
               <div className="mt-8 pt-8 border-t border-outline-variant flex justify-between items-center">
@@ -109,11 +121,12 @@ export default function ReturnsExchangesPage() {
               </div>
             </div>
             <div className="bg-tertiary-container text-white p-12 flex flex-col justify-center">
-              <h4 className="font-display text-headline-sm mb-6 text-tertiary-fixed">Hassle-Free Pickup</h4>
+              <h4 className="font-display text-headline-sm mb-6 text-tertiary-fixed">
+                Hassle-Free Pickup
+              </h4>
               <p className="font-body text-body-md opacity-80 mb-8">
-                We arrange complimentary return shipping for all orders
-                within major metropolitan areas. Our courier will collect
-                the parcel from your doorstep at your convenience.
+                We arrange complimentary return shipping for all orders within major metropolitan
+                areas. Our courier will collect the parcel from your doorstep at your convenience.
               </p>
             </div>
           </div>
@@ -121,12 +134,14 @@ export default function ReturnsExchangesPage() {
             <div className="border border-black p-12 group hover:bg-black hover:text-white transition-colors duration-500">
               <h4 className="font-display text-headline-sm mb-4">Ready-to-Wear</h4>
               <p className="font-body text-body-md mb-6 opacity-70">
-                Fully returnable for a store credit or full refund to the
-                original payment method, provided the hygiene seal remains
-                untampered.
+                Fully returnable for a store credit or full refund to the original payment method,
+                provided the hygiene seal remains untampered.
               </p>
               <div className="flex items-center gap-2 text-marketplace-bronze font-body">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
                   check_circle
                 </span>
                 <span>Full Refund Eligible</span>
@@ -135,12 +150,14 @@ export default function ReturnsExchangesPage() {
             <div className="border border-outline-variant p-12 bg-surface-container-low">
               <h4 className="font-display text-headline-sm mb-4">Custom Stitched</h4>
               <p className="font-body text-body-md mb-6 text-text-muted">
-                Due to the bespoke nature, stitched items are non-returnable.
-                However, they are eligible for our &apos;Fit
-                Guarantee&apos; alteration service.
+                Due to the bespoke nature, stitched items are non-returnable. However, they are
+                eligible for our &apos;Fit Guarantee&apos; alteration service.
               </p>
               <div className="flex items-center gap-2 text-primary font-body">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
                   architecture
                 </span>
                 <span>Complimentary Alterations</span>
@@ -155,15 +172,18 @@ export default function ReturnsExchangesPage() {
         <div className="max-w-xl mx-auto px-margin-mobile text-center">
           <h2 className="font-display text-headline-md mb-4">Initiate Your Return</h2>
           <p className="font-body text-body-md text-text-muted mb-12">
-            Enter your details below to track your order status or request
-            a return authorization.
+            Enter your details below to track your order status or request a return authorization.
           </p>
           <form className="space-y-6 text-left" onSubmit={handleFindOrder}>
             <div className="space-y-2">
-              <label className="font-body text-label-md uppercase tracking-widest text-primary">
+              <label
+                htmlFor="returns-order-number"
+                className="font-body text-label-md uppercase tracking-widest text-primary"
+              >
                 Order Number
               </label>
               <input
+                id="returns-order-number"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
                 className="w-full border-b border-black py-4 px-0 bg-transparent focus:outline-none focus:border-marketplace-bronze font-body text-body-md transition-colors placeholder:text-outline-variant"
@@ -171,10 +191,14 @@ export default function ReturnsExchangesPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="font-body text-label-md uppercase tracking-widest text-primary">
+              <label
+                htmlFor="returns-email"
+                className="font-body text-label-md uppercase tracking-widest text-primary"
+              >
                 Email Address
               </label>
               <input
+                id="returns-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -200,7 +224,9 @@ export default function ReturnsExchangesPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             {steps.map((step) => (
               <Reveal key={step.n} className="space-y-6">
-                <span className="font-display text-headline-sm text-marketplace-bronze/30">{step.n}</span>
+                <span className="font-display text-headline-sm text-marketplace-bronze/30">
+                  {step.n}
+                </span>
                 <h5 className="font-body text-label-md uppercase tracking-wider">{step.title}</h5>
                 <p className="font-body text-body-md text-text-muted">{step.body}</p>
               </Reveal>
@@ -212,7 +238,9 @@ export default function ReturnsExchangesPage() {
       {/* FAQ */}
       <section className="py-32">
         <div className="max-w-3xl mx-auto px-margin-mobile">
-          <h3 className="font-display text-headline-md mb-12 text-center">Frequently Asked Questions</h3>
+          <h3 className="font-display text-headline-md mb-12 text-center">
+            Frequently Asked Questions
+          </h3>
           <div className="space-y-4">
             {faqs.map((faq, i) => (
               <div key={faq.q} className="border-b border-outline-variant pb-6">

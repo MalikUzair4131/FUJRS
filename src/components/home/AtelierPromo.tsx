@@ -24,7 +24,7 @@ export function AtelierPromo() {
               />
             </div>
             <div className="absolute -top-10 -right-10 w-64 h-64 border border-tertiary-fixed-dim -z-0" />
-            <div className="absolute -bottom-6 -left-6 bg-tertiary-fixed-dim px-6 py-4 z-20">
+            <div className="absolute -bottom-6 -left-6 bg-surface-container-lowest px-6 py-4 z-20">
               <p className="font-label-md text-label-md text-primary uppercase">
                 Elite Craftsmanship
               </p>
@@ -38,10 +38,9 @@ export function AtelierPromo() {
               CUSTOM STITCHING SERVICES
             </h2>
             <p className="font-body-lg text-on-surface-variant mb-10 max-w-xl">
-              Transform your unstitched fabrics into a masterpiece with our
-              concierge tailoring service. From heritage patterns to modern
-              silhouettes, our master artisans ensure a fit that is as
-              unique as you are.
+              Transform your unstitched fabrics into a masterpiece with our concierge tailoring
+              service. From heritage patterns to modern silhouettes, our master artisans ensure a
+              fit that is as unique as you are.
             </p>
             <div className="space-y-6 mb-12">
               {features.map((feature) => (

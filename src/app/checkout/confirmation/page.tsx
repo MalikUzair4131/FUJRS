@@ -1,8 +1,15 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentAppUser } from "@/lib/auth";
-import { orderService } from "@/lib/supabase/services";
+import { useRouter, useSearchParams } from "next/navigation";
+import { LinkButton } from "@/components/ui/Button";
+import { StatusScreen } from "@/components/ui/StatusScreen";
+import { formatOrderNumber } from "@/lib/orderNumber";
+import { orders as orderStore } from "@/lib/data";
+import type { Order } from "@/lib/data";
+import { LoadingScreen } from "@/components/ui/Loading";
 
 const timelineSteps = [
   {
@@ -31,21 +38,52 @@ const timelineSteps = [
   },
 ];
 
-export default async function OrderConfirmationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ orderId?: string }>;
-}) {
-  const resolvedSearchParams = await searchParams;
-  const auth = await getCurrentAppUser();
-  if (!auth?.profile) redirect("/login");
-  if (!resolvedSearchParams.orderId) redirect("/account");
+function OrderConfirmation() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const orderId = searchParams.get("orderId");
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
-  const order = await orderService.getById(resolvedSearchParams.orderId, auth.profile.id);
+  useEffect(() => {
+    if (!orderId) {
+      router.replace("/account");
+      return;
+    }
+    let active = true;
+    orderStore
+      .get(orderId)
+      .then((found) => {
+        if (active) setOrder(found);
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [orderId, router]);
 
-  if (!order) redirect("/account");
+  if (!loaded) {
+    return <LoadingScreen label="Loading your order" />;
+  }
 
-  const hasStitching = order.items.some((i: { stitchingLabel: string | null }) => i.stitchingLabel);
+  if (!order) {
+    return (
+      <StatusScreen
+        icon="receipt_long"
+        title="Order not found"
+        body="Orders are stored on this device, so this one may have been placed elsewhere."
+        actions={
+          <LinkButton href="/account" variant="primary" className="!px-10 !py-4">
+            Go to My Account
+          </LinkButton>
+        }
+      />
+    );
+  }
+
+  const hasStitching = order.items.some((i) => i.stitchingLabel);
 
   return (
     <main className="pt-12 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
@@ -59,23 +97,16 @@ export default async function OrderConfirmationPage({
         <div className="flex flex-col items-center gap-2">
           <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
             Thank you for choosing FUJRS. Your order{" "}
-            <span className="font-bold text-primary">#{order.id.slice(-8).toUpperCase()}</span>{" "}
-            has been successfully placed and is now being curated by our
-            master artisans.
+            <span className="font-bold text-primary">{formatOrderNumber(order.orderNumber)}</span>{" "}
+            has been successfully placed and is now being curated by our master artisans.
           </p>
           <div className="mt-8 flex gap-4 flex-wrap justify-center">
-            <Link
-              href="/account"
-              className="bg-primary text-on-primary font-label-md text-label-md px-10 py-4 uppercase tracking-widest hover:bg-tertiary-fixed-dim hover:text-primary transition-all duration-300"
-            >
+            <LinkButton href="/account" variant="primary" className="!px-10 !py-4">
               View in My Account
-            </Link>
-            <Link
-              href="/dashboard"
-              className="border border-primary text-primary font-label-md text-label-md px-10 py-4 uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all duration-300"
-            >
+            </LinkButton>
+            <LinkButton href="/dashboard" variant="secondary" className="!px-10 !py-4">
               Go to Dashboard
-            </Link>
+            </LinkButton>
           </div>
         </div>
       </section>
@@ -87,7 +118,7 @@ export default async function OrderConfirmationPage({
             <h3 className="font-headline-sm text-headline-sm mb-8 border-b border-border-subtle pb-4">
               Order Summary
             </h3>
-            {order.items.map((item: { id: string; image: string; title: string; qty: number; price: number; stitchingLabel: string | null }) => (
+            {order.items.map((item) => (
               <div
                 key={item.id}
                 className="flex flex-col md:flex-row gap-6 items-start py-6 border-b border-border-subtle last:border-0"
@@ -154,6 +185,14 @@ export default async function OrderConfirmationPage({
                 <span>PKR {order.total.toLocaleString()}</span>
               </div>
             </div>
+            {order.referralCode && (
+              <p className="mt-6 border-t border-border-subtle pt-4 font-label-sm text-label-sm text-on-surface-variant">
+                Referred by{" "}
+                <span className="uppercase tracking-widest text-marketplace-bronze">
+                  {order.referralCode}
+                </span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -176,8 +215,8 @@ export default async function OrderConfirmationPage({
                         step.state === "done"
                           ? "bg-tertiary-fixed"
                           : step.state === "active"
-                          ? "bg-white animate-pulse"
-                          : "bg-white/20"
+                            ? "bg-white animate-pulse"
+                            : "bg-white/20"
                       }`}
                     />
                     <div>
@@ -189,7 +228,9 @@ export default async function OrderConfirmationPage({
                         {step.status}
                       </p>
                       <h4 className="font-body-lg text-body-lg font-bold">{step.title}</h4>
-                      <p className="font-body-md text-body-md text-on-primary/60 mt-1 text-sm">{step.body}</p>
+                      <p className="font-body-md text-body-md text-on-primary/60 mt-1 text-sm">
+                        {step.body}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -213,7 +254,9 @@ export default async function OrderConfirmationPage({
               Pakistan
             </p>
             <div className="mt-6 pt-6 border-t border-border-subtle flex items-center justify-between">
-              <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Method</span>
+              <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">
+                Method
+              </span>
               <span className="font-label-md text-label-md font-bold">
                 {order.paymentMethod === "cod" ? "Cash on Delivery" : "Standard Courier"}
               </span>
@@ -225,7 +268,8 @@ export default async function OrderConfirmationPage({
       <section className="mt-20 py-20 border-t border-primary/10 text-center">
         <h3 className="font-headline-sm text-headline-sm mb-6">Need artisanal assistance?</h3>
         <p className="font-body-md text-body-md text-on-surface-variant mb-10 max-w-xl mx-auto">
-          Our concierge is available to discuss measurement adjustments or tailoring specifics within the next 12 hours.
+          Our concierge is available to discuss measurement adjustments or tailoring specifics
+          within the next 12 hours.
         </p>
         <div className="flex justify-center gap-8">
           <Link
@@ -245,5 +289,13 @@ export default async function OrderConfirmationPage({
         </div>
       </section>
     </main>
+  );
+}
+
+export default function OrderConfirmationPage() {
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading your order" />}>
+      <OrderConfirmation />
+    </Suspense>
   );
 }

@@ -1,12 +1,33 @@
 import Link from "next/link";
 import { Reveal } from "@/components/ui/Reveal";
+import { LinkButton } from "@/components/ui/Button";
 
 const processSteps = [
-  { icon: "inventory_2", title: "1. Select Fabric", body: "Choose from our curated collection of luxury unstitched lawn, silk, and velvet." },
-  { icon: "architecture", title: "2. Choose Design", body: "Select from our library of contemporary and traditional silhouettes." },
-  { icon: "straighten", title: "3. Enter Measures", body: "Input your measurements using our guided digital measurement tool." },
-  { icon: "content_cut", title: "4. Expert Stitching", body: "Our master tailors hand-finish every garment to your specifications." },
-  { icon: "local_shipping", title: "5. Global Delivery", body: "Beautifully packaged and shipped to your doorstep, worldwide." },
+  {
+    icon: "inventory_2",
+    title: "1. Select Fabric",
+    body: "Choose from our curated collection of luxury unstitched lawn, silk, and velvet.",
+  },
+  {
+    icon: "architecture",
+    title: "2. Choose Design",
+    body: "Select from our library of contemporary and traditional silhouettes.",
+  },
+  {
+    icon: "straighten",
+    title: "3. Enter Measures",
+    body: "Input your measurements using our guided digital measurement tool.",
+  },
+  {
+    icon: "content_cut",
+    title: "4. Expert Stitching",
+    body: "Our master tailors hand-finish every garment to your specifications.",
+  },
+  {
+    icon: "local_shipping",
+    title: "5. Global Delivery",
+    body: "Beautifully packaged and shipped to your doorstep, worldwide.",
+  },
 ];
 
 const signatureStyles = [
@@ -36,10 +57,34 @@ const signatureStyles = [
 // Source priced this table in USD ($45-$250); converted to PKR to match
 // the rest of the site's currency.
 const pricingRows = [
-  { garment: "2-Piece Suit (Kurta & Trousers)", note: "Simple straight cut or modern silhouette", standard: "PKR 12,500", premium: "PKR 20,900", turnaround: "10-14 Days" },
-  { garment: "3-Piece Luxury Suit", note: "Includes dupatta finishing & lining", standard: "PKR 16,500", premium: "PKR 26,500", turnaround: "14-18 Days" },
-  { garment: "Formal Saree with Blouse", note: "Fall, pico, and custom blouse stitching", standard: "PKR 22,000", premium: "PKR 33,500", turnaround: "18-21 Days" },
-  { garment: "Bridal Wear / Pishwas", note: "Heavy flair and detailed canvas finishing", standard: "PKR 42,000+", premium: "PKR 69,500+", turnaround: "25-30 Days" },
+  {
+    garment: "2-Piece Suit (Kurta & Trousers)",
+    note: "Simple straight cut or modern silhouette",
+    standard: "PKR 12,500",
+    premium: "PKR 20,900",
+    turnaround: "10-14 Days",
+  },
+  {
+    garment: "3-Piece Luxury Suit",
+    note: "Includes dupatta finishing & lining",
+    standard: "PKR 16,500",
+    premium: "PKR 26,500",
+    turnaround: "14-18 Days",
+  },
+  {
+    garment: "Formal Saree with Blouse",
+    note: "Fall, pico, and custom blouse stitching",
+    standard: "PKR 22,000",
+    premium: "PKR 33,500",
+    turnaround: "18-21 Days",
+  },
+  {
+    garment: "Bridal Wear / Pishwas",
+    note: "Heavy flair and detailed canvas finishing",
+    standard: "PKR 42,000+",
+    premium: "PKR 69,500+",
+    turnaround: "25-30 Days",
+  },
 ];
 
 export default function TailoringPage() {
@@ -54,6 +99,8 @@ export default function TailoringPage() {
               backgroundImage:
                 "url('https://lh3.googleusercontent.com/aida-public/AB6AXuDAj5OCWogbAVVNFYbdauNt8bNZVOu15-XJKqafB4PuXMFwEBKmQvIqraiXXmXeNFKGPGf2_cxg6HkG5_REVLKdoosXZoQKukwEDXRhts3-JKHs5xcngCn4oMkQpn84YsQ0NygM_XY-B8gKwYeBwjeIh-BWYgTWE_6ApPvq4rjlnw1poQ56RXxPOxClh8MlFF2InMha1xb6tC1XkCINZcId8AMvIYyaC7PWdwXbrbqwYajXiLFdicMs2OAYmISFtvts4_wlWKFb1c8')",
             }}
+            role="img"
+            aria-label="Master tailor at work in the FUJRS atelier"
           />
           <div className="absolute inset-0 bg-black/30" />
         </div>
@@ -68,10 +115,9 @@ export default function TailoringPage() {
               to Masterpiece.
             </h2>
             <p className="font-body-lg text-body-lg mb-12 opacity-90 max-w-lg">
-              Experience the pinnacle of bespoke craftsmanship. Our master
-              stitchers transform your selected unstitched fabrics into
-              impeccably tailored garments, delivered to your door with
-              global precision.
+              Experience the pinnacle of bespoke craftsmanship. Our master stitchers transform your
+              selected unstitched fabrics into impeccably tailored garments, delivered to your door
+              with global precision.
             </p>
             <div className="flex gap-4 flex-wrap">
               <Link
@@ -80,13 +126,34 @@ export default function TailoringPage() {
               >
                 Start Your Design
               </Link>
-              <Link
-                href="/new-arrivals"
-                className="border border-white text-white px-12 py-5 font-label-md text-label-md uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-300"
-              >
+              <LinkButton href="/new-arrivals" variant="inverse" className="!px-12 !py-5">
                 View Catalog
-              </Link>
+              </LinkButton>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The atelier workflow behind bespoke stitching is not built yet: the
+          screens below are the finished design, so the page says so up front
+          rather than taking an order it cannot fulfil. */}
+      <section className="bg-primary text-white">
+        <div className="px-gutter max-w-container-max mx-auto py-16 flex flex-col md:flex-row items-start gap-8">
+          <span className="material-symbols-outlined text-5xl text-tertiary-fixed-dim shrink-0">
+            schedule
+          </span>
+          <div>
+            <p className="font-label-md text-label-md uppercase tracking-[0.3em] text-tertiary-fixed-dim mb-4">
+              Coming soon
+            </p>
+            <h3 className="font-headline-md text-headline-md mb-6">
+              Bespoke tailoring is not open for orders yet.
+            </h3>
+            <p className="font-body-lg text-body-lg opacity-90 max-w-2xl">
+              Everything below is the atelier experience we are building: the process, the signature
+              styles, and the pricing we will charge. Stitching goes live once our master tailors
+              are onboarded, so no stitching charge is added to any order today.
+            </p>
           </div>
         </div>
       </section>
@@ -120,9 +187,8 @@ export default function TailoringPage() {
             <div className="max-w-xl">
               <h3 className="font-headline-md text-headline-md mb-6">Signature Styles</h3>
               <p className="font-body-lg text-body-lg text-on-surface-variant">
-                Explore our library of curated design elements. From
-                contemporary necklines to intricate hemlines, customize
-                every detail of your garment.
+                Explore our library of curated design elements. From contemporary necklines to
+                intricate hemlines, customize every detail of your garment.
               </p>
             </div>
           </div>
@@ -158,9 +224,21 @@ export default function TailoringPage() {
               <h3 className="font-headline-md text-headline-md mb-8">Guided Measurements</h3>
               <div className="space-y-8">
                 {[
-                  { n: 1, title: "Digital Blueprint", body: "Our smart tool asks for 12 key points to create your unique digital mannequin." },
-                  { n: 2, title: "Video Tutorials", body: "Step-by-step visual guides ensure you measure exactly like a professional tailor." },
-                  { n: 3, title: "Tailor Check", body: "Every measurement is reviewed by our master tailors for logical consistency." },
+                  {
+                    n: 1,
+                    title: "Digital Blueprint",
+                    body: "Our smart tool asks for 12 key points to create your unique digital mannequin.",
+                  },
+                  {
+                    n: 2,
+                    title: "Video Tutorials",
+                    body: "Step-by-step visual guides ensure you measure exactly like a professional tailor.",
+                  },
+                  {
+                    n: 3,
+                    title: "Tailor Check",
+                    body: "Every measurement is reviewed by our master tailors for logical consistency.",
+                  },
                 ].map((item) => (
                   <div key={item.n} className="flex items-start gap-4">
                     <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0">
@@ -168,17 +246,20 @@ export default function TailoringPage() {
                     </div>
                     <div>
                       <h5 className="font-label-md text-label-md mb-1">{item.title}</h5>
-                      <p className="font-body-md text-body-md text-on-surface-variant">{item.body}</p>
+                      <p className="font-body-md text-body-md text-on-surface-variant">
+                        {item.body}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
-              <Link
+              <LinkButton
                 href="/tailoring/configure"
-                className="mt-12 block w-full py-5 bg-primary text-white font-label-md text-label-md uppercase hover:bg-tertiary-fixed transition-colors text-center"
+                variant="primary"
+                className="mt-12 w-full !py-5"
               >
                 Open Measurement Tool
-              </Link>
+              </LinkButton>
             </div>
           </Reveal>
           <Reveal delay={150} className="flex-1 w-full">
@@ -199,8 +280,8 @@ export default function TailoringPage() {
           <Reveal className="text-center mb-16">
             <h3 className="font-headline-md text-headline-md mb-4">Investment in Fit</h3>
             <p className="font-body-lg text-body-lg text-on-surface-variant">
-              Transparent pricing for unparalleled quality. All prices
-              include linings and standard finishing.
+              Transparent pricing for unparalleled quality. All prices include linings and standard
+              finishing.
             </p>
           </Reveal>
           <div className="overflow-x-auto">
@@ -223,7 +304,10 @@ export default function TailoringPage() {
               </thead>
               <tbody className="divide-y divide-outline-variant">
                 {pricingRows.map((row) => (
-                  <tr key={row.garment} className="hover:bg-surface-container-low transition-colors">
+                  <tr
+                    key={row.garment}
+                    className="hover:bg-surface-container-low transition-colors"
+                  >
                     <td className="py-10 px-6">
                       <h5 className="font-label-md text-label-md">{row.garment}</h5>
                       <p className="text-xs text-on-surface-variant mt-1">{row.note}</p>
@@ -246,9 +330,8 @@ export default function TailoringPage() {
             Ready to wear your perfect fit?
           </h2>
           <p className="font-body-lg text-body-lg opacity-80 mb-12">
-            Join thousands of global clients who trust FUJRS for their
-            custom tailoring needs. Quality guaranteed, or we&apos;ll make
-            it right.
+            Join thousands of global clients who trust FUJRS for their custom tailoring needs.
+            Quality guaranteed, or we&apos;ll make it right.
           </p>
           <div className="flex flex-col md:flex-row gap-6 justify-center">
             <Link
