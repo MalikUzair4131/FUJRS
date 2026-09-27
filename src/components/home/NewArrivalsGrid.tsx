@@ -3,14 +3,11 @@ import { catalogRead } from "@/lib/data/server";
 import { AddToBagButton } from "@/components/product/AddToBagButton";
 import { ProductImage } from "@/components/ui/ProductImage";
 
-/** Homepage strip: the four newest pieces flagged as new arrivals. */
-const HOMEPAGE_SLOTS = 4;
-
+/** Homepage strip: every piece in the catalogue, newest first. */
 export async function NewArrivalsGrid() {
-  const items = (await catalogRead.list()).filter((p) => p.isNewArrival).slice(0, HOMEPAGE_SLOTS);
+  const items = await catalogRead.list();
 
-  // A homepage band headed "New Arrivals" with nothing under it reads as a
-  // broken page. With no arrivals to show, the section simply isn't there.
+  // A homepage band with nothing under it reads as a broken page.
   if (items.length === 0) return null;
 
   return (
@@ -18,17 +15,11 @@ export async function NewArrivalsGrid() {
       <div className="max-w-container-max mx-auto px-gutter">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <h2 className="font-headline-md text-headline-md">New Arrivals</h2>
+            <h2 className="font-headline-md text-headline-md">The Collection</h2>
             <p className="text-on-surface-variant font-body-md">
               Hand-picked luxury for the discerning eye.
             </p>
           </div>
-          <Link
-            href="/new-arrivals"
-            className="font-label-md text-label-md uppercase tracking-widest border-b border-primary hover:text-tertiary-fixed-dim transition-colors"
-          >
-            View All
-          </Link>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-gutter">
           {items.map((product) => (
@@ -43,11 +34,13 @@ export async function NewArrivalsGrid() {
                     sizes="(min-width: 1024px) 25vw, 50vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    <span className="bg-primary text-on-primary text-[10px] px-2 py-1 uppercase tracking-tighter">
-                      {product.badge ?? "New Arrival"}
-                    </span>
-                  </div>
+                  {product.badge && (
+                    <div className="absolute top-4 left-4 flex flex-col gap-2">
+                      <span className="bg-primary text-on-primary text-[10px] px-2 py-1 uppercase tracking-tighter">
+                        {product.badge}
+                      </span>
+                    </div>
+                  )}
                 </Link>
                 <div className="quick-add-bar absolute bottom-0 left-0 w-full bg-primary py-4 text-center opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                   <AddToBagButton product={product} />
